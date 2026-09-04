@@ -1,0 +1,548 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /broker_keys/{workspaceId}/students/{studentId}/connections/{connectionId} {
+      allow read, write: if false;
+    }
+
+    match /broker_keys/{workspaceId}/students/{studentId}/forex_connections/{connectionId} {
+      allow read, write: if false;
+    }
+
+    match /journal_crypto_keys/{workspaceId}/students/{studentId}/connections/{connectionId} {
+      allow read, write: if false;
+    }
+
+    match /journal_crypto_keys/{workspaceId}/students/{studentId}/connections/{connectionId}/versions/{versionId} {
+      allow read, write: if false;
+    }
+
+    match /platform_execution_controls/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_practice_crypto_catalogue/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_live_execution_controls/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_broad_live_autocopy_cohort_controls/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_live_incident_notes/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_live_rollback_notes/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_package_licences/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_package_licenses/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_package_licence_ops/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_package_license_ops/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_workspace_branding_domains/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_branding_domain_ops/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_enterprise_deployment_readiness/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_enterprise_deployment_ops/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_enterprise_integration_requests/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_enterprise_integration_ops/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /custom_domains/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_forex_demo_controls/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform_forex_live_canary_controls/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /paystack_webhooks/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /solana_settlements/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/execution_controls/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/live_execution_controls/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_demo_controls/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_live_canary_controls/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/execution_intents/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_paper_intents/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_demo_intents/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_demo_execution_queue/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_live_canary_intents/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/live_execution_intents/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/order_attempts/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_paper_attempts/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_demo_order_attempts/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_live_canary_order_attempts/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/live_order_attempts/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/risk_decisions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_risk_decisions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_demo_gate_decisions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_live_canary_gate_decisions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/live_gate_decisions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/auto_copy_confirmations/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/stale_signal_decisions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/auto_copy_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/live_reconciliation_records/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_demo_reconciliation_records/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/live_allowlists/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/live_incidents/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/live_support_review_notes/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/live_rollback_notes/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/package_licences/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/package_licenses/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/package_licence_ops/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/package_license_ops/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/branding_domain_ops/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/branding_domains/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/custom_domains/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/enterprise_deployment_ops/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/enterprise_deployment_readiness/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/enterprise_deployments/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/enterprise_integration_requests/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/enterprise_integration_ops/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/broad_live_autocopy_cohort_controls/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/broad_live_autocopy_cohort_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/execution_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_execution_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_demo_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_live_canary_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_connection_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_provisioned_accounts/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_autocopy_payment_intents/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/crypto_autocopy_payment_intents/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/payment_intents/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/crypto_autocopy_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_provisioning_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/forex_provisioning_controls/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/historical_candle_cache/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/message_intents/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/messaging_delivery_attempts/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/messaging_preference_summaries/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/messaging_suppressions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/messaging_provider_status/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /messaging_suppressions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /messaging_provider_status/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /messaging_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /external_signal_sources/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /external_signal_candidates/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /external_signal_ingestion_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /external_signal_provider_status/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/external_signal_sources/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/external_signal_candidates/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/practice_assignments/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/practice_cohorts/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/live_execution_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/exchange_connections/{connectionId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/forex_connections/{connectionId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/forex_autocopy_subscriptions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/crypto_autocopy_subscriptions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/messaging_preferences/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/subscriptions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/forex_provisioning/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/forex_provisioning_requests/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/account_linked_trade_ledger/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/journal_crypto_connections/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/journal_crypto_sync_runs/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/journal_crypto_import_records/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/journal_crypto_import_generations/{generationId} {
+      allow read, write: if false;
+
+      match /entries/{entryId} {
+        allow read, write: if false;
+      }
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/journal_crypto_cleanup_records/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/journal_crypto_credential_cleanup_tasks/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/journal_performance_summaries/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/journal_activity_links/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/manual_journal_trades/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/course_lesson_notes/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/course_lesson_bookmarks/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/course_resume_points/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/course_progress/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/lesson_progress/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/practice_sessions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/practice_orders/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/practice_annotations/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/practice_bookmarks/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/practice_notification_state/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/practice_instructor_feedback/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/practice_drawings/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/playbooks/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/execution_preferences/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/auto_copy_preferences/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/live_consents/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/live_execution_preferences/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TradeHub Color System</title>
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif;
+  background: #f1f1f4;
+  color: #1c1c1e;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 36px;
+}
+
+.intro {
+  max-width: 960px;
+  margin: 0 auto 28px;
+}
+
+.intro h1 {
+  margin: 0 0 8px;
+  font-size: 34px;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.intro p {
+  margin: 0;
+  color: rgba(60, 60, 67, 0.7);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.theme-grid {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+
+.theme {
+  border-radius: 28px;
+  padding: 24px;
+  min-height: 720px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--label);
+  overflow: hidden;
+}
+
+.theme.dark {
+  --bg: #000000;
+  --glass: rgba(255, 255, 255, 0.047);
+  --glass-hi: rgba(255, 255, 255, 0.09);
+  --line: rgba(255, 255, 255, 0.09);
+  --label: #F5F5F7;
+  --label2: rgba(235, 235, 245, 0.60);
+  --label3: rgba(235, 235, 245, 0.30);
+  --accent: #D9C28C;
+  --accent-bg: rgba(217, 194, 140, 0.12);
+  --green: #30D158;
+  --green-bg: rgba(48, 209, 88, 0.13);
+  --red: #FF453A;
+  --red-bg: rgba(255, 69, 58, 0.13);
+  --amber: #FF9F0A;
+  --amber-bg: rgba(255, 159, 10, 0.13);
+  --card: linear-gradient(160deg, #3a3a3c, #232325 38%, #18181a 66%, #2a2a2c);
+  --card-shadow: 0 22px 40px -18px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --sheen: rgba(255, 255, 255, 0.22);
+  --tabbar: rgba(8, 8, 9, 0.84);
+}
+
+.theme.light {
+  --bg: #F1F1F4;
+  --glass: rgba(255, 255, 255, 0.76);
+  --glass-hi: rgba(255, 255, 255, 0.96);
+  --line: rgba(0, 0, 0, 0.08);
+  --label: #1C1C1E;
+  --label2: rgba(60, 60, 67, 0.60);
+  --label3: rgba(60, 60, 67, 0.30);
+  --accent: #93722F;
+  --accent-bg: rgba(147, 114, 47, 0.10);
+  --green: #1F9D44;
+  --green-bg: rgba(31, 157, 68, 0.10);
+  --red: #E0342A;
+  --red-bg: rgba(224, 52, 42, 0.09);
+  --amber: #B37000;
+  --amber-bg: rgba(179, 112, 0, 0.10);
+  --card: linear-gradient(160deg, #fcfcfd, #e8e8ec 35%, #cfcfd6 65%, #f3f3f5);
+  --card-shadow: 0 16px 32px -16px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.70);
+  --sheen: rgba(255, 255, 255, 0.82);
+  --tabbar: rgba(255, 255, 255, 0.84);
+}
+
+.theme-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.theme h2 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+.mode-chip {
+  border: 1px solid var(--line);
+  background: var(--glass);
+  color: var(--label2);
+  border-radius: 999px;
+  padding: 7px 11px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.hero-card {
+  position: relative;
+  margin-bottom: 18px;
+  border-radius: 28px;
+  padding: 22px;
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: var(--card-shadow);
+}
+
+.hero-card::after {
+  content: "";
+  position: absolute;
+  top: -60%;
+  left: -30%;
+  width: 55%;
+  height: 220%;
+  background: linear-gradient(75deg, transparent, var(--sheen), transparent);
+  transform: translateX(30%) rotate(8deg);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  z-index: 1;
+}
+
+.chip-glyph {
+  width: 32px;
+  height: 22px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #e3d2a3, #a4905f);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.tier {
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.hero-label {
+  position: relative;
+  z-index: 1;
+  margin-top: 28px;
+  color: var(--label2);
+  font-size: 11px;
+}
+
+.hero-value {
+  position: relative;
+  z-index: 1;
+  margin-top: 4px;
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-change {
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.surface-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.surface {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+.surface.raised {
+  background: var(--glass-hi);
+}
+
+.surface-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.surface-body {
+  margin: 0;
+  color: var(--label2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.section-title {
+  margin: 20px 0 10px;
+  color: var(--label3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.swatch {
+  border: 1px solid var(--line);
+  background: var(--glass);
+  border-radius: 16px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.block {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--sample);
+}
+
+.block.gradient {
+  background: var(--card);
+}
+
+.swatch-name {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.swatch-value {
+  margin: 0;
+  color: var(--label3);
+  font-size: 10.5px;
+  line-height: 1.35;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  word-break: break-word;
+}
+
+.semantic-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.semantic {
+  border-radius: 16px;
+  padding: 13px;
+  border: 1px solid var(--semantic);
+  background: var(--semantic-bg);
+}
+
+.semantic strong {
+  display: block;
+  color: var(--semantic);
+  font-size: 13px;
+  margin-bottom: 5px;
+}
+
+.semantic span {
+  color: var(--label2);
+  font-size: 11px;
+}
+
+.tabbar-demo {
+  margin-top: 18px;
+  display: flex;
+  justify-content: space-around;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 12px 8px;
+  background: var(--tabbar);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+
+.tab {
+  color: var(--label3);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.tab.active {
+  color: var(--label);
+}
+
+.tab.active::before {
+  content: "";
+  display: block;
+  width: 8px;
+  height: 8px;
+  margin: 0 auto 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+@media (max-width: 980px) {
+  .page {
+    padding: 22px;
+  }
+
+  .theme-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .surface-row,
+  .swatches,
+  .semantic-row {
+    grid-template-columns: 1fr;
+  }
+
+  .theme {
+    padding: 18px;
+    border-radius: 22px;
+  }
+}
+</style>
+</head>
+<body>
+<main class="page">
+  <section class="intro">
+    <h1>TradeHub Color System</h1>
+    <p>Exact dark and light theme tokens from the prototype, shown side by side for visual comparison.</p>
+  </section>
+
+  <section class="theme-grid" aria-label="TradeHub color themes">
+    <article class="theme dark">
+      <div class="theme-header">
+        <div>
+          <p class="eyebrow">Dark Theme</p>
+          <h2>True black, glass, champagne gold</h2>
+        </div>
+        <div class="mode-chip">data-theme="dark"</div>
+      </div>
+
+      <div class="hero-card">
+        <div class="card-top">
+          <div class="chip-glyph"></div>
+          <div class="tier">ELITE</div>
+        </div>
+        <div class="hero-label">Portfolio Balance</div>
+        <div class="hero-value">$24,812.40</div>
+        <div class="hero-change">+$340.12 today</div>
+      </div>
+
+      <div class="surface-row">
+        <div class="surface">
+          <p class="surface-title">Glass surface</p>
+          <p class="surface-body">Signals, courses, rows, and small cards.</p>
+        </div>
+        <div class="surface raised">
+          <p class="surface-title">Raised glass</p>
+          <p class="surface-body">Secondary surfaces and chips.</p>
+        </div>
+      </div>
+
+      <p class="section-title">Core Tokens</p>
+      <div class="swatches">
+        <div class="swatch"><div class="block" style="--sample:#000000"></div><div><p class="swatch-name">--bg</p><p class="swatch-value">#000000</p></div></div>
+        <div class="swatch"><div class="block" style="--sample:#F5F5F7"></div><div><p class="swatch-name">--label</p><p class="swatch-value">#F5F5F7</p></div></div>
+        <div class="swatch"><div class="block" style="--sample:rgba(255,255,255,.047)"></div><div><p class="swatch-name">--glass</p><p class="swatch-value">rgba(255,255,255,.047)</p></div></div>
+        <div class="swatch"><div class="block" style="--sample:rgba(255,255,255,.09)"></div><div><p class="swatch-name">--glass-hi</p><p class="swatch-value">rgba(255,255,255,.09)</p></div></div>
+        <div class="swatch"><div class="block" style="--sample:#D9C28C"></div><div><p class="swatch-name">--accent</p><p class="swatch-value">#D9C28C</p></div></div>
+        <div class="swatch"><div class="block gradient"></div><div><p class="swatch-name">--card</p><p class="swatch-value">dark titanium gradient</p></div></div>
+      </div>
+
+      <p class="section-title">Semantic Colors</p>
+      <div class="semantic-row">
+        <div class="semantic" style="--semantic:var(--green);--semantic-bg:var(--green-bg)"><strong>Profit</strong><span>#30D158</span></div>
+        <div class="semantic" style="--semantic:var(--red);--semantic-bg:var(--red-bg)"><strong>Loss</strong><span>#FF453A</span></div>
+        <div class="semantic" style="--semantic:var(--amber);--semantic-bg:var(--amber-bg)"><strong>Warning</strong><span>#FF9F0A</span></div>
+      </div>
+
+      <div class="tabbar-demo">
+        <div class="tab active">Home</div>
+        <div class="tab">Courses</div>
+        <div class="tab">Signals</div>
+        <div class="tab">Journal</div>
+      </div>
+    </article>
+
+    <article class="theme light">
+      <div class="theme-header">
+        <div>
+          <p class="eyebrow">Light Theme</p>
+          <h2>Soft neutral, white glass, deeper gold</h2>
+        </div>
+        <div class="mode-chip">data-theme="light"</div>
+      </div>
+
+      <div class="hero-card">
+        <div class="card-top">
+          <div class="chip-glyph"></div>
+          <div class="tier">ELITE</div>
+        </div>
+        <div class="hero-label">Portfolio Balance</div>
+        <div class="hero-value">$24,812.40</div>
+        <div class="hero-change">+$340.12 today</div>
+      </div>
+
+      <div class="surface-row">
+        <div class="surface">
+          <p class="surface-title">Glass surface</p>
+          <p class="surface-body">White glass over the neutral canvas.</p>
+        </div>
+        <div class="surface raised">
+          <p class="surface-title">Raised glass</p>
+          <p class="surface-body">Brighter cards, menus, and overlays.</p>
+        </div>
+      </div>
+
+      <p class="section-title">Core Tokens</p>
+      <div class="swatches">
+        <div class="swatch"><div class="block" style="--sample:#F1F1F4"></div><div><p class="swatch-name">--bg</p><p class="swatch-value">#F1F1F4</p></div></div>
+        <div class="swatch"><div class="block" style="--sample:#1C1C1E"></div><div><p class="swatch-name">--label</p><p class="swatch-value">#1C1C1E</p></div></div>
+        <div class="swatch"><div class="block" style="--sample:rgba(255,255,255,.76)"></div><div><p class="swatch-name">--glass</p><p class="swatch-value">rgba(255,255,255,.76)</p></div></div>
+        <div class="swatch"><div class="block" style="--sample:rgba(255,255,255,.96)"></div><div><p class="swatch-name">--glass-hi</p><p class="swatch-value">rgba(255,255,255,.96)</p></div></div>
+        <div class="swatch"><div class="block" style="--sample:#93722F"></div><div><p class="swatch-name">--accent</p><p class="swatch-value">#93722F</p></div></div>
+        <div class="swatch"><div class="block gradient"></div><div><p class="swatch-name">--card</p><p class="swatch-value">brushed silver gradient</p></div></div>
+      </div>
+
+      <p class="section-title">Semantic Colors</p>
+      <div class="semantic-row">
+        <div class="semantic" style="--semantic:var(--green);--semantic-bg:var(--green-bg)"><strong>Profit</strong><span>#1F9D44</span></div>
+        <div class="semantic" style="--semantic:var(--red);--semantic-bg:var(--red-bg)"><strong>Loss</strong><span>#E0342A</span></div>
+        <div class="semantic" style="--semantic:var(--amber);--semantic-bg:var(--amber-bg)"><strong>Warning</strong><span>#B37000</span></div>
+      </div>
+
+      <div class="tabbar-demo">
+        <div class="tab active">Home</div>
+        <div class="tab">Courses</div>
+        <div class="tab">Signals</div>
+        <div class="tab">Journal</div>
+      </div>
+    </article>
+  </section>
+</main>
+</body>
+</html>

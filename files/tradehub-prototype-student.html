@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Apex FX</title>
+<script>
+(function(){
+  var t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)?'dark':'light';
+  document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
+<style>
+/* ── TOKENS ───────────────────────────── */
+:root[data-theme="dark"]{
+  --bg:#000;
+  --glass:rgba(255,255,255,.047);
+  --glass-hi:rgba(255,255,255,.09);
+  --line:rgba(255,255,255,.09);
+  --label:#F5F5F7;
+  --label2:rgba(235,235,245,.6);
+  --label3:rgba(235,235,245,.3);
+  --accent:#D9C28C;
+  --accent-bg:rgba(217,194,140,.12);
+  --green:#30D158;
+  --green-bg:rgba(48,209,88,.13);
+  --red:#FF453A;
+  --red-bg:rgba(255,69,58,.13);
+  --amber:#FF9F0A;
+  --amber-bg:rgba(255,159,10,.13);
+  --card:linear-gradient(160deg,#3a3a3c,#232325 38%,#18181a 66%,#2a2a2c);
+  --card-shadow:0 22px 40px -18px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.06);
+  --sheen:rgba(255,255,255,.22);
+  --tabbar:rgba(8,8,9,.84);
+}
+:root[data-theme="light"]{
+  --bg:#F1F1F4;
+  --glass:rgba(255,255,255,.76);
+  --glass-hi:rgba(255,255,255,.96);
+  --line:rgba(0,0,0,.08);
+  --label:#1C1C1E;
+  --label2:rgba(60,60,67,.6);
+  --label3:rgba(60,60,67,.3);
+  --accent:#93722F;
+  --accent-bg:rgba(147,114,47,.1);
+  --green:#1F9D44;
+  --green-bg:rgba(31,157,68,.1);
+  --red:#E0342A;
+  --red-bg:rgba(224,52,42,.09);
+  --amber:#B37000;
+  --amber-bg:rgba(179,112,0,.1);
+  --card:linear-gradient(160deg,#fcfcfd,#e8e8ec 35%,#cfcfd6 65%,#f3f3f5);
+  --card-shadow:0 16px 32px -16px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.7);
+  --sheen:rgba(255,255,255,.82);
+  --tabbar:rgba(255,255,255,.84);
+}
+
+/* ── RESET ────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter',sans-serif;
+  background:var(--bg);color:var(--label);
+  transition:background .3s,color .3s;
+}
+
+/* ── APP SHELL ────────────────────────── */
+.app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column}
+.screens{flex:1;position:relative;overflow:hidden}
+.screen{
+  position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+  opacity:0;pointer-events:none;transform:translateY(7px);
+  transition:opacity .22s ease,transform .22s ease;
+}
+.screen::-webkit-scrollbar{display:none}
+.screen.active{opacity:1;pointer-events:all;transform:none}
+.pg{padding:max(18px,env(safe-area-inset-top)) 18px 18px}
+
+/* ── SHARED: HEADER ───────────────────── */
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.wm{font-size:12.5px;font-weight:600;letter-spacing:.08em;color:var(--label2)}
+.hr{display:flex;align-items:center;gap:8px}
+.av{
+  width:30px;height:30px;border-radius:50%;
+  background:var(--glass);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:600;color:var(--label2);
+}
+.ib{
+  width:30px;height:30px;border-radius:50%;
+  background:var(--glass);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--label2);flex-shrink:0;
+  transition:border-color .2s,transform .15s;
+}
+.ib:hover{border-color:var(--accent)}
+.ib:active{transform:scale(.92)}
+.ib svg{width:14px;height:14px}
+
+/* ── SHARED: SECTION HEAD ─────────────── */
+.sh{display:flex;align-items:center;justify-content:space-between;margin:24px 0 10px}
+.sl{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--label3)}
+.sh-r{font-size:11px;color:var(--label3)}
+
+/* ── SHARED: TICKETS ──────────────────── */
+.tlist{display:flex;flex-direction:column;gap:9px}
+.tk{
+  background:var(--glass);border:1px solid var(--line);
+  border-radius:18px;padding:13px 14px;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+  transition:border-color .9s;
+}
+.tk.new{
+  border-color:var(--accent);
+  animation:cardIn .46s cubic-bezier(.3,1.2,.6,1) both,glow 1s ease-out;
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(9px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes glow{0%{box-shadow:0 0 0 0 rgba(217,194,140,.32)}100%{box-shadow:0 0 22px 3px rgba(217,194,140,0)}}
+.tt{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.tp{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.ta{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:99px}
+.ta.buy{color:var(--green);background:var(--green-bg)}
+.ta.sell{color:var(--red);background:var(--red-bg)}
+.ttime{margin-left:auto;font-size:11px;color:var(--label3)}
+.cbadge{
+  font-size:9.5px;font-weight:600;letter-spacing:.05em;
+  padding:2px 7px;border-radius:99px;
+  color:var(--accent);background:var(--accent-bg);white-space:nowrap;
+}
+.tg{display:flex;gap:18px}
+.tg .l{font-size:10px;color:var(--label3);margin-bottom:2px}
+.tg .v{font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.tg .v.dn{color:var(--red)}
+.tg .v.up{color:var(--green)}
+
+/* ── SHARED: COURSE CARD ──────────────── */
+.cc{
+  display:flex;gap:12px;align-items:center;
+  background:var(--glass);border:1px solid var(--line);
+  border-radius:18px;padding:11px;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+  margin-bottom:9px;cursor:pointer;
+  transition:border-color .2s;
+}
+.cc:hover{border-color:var(--accent)}
+.ct{
+  width:56px;height:56px;border-radius:13px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);font-size:22px;
+}
+.ci{flex:1;min-width:0}
+.ctitle{font-size:13.5px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.csub{font-size:11px;color:var(--label3);margin-bottom:7px}
+.ptr{height:3px;background:var(--line);border-radius:99px;overflow:hidden}
+.pf{height:100%;background:var(--accent);border-radius:99px}
+.pill{
+  font-size:10px;font-weight:600;letter-spacing:.05em;
+  padding:3px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0;
+}
+.pill-a{color:var(--accent);background:var(--accent-bg)}
+.pill-g{color:var(--green);background:var(--green-bg)}
+.pill-m{color:var(--label3);background:var(--glass-hi);border:1px solid var(--line)}
+
+/* ── SHARED: FILTER TABS ──────────────── */
+.ft-row{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px}
+.ft-row::-webkit-scrollbar{display:none}
+.ft{
+  background:var(--glass);border:1px solid var(--line);
+  border-radius:99px;padding:6px 14px;
+  font-size:12px;font-weight:500;color:var(--label2);
+  cursor:pointer;white-space:nowrap;
+  transition:border-color .2s,color .2s,background .2s;
+}
+.ft.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+
+/* ── HOME: HERO CARD ──────────────────── */
+.card{
+  position:relative;border-radius:28px;padding:22px;
+  overflow:hidden;background:var(--card);box-shadow:var(--card-shadow);
+  cursor:pointer;transition:background .35s,box-shadow .35s;
+}
+.card::after{
+  content:'';position:absolute;top:-60%;left:-30%;
+  width:55%;height:220%;
+  background:linear-gradient(75deg,transparent,var(--sheen),transparent);
+  transform:translateX(-140%) rotate(8deg);opacity:0;pointer-events:none;
+}
+.card.sheen::after{animation:sweep 1.25s ease forwards}
+@keyframes sweep{
+  0%{transform:translateX(-140%) rotate(8deg);opacity:0}
+  12%{opacity:.9}65%{opacity:.4}
+  100%{transform:translateX(140%) rotate(8deg);opacity:0}
+}
+.c-top{display:flex;align-items:flex-start;justify-content:space-between}
+.c-chip{
+  width:32px;height:22px;border-radius:5px;
+  background:linear-gradient(135deg,#e3d2a3,#a4905f);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.4);
+}
+.c-tier{font-size:10.5px;font-weight:600;letter-spacing:.14em;color:var(--accent)}
+.c-spark{position:absolute;right:0;bottom:30px;width:62%;height:54px;color:var(--label);opacity:.15}
+.c-lbl{font-size:11px;color:var(--label2);margin-top:26px}
+.c-bal{font-size:38px;font-weight:700;letter-spacing:-.025em;font-variant-numeric:tabular-nums;margin-top:4px}
+.c-chg{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:13px;font-weight:500;color:var(--green)}
+.c-chg svg{width:11px;height:11px}
+
+/* ── HOME: STAT CHIPS ─────────────────── */
+.chip-row{display:flex;gap:8px;margin-top:14px}
+.chip{
+  flex:1;background:var(--glass);border:1px solid var(--line);
+  border-radius:16px;padding:10px 12px;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+}
+.chip .cl{font-size:10.5px;color:var(--label3);margin-bottom:3px}
+.chip .cv{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+
+/* ── TAB BAR ──────────────────────────── */
+.tabbar{
+  display:flex;justify-content:space-around;
+  padding:10px 6px calc(10px + env(safe-area-inset-bottom,0px));
+  background:var(--tabbar);
+  -webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);
+  border-top:1px solid var(--line);
+  flex-shrink:0;transition:background .3s;
+}
+.tab{
+  background:none;border:none;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  color:var(--label3);font-size:9.5px;font-weight:500;padding:4px 8px;
+  transition:color .2s;
+}
+.tab svg{width:21px;height:21px}
+.tab.on{color:var(--label)}
+.tab.on svg{color:var(--accent)}
+
+/* ── COPIER: RISK BUTTONS ─────────────── */
+.rb{
+  width:28px;height:28px;border-radius:50%;
+  background:var(--glass-hi);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:16px;color:var(--label);
+  transition:border-color .2s,transform .12s;
+}
+.rb:active{transform:scale(.88)}
+.rb:hover{border-color:var(--accent)}
+.pb{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:10px}
+@media(prefers-reduced-motion:reduce){
+  .card::after,.tk.new{animation:none!important}
+  .screen{transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="screens">
+
+<!-- ════ HOME ════════════════════════════ -->
+<div class="screen active" id="s0">
+<div class="pg">
+  <header>
+    <span class="wm">APEX FX</span>
+    <div class="hr">
+      <button class="ib" id="themeBtn" aria-label="Toggle theme"></button>
+      <div class="av">JM</div>
+    </div>
+  </header>
+
+  <div class="card" id="heroCard" tabindex="0" role="button" aria-label="Balance card">
+    <div class="c-top">
+      <div class="c-chip"></div>
+      <div class="c-tier">ELITE</div>
+    </div>
+    <svg class="c-spark" viewBox="0 0 200 54" preserveAspectRatio="none">
+      <path d="M0,40 L25,36 L50,38 L75,26 L100,30 L125,18 L150,22 L175,9 L200,12"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="c-lbl">Portfolio Balance</div>
+    <div class="c-bal">$24,812.40</div>
+    <div class="c-chg">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+      $340.12 today
+    </div>
+  </div>
+
+  <div class="chip-row">
+    <div class="chip"><div class="cl">Win Rate</div><div class="cv">62%</div></div>
+    <div class="chip"><div class="cl">Open Trades</div><div class="cv">3</div></div>
+    <div class="chip"><div class="cl">This Month</div><div class="cv" style="color:var(--green)">+8.4%</div></div>
+  </div>
+
+  <div class="sh">
+    <span class="sl">Live Signals</span>
+    <button class="ib" id="simBtn" aria-label="Simulate signal" style="border-color:var(--accent)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    </button>
+  </div>
+  <div class="tlist" id="homeSignals">
+    <div class="tk">
+      <div class="tt"><span class="tp">XAUUSD</span><span class="ta buy">BUY</span><span class="cbadge">✓ COPIED</span><span class="ttime">8m</span></div>
+      <div class="tg">
+        <div><span class="l">ENTRY</span><span class="v">2310.50</span></div>
+        <div><span class="l">SL</span><span class="v dn">2300.00</span></div>
+        <div><span class="l">TP</span><span class="v up">2340.00</span></div>
+      </div>
+    </div>
+    <div class="tk">
+      <div class="tt"><span class="tp">EURUSD</span><span class="ta sell">SELL</span><span class="ttime">2h</span></div>
+      <div class="tg">
+        <div><span class="l">ENTRY</span><span class="v">1.0872</span></div>
+        <div><span class="l">SL</span><span class="v dn">1.0900</span></div>
+        <div><span class="l">TP</span><span class="v up">1.0810</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sh"><span class="sl">Continue Learning</span></div>
+  <div class="cc">
+    <div class="ct" style="background:linear-gradient(135deg,#1e2d1e,#0d180d)">📈</div>
+    <div class="ci">
+      <div class="ctitle">Risk Management Fundamentals</div>
+      <div class="csub">Lesson 4 of 9 · Week 2</div>
+      <div class="ptr"><div class="pf" style="width:44%"></div></div>
+    </div>
+    <span class="pill pill-a">44%</span>
+  </div>
+
+  <div class="pb"></div>
+</div>
+</div>
+
+<!-- ════ COURSES ══════════════════════════ -->
+<div class="screen" id="s1">
+<div class="pg">
+  <header>
+    <span class="wm">APEX FX</span>
+    <div class="hr"><div class="av">JM</div></div>
+  </header>
+
+  <div class="sh" style="margin-top:0">
+    <span class="sl">My Courses</span>
+    <span class="sh-r">3 enrolled</span>
+  </div>
+
+  <!-- In-progress -->
+  <div class="cc" id="openLesson">
+    <div class="ct" style="background:linear-gradient(135deg,#1e2d1e,#0d180d)">📈</div>
+    <div class="ci">
+      <div class="ctitle">Risk Management Fundamentals</div>
+      <div class="csub">Lesson 4 of 9 · Week 2</div>
+      <div class="ptr"><div class="pf" style="width:44%"></div></div>
+    </div>
+    <span class="pill pill-a">44%</span>
+  </div>
+
+  <!-- Complete -->
+  <div class="cc">
+    <div class="ct" style="background:linear-gradient(135deg,#1a1a2e,#0d0d1a)">🧠</div>
+    <div class="ci">
+      <div class="ctitle">Psychology of Trading</div>
+      <div class="csub">8 lessons · Week 1</div>
+      <div class="ptr"><div class="pf" style="width:100%"></div></div>
+    </div>
+    <span class="pill pill-g">✓ Done</span>
+  </div>
+
+  <!-- Not started -->
+  <div class="cc">
+    <div class="ct" style="background:linear-gradient(135deg,#2a1a1a,#1a0d0d)">🕯️</div>
+    <div class="ci">
+      <div class="ctitle">Mastering Price Action</div>
+      <div class="csub">12 lessons · Week 3</div>
+      <div class="ptr"><div class="pf" style="width:0%"></div></div>
+    </div>
+    <span class="pill pill-m">New</span>
+  </div>
+
+  <!-- Locked / coming soon -->
+  <div class="cc" style="opacity:.52;pointer-events:none">
+    <div class="ct" style="background:linear-gradient(135deg,#1a1a1a,#111)">🔒</div>
+    <div class="ci">
+      <div class="ctitle">Advanced Fibonacci Methods</div>
+      <div class="csub">Available next week</div>
+      <div class="ptr"><div class="pf" style="width:0%"></div></div>
+    </div>
+    <span class="pill pill-m">Soon</span>
+  </div>
+
+  <!-- Last-watched detail card -->
+  <div class="sh"><span class="sl">Last Watched</span></div>
+  <div style="background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:14px 15px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#1e2d1e,#0d180d);display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid var(--line);flex-shrink:0">📈</div>
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:2px">Lesson 4 — Position Sizing</div>
+        <div style="font-size:11px;color:var(--label3)">Risk Management Fundamentals · 18 min</div>
+      </div>
+    </div>
+    <div style="height:3px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:6px">
+      <div style="width:68%;height:100%;background:var(--accent);border-radius:99px"></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:10px;color:var(--label3)">68% watched</span>
+      <span style="font-size:10px;font-weight:600;color:var(--accent);letter-spacing:.05em">QUIZ UNLOCKED</span>
+    </div>
+  </div>
+
+  <!-- Quiz prompt card -->
+  <div id="quizCard" style="margin-top:9px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:18px;padding:14px 15px;display:flex;align-items:center;gap:12px;cursor:pointer;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div style="width:36px;height:36px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:2px">Lesson 4 Quiz Ready</div>
+      <div style="font-size:11px;color:var(--label2)">3 questions · Pass to unlock Lesson 5</div>
+    </div>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+
+  <div class="pb"></div>
+</div>
+</div>
+
+<!-- ════ SIGNALS ══════════════════════════ -->
+<div class="screen" id="s2">
+<div class="pg">
+  <header>
+    <span class="wm">APEX FX</span>
+    <div class="hr"><div class="av">JM</div></div>
+  </header>
+
+  <!-- Filter tabs -->
+  <div class="ft-row" id="sigFilter">
+    <button class="ft on" data-f="all">All</button>
+    <button class="ft" data-f="forex">Forex</button>
+    <button class="ft" data-f="crypto">Crypto</button>
+    <button class="ft" data-f="open">Open</button>
+  </div>
+
+  <div class="tlist" id="sigList">
+
+    <!-- Signal 1 — open, copied -->
+    <div class="tk" data-m="forex" data-status="open">
+      <div class="tt">
+        <span class="tp">XAUUSD</span><span class="ta buy">BUY</span>
+        <span class="cbadge">✓ COPIED</span>
+        <span class="ttime">8m</span>
+      </div>
+      <div class="tg" style="margin-bottom:10px">
+        <div><span class="l">ENTRY</span><span class="v">2310.50</span></div>
+        <div><span class="l">SL</span><span class="v dn">2300.00</span></div>
+        <div><span class="l">TP</span><span class="v up">2340.00</span></div>
+      </div>
+      <!-- Live P&L bar -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:10px;color:var(--label3)">Floating P&L</span>
+        <span style="font-size:12px;font-weight:600;color:var(--green);font-variant-numeric:tabular-nums">+$94.00</span>
+      </div>
+      <div style="height:3px;background:var(--line);border-radius:99px;overflow:hidden">
+        <div style="width:38%;height:100%;background:var(--green);border-radius:99px"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px">
+        <span style="font-size:9.5px;color:var(--label3)">Entry 2310.50</span>
+        <span style="font-size:9.5px;color:var(--green)">TP 2340.00</span>
+      </div>
+    </div>
+
+    <!-- Signal 2 — open, copied -->
+    <div class="tk" data-m="crypto" data-status="open">
+      <div class="tt">
+        <span class="tp">BTCUSDT</span><span class="ta buy">BUY</span>
+        <span class="cbadge">✓ COPIED</span>
+        <span class="ttime">5h</span>
+      </div>
+      <div class="tg" style="margin-bottom:10px">
+        <div><span class="l">ENTRY</span><span class="v">68,420</span></div>
+        <div><span class="l">SL</span><span class="v dn">67,800</span></div>
+        <div><span class="l">TP</span><span class="v up">70,000</span></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:10px;color:var(--label3)">Floating P&L</span>
+        <span style="font-size:12px;font-weight:600;color:var(--green);font-variant-numeric:tabular-nums">+$240.00</span>
+      </div>
+      <div style="height:3px;background:var(--line);border-radius:99px;overflow:hidden">
+        <div style="width:55%;height:100%;background:var(--green);border-radius:99px"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px">
+        <span style="font-size:9.5px;color:var(--label3)">Entry 68,420</span>
+        <span style="font-size:9.5px;color:var(--green)">TP 70,000</span>
+      </div>
+    </div>
+
+    <!-- Signal 3 — closed, profit -->
+    <div class="tk" data-m="forex" data-status="closed">
+      <div class="tt">
+        <span class="tp">EURUSD</span><span class="ta sell">SELL</span>
+        <span style="font-size:9.5px;font-weight:600;padding:2px 7px;border-radius:99px;color:var(--green);background:var(--green-bg);white-space:nowrap">CLOSED +TP</span>
+        <span class="ttime">Yesterday</span>
+      </div>
+      <div class="tg">
+        <div><span class="l">ENTRY</span><span class="v">1.0872</span></div>
+        <div><span class="l">SL</span><span class="v dn">1.0900</span></div>
+        <div><span class="l">TP HIT</span><span class="v up">1.0810</span></div>
+      </div>
+    </div>
+
+    <!-- Signal 4 — closed, loss -->
+    <div class="tk" data-m="forex" data-status="closed">
+      <div class="tt">
+        <span class="tp">GBPJPY</span><span class="ta buy">BUY</span>
+        <span style="font-size:9.5px;font-weight:600;padding:2px 7px;border-radius:99px;color:var(--red);background:var(--red-bg);white-space:nowrap">CLOSED −SL</span>
+        <span class="ttime">2d ago</span>
+      </div>
+      <div class="tg">
+        <div><span class="l">ENTRY</span><span class="v">196.40</span></div>
+        <div><span class="l">SL HIT</span><span class="v dn">195.80</span></div>
+        <div><span class="l">TP</span><span class="v up">197.80</span></div>
+      </div>
+    </div>
+
+    <!-- Signal 5 — crypto, closed -->
+    <div class="tk" data-m="crypto" data-status="closed">
+      <div class="tt">
+        <span class="tp">ETHUSDT</span><span class="ta sell">SELL</span>
+        <span style="font-size:9.5px;font-weight:600;padding:2px 7px;border-radius:99px;color:var(--green);background:var(--green-bg);white-space:nowrap">CLOSED +TP</span>
+        <span class="ttime">3d ago</span>
+      </div>
+      <div class="tg">
+        <div><span class="l">ENTRY</span><span class="v">3,280</span></div>
+        <div><span class="l">SL</span><span class="v dn">3,340</span></div>
+        <div><span class="l">TP HIT</span><span class="v up">3,140</span></div>
+      </div>
+    </div>
+
+  </div><!-- /sigList -->
+  <div class="pb"></div>
+</div>
+</div>
+
+<!-- ════ COPIER ════════════════════════════ -->
+<div class="screen" id="s3">
+<div class="pg">
+  <header>
+    <span class="wm">APEX FX</span>
+    <div class="hr"><div class="av">JM</div></div>
+  </header>
+
+  <!-- Status card -->
+  <div style="background:var(--glass);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:12px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div id="cDot" style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 0 3px rgba(48,209,88,.18);transition:background .3s,box-shadow .3s"></div>
+      <div>
+        <div id="cName" style="font-size:15px;font-weight:600">Copier Active</div>
+        <div style="font-size:11px;color:var(--label2);margin-top:1px">Copying all signals automatically</div>
+      </div>
+    </div>
+    <!-- Exchange badge -->
+    <div style="font-size:11px;color:var(--label3);margin-bottom:7px">Connected exchange</div>
+    <div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--label2);background:var(--glass-hi);border:1px solid var(--line);border-radius:99px;padding:4px 10px">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Binance · Trade-only API
+    </div>
+    <!-- Stats row -->
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <div style="flex:1;background:var(--glass-hi);border:1px solid var(--line);border-radius:12px;padding:9px 10px;text-align:center">
+        <div style="font-size:9.5px;color:var(--label3);margin-bottom:3px">TODAY</div>
+        <div style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--green)">3 fills</div>
+      </div>
+      <div style="flex:1;background:var(--glass-hi);border:1px solid var(--line);border-radius:12px;padding:9px 10px;text-align:center">
+        <div style="font-size:9.5px;color:var(--label3);margin-bottom:3px">PROFIT</div>
+        <div style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--green)">+$420</div>
+      </div>
+      <div style="flex:1;background:var(--glass-hi);border:1px solid var(--line);border-radius:12px;padding:9px 10px;text-align:center">
+        <div style="font-size:9.5px;color:var(--label3);margin-bottom:3px">DAILY USED</div>
+        <div style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums">1.8%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Risk Controls -->
+  <div class="sh"><span class="sl">Risk Controls</span></div>
+
+  <div style="background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:13px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div>
+      <div style="font-size:12px;color:var(--label2)">Max risk per trade</div>
+      <div style="font-size:10px;color:var(--label3);margin-top:1px">of account balance</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="rb" onclick="adj('r1',-0.5,'%',0.5,5)">−</button>
+      <span id="r1" style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;min-width:36px;text-align:center">1.0%</span>
+      <button class="rb" onclick="adj('r1',0.5,'%',0.5,5)">+</button>
+    </div>
+  </div>
+
+  <div style="background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:13px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div>
+      <div style="font-size:12px;color:var(--label2)">Max daily loss</div>
+      <div style="font-size:10px;color:var(--label3);margin-top:1px">auto-pause when hit</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="rb" onclick="adj('r2',-0.5,'%',1,20)">−</button>
+      <span id="r2" style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;min-width:36px;text-align:center">5.0%</span>
+      <button class="rb" onclick="adj('r2',0.5,'%',1,20)">+</button>
+    </div>
+  </div>
+
+  <div style="background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:13px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div>
+      <div style="font-size:12px;color:var(--label2)">Max open trades</div>
+      <div style="font-size:10px;color:var(--label3);margin-top:1px">queue pauses beyond this</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="rb" onclick="adj('r3',-1,'',1,10)">−</button>
+      <span id="r3" style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;min-width:36px;text-align:center">3</span>
+      <button class="rb" onclick="adj('r3',1,'',1,10)">+</button>
+    </div>
+  </div>
+
+  <!-- Recent Fills -->
+  <div class="sh"><span class="sl">Recent Fills</span></div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:10px 12px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0"></div>
+      <div style="flex:1"><div style="font-size:12.5px;font-weight:600">XAUUSD · BUY</div><div style="font-size:10px;color:var(--label3)">Today, 09:14 · 1% risk</div></div>
+      <span style="font-size:13px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums">+$180</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:10px 12px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0"></div>
+      <div style="flex:1"><div style="font-size:12.5px;font-weight:600">BTCUSDT · BUY</div><div style="font-size:10px;color:var(--label3)">Today, 07:02 · 1% risk</div></div>
+      <span style="font-size:13px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums">+$240</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:10px 12px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0"></div>
+      <div style="flex:1"><div style="font-size:12.5px;font-weight:600">EURUSD · SELL</div><div style="font-size:10px;color:var(--label3)">Yesterday, 15:30 · 1% risk</div></div>
+      <span style="font-size:13px;font-weight:700;color:var(--red);font-variant-numeric:tabular-nums">−$85</span>
+    </div>
+  </div>
+
+  <!-- Pause button -->
+  <button id="pauseBtn" style="width:100%;padding:13px;border-radius:14px;background:var(--glass);border:1px solid var(--line);font-size:14px;font-weight:600;color:var(--label2);cursor:pointer;transition:border-color .2s,color .2s">
+    Pause Copier
+  </button>
+
+  <div class="pb"></div>
+</div>
+</div>
+
+<!-- ════ JOURNAL ══════════════════════════ -->
+<div class="screen" id="s4">
+<div class="pg">
+  <header>
+    <span class="wm">APEX FX</span>
+    <div class="hr"><div class="av">JM</div></div>
+  </header>
+
+  <!-- 3 stat cards -->
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <div style="flex:1;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="font-size:9.5px;color:var(--label3);letter-spacing:.04em;margin-bottom:3px">WIN RATE</div>
+      <div style="font-size:16px;font-weight:700;font-variant-numeric:tabular-nums">62%</div>
+    </div>
+    <div style="flex:1;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="font-size:9.5px;color:var(--label3);letter-spacing:.04em;margin-bottom:3px">P&amp;L</div>
+      <div style="font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--green)">+$1,240</div>
+    </div>
+    <div style="flex:1;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="font-size:9.5px;color:var(--label3);letter-spacing:.04em;margin-bottom:3px">AVG R:R</div>
+      <div style="font-size:16px;font-weight:700;font-variant-numeric:tabular-nums">1 : 1.8</div>
+    </div>
+  </div>
+
+  <!-- Equity curve -->
+  <div style="background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:16px 16px 12px;margin-bottom:14px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:10px;color:var(--label3);letter-spacing:.08em;text-transform:uppercase">Equity Curve</span>
+      <span style="font-size:10px;font-weight:600;color:var(--accent)">June 2026</span>
+    </div>
+    <svg width="100%" height="76" viewBox="0 0 320 76" preserveAspectRatio="none" style="display:block;overflow:visible">
+      <defs>
+        <linearGradient id="eg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#D9C28C" stop-opacity=".22"/>
+          <stop offset="100%" stop-color="#D9C28C" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <!-- area fill -->
+      <path d="M0,64 L20,60 L40,62 L60,54 L80,48 L96,50 L112,42 L128,46 L144,36 L160,30 L176,35 L192,26 L208,22 L224,28 L240,19 L256,13 L272,17 L288,9 L304,11 L320,7 L320,76 L0,76 Z" fill="url(#eg)"/>
+      <!-- line -->
+      <path d="M0,64 L20,60 L40,62 L60,54 L80,48 L96,50 L112,42 L128,46 L144,36 L160,30 L176,35 L192,26 L208,22 L224,28 L240,19 L256,13 L272,17 L288,9 L304,11 L320,7"
+        fill="none" stroke="#D9C28C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- current dot -->
+      <circle cx="320" cy="7" r="3.5" fill="#D9C28C"/>
+      <circle cx="320" cy="7" r="6" fill="#D9C28C" opacity=".2"/>
+    </svg>
+    <div style="display:flex;justify-content:space-between;margin-top:6px">
+      <span style="font-size:9.5px;color:var(--label3)">Jun 1</span>
+      <span style="font-size:9.5px;color:var(--label3)">Jun 22</span>
+    </div>
+  </div>
+
+  <!-- Calendar heatmap -->
+  <div style="background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:14px 14px 12px;margin-bottom:14px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:10px;color:var(--label3);letter-spacing:.08em;text-transform:uppercase">June 2026</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="display:flex;align-items:center;gap:4px;font-size:9.5px;color:var(--label3)"><span style="width:8px;height:8px;border-radius:2px;background:var(--green);display:inline-block"></span>Profit</span>
+        <span style="display:flex;align-items:center;gap:4px;font-size:9.5px;color:var(--label3)"><span style="width:8px;height:8px;border-radius:2px;background:var(--red);display:inline-block"></span>Loss</span>
+        <span style="display:flex;align-items:center;gap:4px;font-size:9.5px;color:var(--label3)"><span style="width:8px;height:8px;border-radius:2px;background:var(--line);display:inline-block"></span>Rest</span>
+      </div>
+    </div>
+    <!-- Day labels -->
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">
+      <span style="font-size:9px;color:var(--label3);text-align:center">M</span>
+      <span style="font-size:9px;color:var(--label3);text-align:center">T</span>
+      <span style="font-size:9px;color:var(--label3);text-align:center">W</span>
+      <span style="font-size:9px;color:var(--label3);text-align:center">T</span>
+      <span style="font-size:9px;color:var(--label3);text-align:center">F</span>
+      <span style="font-size:9px;color:var(--label3);text-align:center">S</span>
+      <span style="font-size:9px;color:var(--label3);text-align:center">S</span>
+    </div>
+    <!-- Calendar grid — June 2026 starts on Monday -->
+    <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"></div>
+    <!-- Selected day tooltip -->
+    <div id="calTip" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span id="calTipDate" style="font-size:11px;color:var(--label3)"></span>
+        <span id="calTipPnl" style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums"></span>
+      </div>
+      <div id="calTipDetail" style="font-size:11px;color:var(--label3);margin-top:2px"></div>
+    </div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="ft-row" id="jFilter">
+    <button class="ft on" data-jf="all">All Trades</button>
+    <button class="ft" data-jf="win">Profitable</button>
+    <button class="ft" data-jf="london">London</button>
+    <button class="ft" data-jf="copied">Copied</button>
+  </div>
+
+  <!-- Trade rows -->
+  <div id="tradeList">
+
+    <div style="background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:12px 13px;margin-bottom:8px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)" data-outcome="win" data-session="london" data-source="copied">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:13.5px;font-weight:600">XAUUSD</span>
+        <span style="font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:99px;color:var(--green);background:var(--green-bg)">BUY</span>
+        <span style="margin-left:auto;font-size:14px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums">+$240</span>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <span style="font-size:9.5px;font-weight:500;padding:2px 7px;border-radius:6px;color:var(--label3);background:var(--glass-hi);border:1px solid var(--line)">breakout</span>
+        <span style="font-size:9.5px;font-weight:500;padding:2px 7px;border-radius:6px;color:var(--label3);background:var(--glass-hi);border:1px solid var(--line)">london</span>
+        <span style="font-size:9.5px;font-weight:500;padding:2px 7px;border-radius:6px;color:var(--accent);background:var(--accent-bg);border:1px solid var(--accent)">copied</span>
+      </div>
+    </div>
+
+    <div style="background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:12px 13px;margin-bottom:8px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)" data-outcome="win" data-session="asia" data-source="copied">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:13.5px;font-weight:600">BTCUSDT</span>
+        <span style="font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:99px;color:var(--green);background:var(--green-bg)">BUY</span>
+        <span style="margin-left:auto;font-size:14px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums">+$380</span>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <span style="font-size:9.5px;font-weight:500;padding:2px 7px;border-radius:6px;color:var(--label3);background:var(--glass-hi);border:1px solid var(--line)">support</span>
+        <span style="font-size:9.5px;font-weight:500;padding:2px 7px;border-radius:6px;color:var(--label3);background:var(--glass-hi);border:1px solid var(--line)">asia</span>
+        <span style="font-size:9.5px;font-weight:500;padding:2px 7px;border-radius:6px;color:var(--accent);background:var(--accent-bg);border:1px solid var(--accent)">copied</span>
+      </div>
+    </div>
+
+    <div style="background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:12px 13px;margin-bottom:8px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)" data-outcome="loss" data-session="ny" data-source="copied">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:13.5px;font-weight:600">EURUSD</span>
+        <span style="font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:99px;color:var(--red);background:var(--red-bg)">SELL</span>
+        <span style="margin-left:auto;font-size:14px;font-weight:700;color:var(--red);font-variant-numeric:tabular-nums">−$85</span>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <span style="font-size:9.5px;font-weight:500;padding:2px 7px;border-radius:6px;color:var(--label3);background:var(--glass-hi);border:1px solid var(--line)">fib level</span>
+        <span style="font-size:9.5px;font-weight:500;padding:2px 7px;border-radius:6px;color:var(--label3);background:var(--glass-hi);border:1px solid var(--line)">ny</span>
+        <span style="font-size:9.5px;font-weight:500;padding:2px 7px;border-radius:6px;color:var(--accent);background:var(--accent-bg);border:1px solid var(--accent)">copied</span>
+      </div>
+    </div>
+
+    <div style="background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:12px 13px;margin-bottom:8px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)" data-outcome="win" data-session="london" data-source="manual">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:13.5px;font-weight:600">GBPJPY</span>
+        <span style="font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:99px;color:var(--green);background:var(--green-bg)">BUY</span>
+        <span style="margin-left:auto;font-size:14px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums">+$125</span>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <span style="font-size:9.5px;font-weight:500;padding:2px 7px;border-radius:6px;color:var(--label3);background:var(--glass-hi);border:1px solid var(--line)">trend</span>
+        <span style="font-size:9.5px;font-weight:500;padding:2px 7px;border-radius:6px;color:var(--label3);background:var(--glass-hi);border:1px solid var(--line)">london</span>
+        <span style="font-size:9.5px;font-weight:500;padding:2px 7px;border-radius:6px;color:var(--label3);background:var(--glass-hi);border:1px solid var(--line)">manual</span>
+      </div>
+    </div>
+
+  </div><!-- /tradeList -->
+
+  <!-- AI Insights teaser (Phase 2 preview) -->
+  <div style="margin-top:6px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:18px;padding:14px 15px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="width:32px;height:32px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="19" cy="5" r="3"/></svg>
+      </div>
+      <div>
+        <div style="font-size:12.5px;font-weight:600;color:var(--accent)">AI Insight</div>
+        <div style="font-size:10.5px;color:var(--label2);margin-top:1px">Based on your last 30 trades</div>
+      </div>
+    </div>
+    <p style="font-size:12.5px;color:var(--label2);line-height:1.5">
+      Your <strong style="color:var(--label)">London session trades</strong> win at 74% — nearly double your NY session rate of 38%. Consider sizing up during London open and reducing exposure after 3 PM.
+    </p>
+  </div>
+
+  <div class="pb"></div>
+</div>
+</div>
+
+</div><!-- /screens -->
+
+<!-- ════ TAB BAR ══════════════════════════ -->
+<nav class="tabbar">
+  <button class="tab on" data-s="0">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+    Home
+  </button>
+  <button class="tab" data-s="1">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    Courses
+  </button>
+  <button class="tab" data-s="2">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Signals
+  </button>
+  <button class="tab" data-s="3">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+    Copier
+  </button>
+  <button class="tab" data-s="4">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="3.2" height="10"/><rect x="10.4" y="5" width="3.2" height="15"/><rect x="16.8" y="13" width="3.2" height="7"/></svg>
+    Journal
+  </button>
+</nav>
+</div>
+
+<script>
+// ── THEME ──────────────────────────────
+const rm=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+const SUN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+const MOON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+let theme=document.documentElement.getAttribute('data-theme')||'dark';
+const themeBtn=document.getElementById('themeBtn');
+const setIcon=()=>{themeBtn.innerHTML=theme==='dark'?SUN:MOON;};
+setIcon();
+themeBtn.addEventListener('click',()=>{
+  theme=theme==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',theme);
+  setIcon(); playSheen();
+});
+
+// ── NAVIGATION ─────────────────────────
+const screens=[0,1,2,3,4].map(i=>document.getElementById('s'+i));
+const tabs=document.querySelectorAll('.tab');
+let cur=0;
+function go(i){
+  if(i===cur)return;
+  screens[cur].classList.remove('active');tabs[cur].classList.remove('on');
+  cur=i;
+  screens[cur].classList.add('active');tabs[cur].classList.add('on');
+}
+tabs.forEach(t=>t.addEventListener('click',()=>go(+t.dataset.s)));
+
+// ── HERO SHEEN ─────────────────────────
+const heroCard=document.getElementById('heroCard');
+function playSheen(){
+  if(rm)return;
+  heroCard.classList.remove('sheen');void heroCard.offsetWidth;
+  heroCard.classList.add('sheen');
+}
+heroCard.addEventListener('click',playSheen);
+heroCard.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();playSheen();}});
+setTimeout(playSheen,450);
+
+// ── CALENDAR HEATMAP ───────────────────
+const calDays={
+  1:{p:'+$180',t:'2 trades',o:'win'},
+  2:{p:'+$95', t:'1 trade', o:'win'},
+  3:{p:'-$60', t:'1 trade', o:'loss'},
+  4:{p:'+$240',t:'3 trades',o:'win'},
+  5:{p:'+$110',t:'2 trades',o:'win'},
+  9:{p:'-$85', t:'1 trade', o:'loss'},
+  10:{p:'+$320',t:'3 trades',o:'win'},
+  11:{p:'+$75', t:'1 trade', o:'win'},
+  12:{p:'-$120',t:'2 trades',o:'loss'},
+  15:{p:'+$200',t:'2 trades',o:'win'},
+  16:{p:'+$380',t:'3 trades',o:'win'},
+  17:{p:'-$45', t:'1 trade', o:'loss'},
+  18:{p:'+$125',t:'2 trades',o:'win'},
+  19:{p:'+$240',t:'2 trades',o:'win'},
+  22:{p:'+$310',t:'3 trades',o:'win'},
+};
+const grid=document.getElementById('calGrid');
+const tip=document.getElementById('calTip');
+const tipDate=document.getElementById('calTipDate');
+const tipPnl=document.getElementById('calTipPnl');
+const tipDetail=document.getElementById('calTipDetail');
+for(let d=1;d<=30;d++){
+  const cell=document.createElement('div');
+  const data=calDays[d];
+  const isToday=d===22;
+  const isFuture=d>22;
+  let bg='var(--line)';
+  let opacity='1';
+  if(isFuture){opacity='.25';}
+  else if(data){bg=data.o==='win'?'var(--green)':'var(--red)';}
+  cell.style.cssText=`
+    aspect-ratio:1;border-radius:5px;background:${bg};opacity:${opacity};
+    display:flex;align-items:center;justify-content:center;
+    font-size:9px;font-weight:600;color:${data&&!isFuture?'rgba(0,0,0,.7)':'var(--label3)'};
+    cursor:${data?'pointer':'default'};
+    ${isToday?'box-shadow:0 0 0 1.5px var(--accent);':''}
+    transition:transform .12s,opacity .2s;
+  `;
+  cell.textContent=d;
+  if(data&&!isFuture){
+    cell.addEventListener('click',()=>{
+      tipDate.textContent='June '+d+' · '+data.t;
+      tipPnl.textContent=data.p;
+      tipPnl.style.color=data.o==='win'?'var(--green)':'var(--red)';
+      tipDetail.textContent=data.o==='win'?'Profitable day':'Loss day';
+      tip.style.display='block';
+    });
+    cell.addEventListener('mouseenter',()=>cell.style.transform='scale(1.15)');
+    cell.addEventListener('mouseleave',()=>cell.style.transform='scale(1)');
+  }
+  grid.appendChild(cell);
+}
+
+document.querySelectorAll('#jFilter .ft').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#jFilter .ft').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    const f=btn.dataset.jf;
+    document.querySelectorAll('#tradeList [data-outcome]').forEach(row=>{
+      let show=true;
+      if(f==='win') show=row.dataset.outcome==='win';
+      else if(f==='london') show=row.dataset.session==='london';
+      else if(f==='copied') show=row.dataset.source==='copied';
+      row.style.display=show?'':'none';
+    });
+  });
+});
+
+let paused=false;
+const pauseBtn=document.getElementById('pauseBtn');
+const cDot=document.getElementById('cDot');
+const cName=document.getElementById('cName');
+pauseBtn.addEventListener('click',()=>{
+  paused=!paused;
+  cDot.style.background=paused?'var(--amber)':'var(--green)';
+  cDot.style.boxShadow=paused?'0 0 0 3px rgba(255,159,10,.18)':'0 0 0 3px rgba(48,209,88,.18)';
+  cName.textContent=paused?'Copier Paused':'Copier Active';
+  pauseBtn.textContent=paused?'Resume Copier':'Pause Copier';
+  pauseBtn.style.color=paused?'var(--green)':'var(--label2)';
+  pauseBtn.style.borderColor=paused?'var(--green)':'var(--line)';
+});
+
+const rVals={r1:1.0,r2:5.0,r3:3};
+window.adj=(id,delta,unit,mn,mx)=>{
+  const isInt=unit==='';
+  rVals[id]=Math.max(mn,Math.min(mx,rVals[id]+delta));
+  document.getElementById(id).textContent=isInt?rVals[id]:rVals[id].toFixed(1)+unit;
+};
+
+// ── SIGNAL FILTER ──────────────────────
+document.querySelectorAll('#sigFilter .ft').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#sigFilter .ft').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    const f=btn.dataset.f;
+    document.querySelectorAll('#sigList .tk').forEach(t=>{
+      const mOk = f==='all'||t.dataset.m===f;
+      const sOk = f==='open'?t.dataset.status==='open':true;
+      t.style.display=(mOk&&sOk)?'':'none';
+    });
+  });
+});
+
+const presets=[
+  {pair:'NAS100',act:'buy',e:'19,840',sl:'19,720',tp:'20,050'},
+  {pair:'XAUUSD',act:'sell',e:'2318.00',sl:'2328.00',tp:'2295.00'},
+  {pair:'EURUSD',act:'buy',e:'1.0851',sl:'1.0820',tp:'1.0920'},
+];
+let si=0;
+document.getElementById('simBtn').addEventListener('click',()=>{
+  const s=presets[si++%presets.length];
+  const el=document.createElement('div');
+  el.className='tk new';
+  el.innerHTML=`<div class="tt"><span class="tp">${s.pair}</span><span class="ta ${s.act}">${s.act.toUpperCase()}</span><span class="ttime">now</span></div>
+    <div class="tg">
+      <div><span class="l">ENTRY</span><span class="v">${s.e}</span></div>
+      <div><span class="l">SL</span><span class="v dn">${s.sl}</span></div>
+      <div><span class="l">TP</span><span class="v up">${s.tp}</span></div>
+    </div>`;
+  document.getElementById('homeSignals').prepend(el);
+  setTimeout(()=>el.classList.remove('new'),800);
+});
+</script>
+</body>
+</html>

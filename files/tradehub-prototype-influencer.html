@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Apex FX — Admin</title>
+<script>
+(function(){
+  var t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)?'dark':'light';
+  document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
+<style>
+/* ── TOKENS ───────────────────────────── */
+:root[data-theme="dark"]{
+  --bg:#000;
+  --glass:rgba(255,255,255,.047);
+  --glass-hi:rgba(255,255,255,.09);
+  --line:rgba(255,255,255,.09);
+  --label:#F5F5F7;
+  --label2:rgba(235,235,245,.6);
+  --label3:rgba(235,235,245,.3);
+  --accent:#D9C28C;
+  --accent-bg:rgba(217,194,140,.12);
+  --green:#30D158;
+  --green-bg:rgba(48,209,88,.13);
+  --red:#FF453A;
+  --red-bg:rgba(255,69,58,.13);
+  --amber:#FF9F0A;
+  --amber-bg:rgba(255,159,10,.13);
+  --card:linear-gradient(160deg,#3a3a3c,#232325 38%,#18181a 66%,#2a2a2c);
+  --card-shadow:0 22px 40px -18px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.06);
+  --sheen:rgba(255,255,255,.22);
+  --tabbar:rgba(8,8,9,.84);
+}
+:root[data-theme="light"]{
+  --bg:#F1F1F4;
+  --glass:rgba(255,255,255,.76);
+  --glass-hi:rgba(255,255,255,.96);
+  --line:rgba(0,0,0,.08);
+  --label:#1C1C1E;
+  --label2:rgba(60,60,67,.6);
+  --label3:rgba(60,60,67,.3);
+  --accent:#93722F;
+  --accent-bg:rgba(147,114,47,.1);
+  --green:#1F9D44;
+  --green-bg:rgba(31,157,68,.1);
+  --red:#E0342A;
+  --red-bg:rgba(224,52,42,.09);
+  --amber:#B37000;
+  --amber-bg:rgba(179,112,0,.1);
+  --card:linear-gradient(160deg,#fcfcfd,#e8e8ec 35%,#cfcfd6 65%,#f3f3f5);
+  --card-shadow:0 16px 32px -16px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.7);
+  --sheen:rgba(255,255,255,.82);
+  --tabbar:rgba(255,255,255,.84);
+}
+
+/* ── RESET ────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter',sans-serif;
+  background:var(--bg);color:var(--label);
+  transition:background .3s,color .3s;
+}
+
+/* ── APP SHELL ────────────────────────── */
+.app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column}
+.screens{flex:1;position:relative;overflow:hidden}
+.screen{
+  position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+  opacity:0;pointer-events:none;transform:translateY(7px);
+  transition:opacity .22s ease,transform .22s ease;
+}
+.screen::-webkit-scrollbar{display:none}
+.screen.active{opacity:1;pointer-events:all;transform:none}
+.pg{padding:max(18px,env(safe-area-inset-top)) 18px 18px}
+
+/* ── HEADER ───────────────────────────── */
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.wm{font-size:12.5px;font-weight:600;letter-spacing:.08em;color:var(--label2)}
+.hr{display:flex;align-items:center;gap:8px}
+.av{
+  width:30px;height:30px;border-radius:50%;
+  background:var(--accent-bg);border:1px solid var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:600;color:var(--accent);
+}
+.ib{
+  width:30px;height:30px;border-radius:50%;
+  background:var(--glass);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--label2);flex-shrink:0;
+  transition:border-color .2s,transform .15s;
+}
+.ib:hover{border-color:var(--accent)}
+.ib:active{transform:scale(.92)}
+.ib svg{width:14px;height:14px}
+
+/* ── SECTION HEAD ─────────────────────── */
+.sh{display:flex;align-items:center;justify-content:space-between;margin:22px 0 10px}
+.sl{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--label3)}
+.sh-r{font-size:11px;color:var(--accent);font-weight:500;cursor:pointer}
+
+/* ── REVENUE CARD ─────────────────────── */
+.rev-card{
+  position:relative;border-radius:28px;padding:22px;
+  overflow:hidden;background:var(--card);box-shadow:var(--card-shadow);
+  transition:background .35s,box-shadow .35s;cursor:pointer;
+}
+.rev-card::after{
+  content:'';position:absolute;top:-60%;left:-30%;
+  width:55%;height:220%;
+  background:linear-gradient(75deg,transparent,var(--sheen),transparent);
+  transform:translateX(-140%) rotate(8deg);opacity:0;pointer-events:none;
+}
+.rev-card.sheen::after{animation:sweep 1.25s ease forwards}
+@keyframes sweep{
+  0%{transform:translateX(-140%) rotate(8deg);opacity:0}
+  12%{opacity:.9}65%{opacity:.4}
+  100%{transform:translateX(140%) rotate(8deg);opacity:0}
+}
+.rc-top{display:flex;align-items:flex-start;justify-content:space-between}
+.rc-badge{
+  font-size:10px;font-weight:600;letter-spacing:.12em;
+  padding:3px 9px;border-radius:99px;
+  color:var(--accent);border:1px solid var(--accent);
+}
+.rc-spark{position:absolute;right:0;bottom:26px;width:55%;height:48px;color:var(--label);opacity:.14}
+.rc-lbl{font-size:11px;color:var(--label2);margin-top:22px}
+.rc-val{font-size:36px;font-weight:700;letter-spacing:-.025em;font-variant-numeric:tabular-nums;margin-top:4px}
+.rc-chg{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:13px;font-weight:500;color:var(--green)}
+.rc-chg svg{width:11px;height:11px}
+
+/* ── STAT CHIPS ───────────────────────── */
+.chip-row{display:flex;gap:8px;margin-top:14px}
+.chip{
+  flex:1;background:var(--glass);border:1px solid var(--line);
+  border-radius:16px;padding:10px 12px;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+}
+.chip .cl{font-size:10.5px;color:var(--label3);margin-bottom:3px}
+.chip .cv{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+
+/* ── QUICK ACTIONS ────────────────────── */
+.qa-row{display:flex;gap:8px;margin-top:0}
+.qa{
+  flex:1;background:var(--glass);border:1px solid var(--line);
+  border-radius:16px;padding:12px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  cursor:pointer;transition:border-color .2s,transform .15s;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+}
+.qa:hover{border-color:var(--accent)}
+.qa:active{transform:scale(.96)}
+.qa-icon{
+  width:36px;height:36px;border-radius:11px;
+  background:var(--accent-bg);
+  display:flex;align-items:center;justify-content:center;
+}
+.qa-icon svg{width:16px;height:16px;color:var(--accent)}
+.qa-lbl{font-size:10.5px;font-weight:600;color:var(--label2);text-align:center;letter-spacing:.01em}
+
+/* ── ACTIVITY FEED ────────────────────── */
+.af{display:flex;flex-direction:column;gap:8px}
+.af-row{
+  display:flex;align-items:center;gap:11px;
+  background:var(--glass);border:1px solid var(--line);
+  border-radius:14px;padding:11px 12px;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+}
+.af-av{
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;
+  background:var(--glass-hi);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:600;color:var(--label2);
+}
+.af-info{flex:1;min-width:0}
+.af-name{font-size:12.5px;font-weight:600;margin-bottom:2px}
+.af-sub{font-size:11px;color:var(--label3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.af-time{font-size:10px;color:var(--label3);flex-shrink:0}
+.af-dot{
+  width:8px;height:8px;border-radius:50%;flex-shrink:0;
+}
+
+/* ── ALERT CARD ───────────────────────── */
+.alert-card{
+  background:var(--amber-bg);border:1px solid var(--amber);
+  border-radius:16px;padding:12px 14px;
+  display:flex;align-items:center;gap:10px;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+  margin-bottom:9px;
+}
+.alert-card svg{width:16px;height:16px;color:var(--amber);flex-shrink:0}
+.alert-text{font-size:12px;color:var(--label2);line-height:1.4}
+.alert-text strong{color:var(--amber)}
+
+/* ── PERIOD TOGGLE ────────────────────── */
+.per-btn{
+  padding:7px 14px;border-radius:99px;
+  background:var(--glass);border:1px solid var(--line);
+  font-size:12px;font-weight:500;color:var(--label2);
+  cursor:pointer;white-space:nowrap;
+  transition:border-color .2s,color .2s,background .2s;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+}
+.per-btn.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+
+/* ── TAB BAR ──────────────────────────── */
+.tabbar{
+  display:flex;justify-content:space-around;
+  padding:10px 6px calc(10px + env(safe-area-inset-bottom,0px));
+  background:var(--tabbar);
+  -webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);
+  border-top:1px solid var(--line);
+  flex-shrink:0;transition:background .3s;
+}
+.tab{
+  background:none;border:none;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  color:var(--label3);font-size:9.5px;font-weight:500;padding:4px 8px;
+  transition:color .2s;
+}
+.tab svg{width:21px;height:21px}
+.tab.on{color:var(--label)}
+.tab.on svg{color:var(--accent)}
+
+/* ── FILTER TABS ──────────────────────── */
+.ft-row{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px}
+.ft-row::-webkit-scrollbar{display:none}
+.ft{
+  background:var(--glass);border:1px solid var(--line);
+  border-radius:99px;padding:6px 14px;
+  font-size:12px;font-weight:500;color:var(--label2);
+  cursor:pointer;white-space:nowrap;
+  transition:border-color .2s,color .2s,background .2s;
+}
+.ft.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+
+/* ── POST SIGNAL ──────────────────────── */
+.mkt-btn{
+  flex:1;padding:9px;border-radius:12px;
+  background:var(--glass);border:1px solid var(--line);
+  font-size:13px;font-weight:600;color:var(--label2);
+  cursor:pointer;transition:border-color .2s,color .2s,background .2s;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+}
+.mkt-btn.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.pair-btn{
+  padding:7px 14px;border-radius:99px;
+  background:var(--glass);border:1px solid var(--line);
+  font-size:12px;font-weight:600;color:var(--label2);
+  cursor:pointer;transition:border-color .2s,color .2s,background .2s;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+}
+.pair-btn.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.custom-pair{color:var(--label3)}
+.dir-btn{
+  flex:1;padding:11px;border-radius:13px;
+  font-size:13px;font-weight:700;cursor:pointer;
+  transition:border-color .2s,background .2s,color .2s;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+}
+.dir-btn.buy{background:var(--glass);border:1px solid var(--line);color:var(--label2)}
+.dir-btn.buy.on{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+.dir-btn.sell{background:var(--glass);border:1px solid var(--line);color:var(--label2)}
+.dir-btn.sell.on{background:var(--red-bg);border-color:var(--red);color:var(--red)}
+.risk-btn{
+  flex:1;padding:8px;border-radius:12px;
+  background:var(--glass);border:1px solid var(--line);
+  font-size:12px;font-weight:600;color:var(--label2);
+  cursor:pointer;transition:border-color .2s,color .2s,background .2s;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+}
+.risk-btn.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.stu-row{
+  background:var(--glass);border:1px solid var(--line);
+  border-radius:16px;padding:12px 13px;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+  cursor:pointer;transition:border-color .2s;
+}
+.stu-row:hover{border-color:var(--accent)}
+.pb{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:10px}
+@media(prefers-reduced-motion:reduce){
+  .rev-card::after{animation:none!important}
+  .screen{transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="screens">
+
+<!-- ════ HOME ════════════════════════════ -->
+<div class="screen active" id="s0">
+<div class="pg">
+  <header>
+    <div>
+      <div style="font-size:11px;color:var(--label3);margin-bottom:2px">ADMIN · APEX FX</div>
+      <span class="wm" style="font-size:14px;color:var(--label)">Good morning, Daniel</span>
+    </div>
+    <div class="hr">
+      <button class="ib" id="themeBtn" aria-label="Toggle theme"></button>
+      <div class="av">DA</div>
+    </div>
+  </header>
+
+  <!-- Revenue card -->
+  <div class="rev-card" id="revCard" tabindex="0" role="button">
+    <div class="rc-top">
+      <div>
+        <div style="font-size:10px;color:var(--label3);letter-spacing:.1em;margin-bottom:3px">YOUR WORKSPACE</div>
+        <div style="font-size:13px;font-weight:600">Apex FX</div>
+      </div>
+      <span class="rc-badge">ACTIVE</span>
+    </div>
+    <svg class="rc-spark" viewBox="0 0 200 48" preserveAspectRatio="none">
+      <path d="M0,38 L25,32 L50,34 L75,22 L100,26 L125,14 L150,18 L175,6 L200,9"
+        fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="rc-lbl">Revenue this month</div>
+    <div class="rc-val">₦847,000</div>
+    <div class="rc-chg">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+      ₦94,000 vs last month
+    </div>
+  </div>
+
+  <!-- Stat chips -->
+  <div class="chip-row">
+    <div class="chip"><div class="cl">Students</div><div class="cv">142</div></div>
+    <div class="chip"><div class="cl">New this week</div><div class="cv" style="color:var(--green)">+8</div></div>
+    <div class="chip"><div class="cl">Churned</div><div class="cv" style="color:var(--red)">−3</div></div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="sh"><span class="sl">Quick Actions</span></div>
+  <div class="qa-row">
+    <div class="qa" onclick="go(2)">
+      <div class="qa-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <span class="qa-lbl">Post Signal</span>
+    </div>
+    <div class="qa" onclick="go(3)">
+      <div class="qa-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+      </div>
+      <span class="qa-lbl">Add Lesson</span>
+    </div>
+    <div class="qa" onclick="go(1)">
+      <div class="qa-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <span class="qa-lbl">Students</span>
+    </div>
+    <div class="qa" onclick="go(4)">
+      <div class="qa-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="3.2" height="10"/><rect x="10.4" y="5" width="3.2" height="15"/><rect x="16.8" y="13" width="3.2" height="7"/></svg>
+      </div>
+      <span class="qa-lbl">Revenue</span>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="sh"><span class="sl">Alerts</span></div>
+  <div class="alert-card">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <span class="alert-text"><strong>6 students</strong> haven't logged in for 7+ days. Consider sending a broadcast message.</span>
+  </div>
+  <div class="alert-card" style="background:var(--red-bg);border-color:var(--red)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span class="alert-text" style="color:var(--label2)"><strong style="color:var(--red)">2 students</strong> have past-due payments. Access restricted after 3-day grace period.</span>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="sh">
+    <span class="sl">Recent Activity</span>
+    <span class="sh-r" onclick="go(1)">See all</span>
+  </div>
+  <div class="af">
+    <div class="af-row">
+      <div class="af-av">JM</div>
+      <div class="af-info">
+        <div class="af-name">Jordan Mitchell</div>
+        <div class="af-sub">Completed Lesson 3 · Psychology of Trading</div>
+      </div>
+      <span class="af-time">2m</span>
+    </div>
+    <div class="af-row">
+      <div class="af-av">AK</div>
+      <div class="af-info">
+        <div class="af-name">Amara Kone</div>
+        <div class="af-sub">Subscribed · Elite tier · ₦30,000</div>
+      </div>
+      <span class="af-time" style="color:var(--green)">14m</span>
+    </div>
+    <div class="af-row">
+      <div class="af-av">TE</div>
+      <div class="af-info">
+        <div class="af-name">Tunde Eze</div>
+        <div class="af-sub">Connected Binance account to copier</div>
+      </div>
+      <span class="af-time">1h</span>
+    </div>
+    <div class="af-row">
+      <div class="af-av">FA</div>
+      <div class="af-info">
+        <div class="af-name">Fatima Abdullahi</div>
+        <div class="af-sub">Cancelled subscription · Pro tier</div>
+      </div>
+      <span class="af-time" style="color:var(--red)">3h</span>
+    </div>
+    <div class="af-row">
+      <div class="af-av">OB</div>
+      <div class="af-info">
+        <div class="af-name">Oluwaseun Bello</div>
+        <div class="af-sub">Passed quiz · Risk Management Lesson 4</div>
+      </div>
+      <span class="af-time">5h</span>
+    </div>
+  </div>
+
+  <div class="pb"></div>
+</div>
+</div>
+
+<!-- Placeholders -->
+<!-- ════ STUDENTS ══════════════════════════ -->
+<div class="screen" id="s1">
+<div class="pg">
+  <header>
+    <div>
+      <div style="font-size:11px;color:var(--label3);margin-bottom:2px">ADMIN · APEX FX</div>
+      <span style="font-size:14px;font-weight:600">Students</span>
+    </div>
+    <div class="hr"><div class="av">DA</div></div>
+  </header>
+
+  <!-- Search bar -->
+  <div style="position:relative;margin-bottom:12px">
+    <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--label3);pointer-events:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="stuSearch" type="search" placeholder="Search students…"
+      style="width:100%;background:var(--glass);border:1px solid var(--line);border-radius:13px;padding:10px 12px 10px 34px;font-size:13px;color:var(--label);outline:none;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);transition:border-color .2s"
+      oninput="filterStudents()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--line)'">
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="ft-row" id="stuFilter">
+    <button class="ft on" data-sf="all">All <span style="opacity:.5">142</span></button>
+    <button class="ft" data-sf="elite">Elite <span style="opacity:.5">48</span></button>
+    <button class="ft" data-sf="pro">Pro <span style="opacity:.5">61</span></button>
+    <button class="ft" data-sf="starter">Starter <span style="opacity:.5">33</span></button>
+    <button class="ft" data-sf="inactive">Inactive <span style="opacity:.5">6</span></button>
+  </div>
+
+  <!-- Student list -->
+  <div id="stuList" style="display:flex;flex-direction:column;gap:8px">
+
+    <div class="stu-row" data-tier="elite" data-status="active" data-name="jordan mitchell">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--glass-hi);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--label2);flex-shrink:0">JM</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+            <span style="font-size:13px;font-weight:600">Jordan Mitchell</span>
+            <span style="font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 6px;border-radius:99px;color:var(--accent);background:var(--accent-bg)">ELITE</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;color:var(--label3)">Active · 2m ago</span>
+            <span style="font-size:11px;color:var(--label3)">44% course</span>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--green)">₦30,000</div>
+          <div style="font-size:10px;color:var(--label3);margin-top:1px">/ month</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stu-row" data-tier="elite" data-status="active" data-name="amara kone">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--glass-hi);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--label2);flex-shrink:0">AK</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+            <span style="font-size:13px;font-weight:600">Amara Kone</span>
+            <span style="font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 6px;border-radius:99px;color:var(--accent);background:var(--accent-bg)">ELITE</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;color:var(--green)">New · 14m ago</span>
+            <span style="font-size:11px;color:var(--label3)">0% course</span>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--green)">₦30,000</div>
+          <div style="font-size:10px;color:var(--label3);margin-top:1px">/ month</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stu-row" data-tier="pro" data-status="active" data-name="tunde eze">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--glass-hi);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--label2);flex-shrink:0">TE</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+            <span style="font-size:13px;font-weight:600">Tunde Eze</span>
+            <span style="font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 6px;border-radius:99px;color:var(--label2);background:var(--glass-hi);border:1px solid var(--line)">PRO</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;color:var(--label3)">Active · 1h ago</span>
+            <span style="font-size:11px;color:var(--label3)">78% course</span>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--green)">₦15,000</div>
+          <div style="font-size:10px;color:var(--label3);margin-top:1px">/ month</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stu-row" data-tier="pro" data-status="past_due" data-name="fatima abdullahi">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--glass-hi);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--label2);flex-shrink:0">FA</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+            <span style="font-size:13px;font-weight:600">Fatima Abdullahi</span>
+            <span style="font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 6px;border-radius:99px;color:var(--label2);background:var(--glass-hi);border:1px solid var(--line)">PRO</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;color:var(--amber)">Past due · 2d</span>
+            <span style="font-size:11px;color:var(--label3)">55% course</span>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:12px;font-weight:600;color:var(--amber);font-variant-numeric:tabular-nums">₦15,000</div>
+          <div style="font-size:10px;color:var(--amber);margin-top:1px">past due</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stu-row" data-tier="starter" data-status="active" data-name="oluwaseun bello">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--glass-hi);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--label2);flex-shrink:0">OB</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+            <span style="font-size:13px;font-weight:600">Oluwaseun Bello</span>
+            <span style="font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 6px;border-radius:99px;color:var(--label3);background:var(--glass-hi);border:1px solid var(--line)">STARTER</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;color:var(--label3)">Active · 5h ago</span>
+            <span style="font-size:11px;color:var(--label3)">91% course</span>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--green)">₦5,000</div>
+          <div style="font-size:10px;color:var(--label3);margin-top:1px">/ month</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stu-row" data-tier="elite" data-status="inactive" data-name="chidi okafor">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--glass-hi);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--label2);flex-shrink:0;opacity:.5">CO</div>
+        <div style="flex:1;min-width:0;opacity:.6">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+            <span style="font-size:13px;font-weight:600">Chidi Okafor</span>
+            <span style="font-size:9px;font-weight:700;letter-spacing:.08em;padding:2px 6px;border-radius:99px;color:var(--accent);background:var(--accent-bg)">ELITE</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;color:var(--red)">Inactive · 9d</span>
+            <span style="font-size:11px;color:var(--label3)">22% course</span>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;opacity:.6">
+          <div style="font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--green)">₦30,000</div>
+          <div style="font-size:10px;color:var(--label3);margin-top:1px">/ month</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /stuList -->
+
+  <!-- Broadcast nudge -->
+  <div style="margin-top:14px;background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div style="width:34px;height:34px;border-radius:10px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:600;margin-bottom:2px">Message all students</div>
+      <div style="font-size:11px;color:var(--label3)">Broadcast to all 142 · or filter by tier</div>
+    </div>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--label3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+
+  <div class="pb"></div>
+</div>
+</div>
+<!-- ════ POST SIGNAL ═══════════════════════ -->
+<div class="screen" id="s2">
+<div class="pg">
+  <header>
+    <div>
+      <div style="font-size:11px;color:var(--label3);margin-bottom:2px">ADMIN · APEX FX</div>
+      <span style="font-size:14px;font-weight:600">Post Signal</span>
+    </div>
+    <div class="hr"><div class="av">DA</div></div>
+  </header>
+
+  <!-- Telegram status -->
+  <div style="background:var(--green-bg);border:1px solid var(--green);border-radius:16px;padding:11px 14px;display:flex;align-items:center;gap:10px;margin-bottom:16px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    <span style="font-size:12px;color:var(--label2)">Telegram bot <strong style="color:var(--green)">connected</strong> · @ApexFXBot · signals auto-captured</span>
+  </div>
+
+  <!-- Market toggle -->
+  <div class="sh" style="margin-top:0"><span class="sl">Market</span></div>
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button class="mkt-btn on" data-m="forex" onclick="setMkt(this)">Forex</button>
+    <button class="mkt-btn" data-m="crypto" onclick="setMkt(this)">Crypto</button>
+  </div>
+
+  <!-- Pair -->
+  <div class="sh" style="margin-top:0"><span class="sl">Pair</span></div>
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" id="pairRow">
+    <button class="pair-btn on" onclick="setPair(this)">XAUUSD</button>
+    <button class="pair-btn" onclick="setPair(this)">EURUSD</button>
+    <button class="pair-btn" onclick="setPair(this)">GBPJPY</button>
+    <button class="pair-btn" onclick="setPair(this)">NAS100</button>
+    <button class="pair-btn" onclick="setPair(this)">USDJPY</button>
+    <button class="pair-btn custom-pair">+ Custom</button>
+  </div>
+
+  <!-- Direction -->
+  <div class="sh" style="margin-top:0"><span class="sl">Direction</span></div>
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button class="dir-btn buy on" data-d="buy" onclick="setDir(this)">▲ BUY</button>
+    <button class="dir-btn sell" data-d="sell" onclick="setDir(this)">▼ SELL</button>
+  </div>
+
+  <!-- Price fields -->
+  <div class="sh" style="margin-top:0"><span class="sl">Prices</span></div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+    <div style="background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <span style="font-size:11px;color:var(--label3);width:44px;flex-shrink:0">ENTRY</span>
+      <input id="fEntry" type="number" placeholder="2310.50" style="flex:1;background:none;border:none;outline:none;font-size:14px;font-weight:500;color:var(--label);font-variant-numeric:tabular-nums;min-width:0">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div style="background:var(--glass);border:1px solid var(--red);border-radius:14px;padding:12px 14px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+        <div style="font-size:10px;color:var(--red);letter-spacing:.08em;margin-bottom:5px">STOP LOSS</div>
+        <input id="fSL" type="number" inputmode="decimal" placeholder="2300.00" style="width:100%;background:none;border:none;outline:none;font-size:15px;font-weight:600;color:var(--red);font-variant-numeric:tabular-nums">
+      </div>
+      <div style="background:var(--glass);border:1px solid var(--green);border-radius:14px;padding:12px 14px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+        <div style="font-size:10px;color:var(--green);letter-spacing:.08em;margin-bottom:5px">TAKE PROFIT</div>
+        <input id="fTP" type="number" inputmode="decimal" placeholder="2340.00" style="width:100%;background:none;border:none;outline:none;font-size:15px;font-weight:600;color:var(--green);font-variant-numeric:tabular-nums">
+      </div>
+    </div>
+  </div>
+
+  <!-- Risk -->
+  <div class="sh" style="margin-top:0"><span class="sl">Suggested Risk</span></div>
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button class="risk-btn on" onclick="setRisk(this)">0.5%</button>
+    <button class="risk-btn" onclick="setRisk(this)">1%</button>
+    <button class="risk-btn" onclick="setRisk(this)">1.5%</button>
+    <button class="risk-btn" onclick="setRisk(this)">2%</button>
+  </div>
+
+  <!-- Preview -->
+  <div id="sigPreview" style="background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div style="font-size:10px;color:var(--label3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Signal Preview</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span id="prevPair" style="font-size:14px;font-weight:600">XAUUSD</span>
+      <span id="prevDir" style="font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:99px;color:var(--green);background:var(--green-bg)">BUY</span>
+      <span id="prevRisk" style="font-size:10.5px;color:var(--label3);margin-left:auto">Risk: 0.5%</span>
+    </div>
+    <div style="display:flex;gap:18px">
+      <div><span style="font-size:10px;color:var(--label3);display:block;margin-bottom:2px">ENTRY</span><span id="prevEntry" style="font-size:13px;font-weight:500;font-variant-numeric:tabular-nums">—</span></div>
+      <div><span style="font-size:10px;color:var(--label3);display:block;margin-bottom:2px">SL</span><span id="prevSL" style="font-size:13px;font-weight:500;color:var(--red);font-variant-numeric:tabular-nums">—</span></div>
+      <div><span style="font-size:10px;color:var(--label3);display:block;margin-bottom:2px">TP</span><span id="prevTP" style="font-size:13px;font-weight:500;color:var(--green);font-variant-numeric:tabular-nums">—</span></div>
+    </div>
+    <!-- RR calc -->
+    <div id="rrRow" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:none">
+      <span style="font-size:11px;color:var(--label3)">Calculated R:R → </span>
+      <span id="rrVal" style="font-size:11px;font-weight:600;color:var(--accent)"></span>
+    </div>
+  </div>
+
+  <!-- Push to students count -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px">
+    <span style="font-size:12px;color:var(--label3)">Will push to</span>
+    <span style="font-size:12px;font-weight:600;color:var(--label)">94 active copier students</span>
+  </div>
+
+  <!-- Post button -->
+  <button id="postBtn" onclick="postSignal()" style="width:100%;padding:15px;border-radius:16px;background:var(--accent);border:none;font-size:15px;font-weight:700;color:#000;cursor:pointer;transition:opacity .2s,transform .15s;letter-spacing:.02em">
+    Post Signal
+  </button>
+
+  <!-- Disclaimer -->
+  <p style="font-size:10.5px;color:var(--label3);text-align:center;margin-top:10px;line-height:1.5">Trading involves risk. Past performance is not indicative of future results.</p>
+
+  <div class="pb"></div>
+</div>
+</div>
+<!-- ════ COURSES ══════════════════════════ -->
+<div class="screen" id="s3">
+<div class="pg">
+  <header>
+    <div>
+      <div style="font-size:11px;color:var(--label3);margin-bottom:2px">ADMIN · APEX FX</div>
+      <span style="font-size:14px;font-weight:600">Courses</span>
+    </div>
+    <div class="hr">
+      <button style="padding:7px 14px;border-radius:99px;background:var(--accent);border:none;font-size:12px;font-weight:700;color:#000;cursor:pointer">+ New</button>
+      <div class="av">DA</div>
+    </div>
+  </header>
+
+  <!-- Summary chips -->
+  <div style="display:flex;gap:8px;margin-bottom:18px">
+    <div style="flex:1;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="font-size:9.5px;color:var(--label3);margin-bottom:3px">COURSES</div>
+      <div style="font-size:16px;font-weight:700">3</div>
+    </div>
+    <div style="flex:1;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="font-size:9.5px;color:var(--label3);margin-bottom:3px">LESSONS</div>
+      <div style="font-size:16px;font-weight:700">29</div>
+    </div>
+    <div style="flex:1;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="font-size:9.5px;color:var(--label3);margin-bottom:3px">AVG COMPLETION</div>
+      <div style="font-size:16px;font-weight:700;color:var(--accent)">61%</div>
+    </div>
+  </div>
+
+  <!-- Course 1 — published -->
+  <div style="background:var(--glass);border:1px solid var(--line);border-radius:20px;overflow:hidden;margin-bottom:10px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <!-- Course header -->
+    <div style="padding:14px 14px 10px;display:flex;align-items:flex-start;gap:12px">
+      <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#1e2d1e,#0d180d);display:flex;align-items:center;justify-content:center;font-size:20px;border:1px solid var(--line);flex-shrink:0">📈</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+          <span style="font-size:13.5px;font-weight:600">Risk Management Fundamentals</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;color:var(--green);background:var(--green-bg)">PUBLISHED</span>
+          <span style="font-size:11px;color:var(--label3)">All tiers</span>
+        </div>
+      </div>
+      <div style="font-size:20px;cursor:pointer;color:var(--label3);padding:2px">⋯</div>
+    </div>
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--line)">
+      <div style="padding:10px;text-align:center;border-right:1px solid var(--line)">
+        <div style="font-size:9.5px;color:var(--label3);margin-bottom:2px">LESSONS</div>
+        <div style="font-size:13px;font-weight:600">9</div>
+      </div>
+      <div style="padding:10px;text-align:center;border-right:1px solid var(--line)">
+        <div style="font-size:9.5px;color:var(--label3);margin-bottom:2px">ENROLLED</div>
+        <div style="font-size:13px;font-weight:600">142</div>
+      </div>
+      <div style="padding:10px;text-align:center">
+        <div style="font-size:9.5px;color:var(--label3);margin-bottom:2px">COMPLETION</div>
+        <div style="font-size:13px;font-weight:600;color:var(--accent)">61%</div>
+      </div>
+    </div>
+    <!-- Most watched -->
+    <div style="padding:10px 14px 12px;border-top:1px solid var(--line)">
+      <div style="font-size:10px;color:var(--label3);margin-bottom:6px">MOST WATCHED</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;font-weight:500">Lesson 3 — The 1% Rule</span>
+        <span style="font-size:11px;color:var(--accent);font-weight:600">138 views</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Course 2 — published -->
+  <div style="background:var(--glass);border:1px solid var(--line);border-radius:20px;overflow:hidden;margin-bottom:10px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div style="padding:14px 14px 10px;display:flex;align-items:flex-start;gap:12px">
+      <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#1a1a2e,#0d0d1a);display:flex;align-items:center;justify-content:center;font-size:20px;border:1px solid var(--line);flex-shrink:0">🧠</div>
+      <div style="flex:1;min-width:0">
+        <span style="font-size:13.5px;font-weight:600;display:block;margin-bottom:3px">Psychology of Trading</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;color:var(--green);background:var(--green-bg)">PUBLISHED</span>
+          <span style="font-size:11px;color:var(--label3)">Pro + Elite</span>
+        </div>
+      </div>
+      <div style="font-size:20px;cursor:pointer;color:var(--label3);padding:2px">⋯</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--line)">
+      <div style="padding:10px;text-align:center;border-right:1px solid var(--line)">
+        <div style="font-size:9.5px;color:var(--label3);margin-bottom:2px">LESSONS</div>
+        <div style="font-size:13px;font-weight:600">8</div>
+      </div>
+      <div style="padding:10px;text-align:center;border-right:1px solid var(--line)">
+        <div style="font-size:9.5px;color:var(--label3);margin-bottom:2px">ENROLLED</div>
+        <div style="font-size:13px;font-weight:600">109</div>
+      </div>
+      <div style="padding:10px;text-align:center">
+        <div style="font-size:9.5px;color:var(--label3);margin-bottom:2px">COMPLETION</div>
+        <div style="font-size:13px;font-weight:600;color:var(--green)">84%</div>
+      </div>
+    </div>
+    <div style="padding:10px 14px 12px;border-top:1px solid var(--line)">
+      <div style="font-size:10px;color:var(--label3);margin-bottom:6px">MOST WATCHED</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;font-weight:500">Lesson 1 — Fear & Greed</span>
+        <span style="font-size:11px;color:var(--accent);font-weight:600">104 views</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Course 3 — draft -->
+  <div style="background:var(--glass);border:1px solid var(--line);border-radius:20px;overflow:hidden;margin-bottom:10px;opacity:.7;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+    <div style="padding:14px 14px 10px;display:flex;align-items:flex-start;gap:12px">
+      <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#2a1a1a,#1a0d0d);display:flex;align-items:center;justify-content:center;font-size:20px;border:1px solid var(--line);flex-shrink:0">🕯️</div>
+      <div style="flex:1;min-width:0">
+        <span style="font-size:13.5px;font-weight:600;display:block;margin-bottom:3px">Mastering Price Action</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;color:var(--amber);background:var(--amber-bg)">DRAFT</span>
+          <span style="font-size:11px;color:var(--label3)">Elite only</span>
+        </div>
+      </div>
+      <div style="font-size:20px;cursor:pointer;color:var(--label3);padding:2px">⋯</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--line)">
+      <div style="padding:10px;text-align:center;border-right:1px solid var(--line)">
+        <div style="font-size:9.5px;color:var(--label3);margin-bottom:2px">LESSONS</div>
+        <div style="font-size:13px;font-weight:600">12</div>
+      </div>
+      <div style="padding:10px;text-align:center;border-right:1px solid var(--line)">
+        <div style="font-size:9.5px;color:var(--label3);margin-bottom:2px">ENROLLED</div>
+        <div style="font-size:13px;font-weight:600">—</div>
+      </div>
+      <div style="padding:10px;text-align:center">
+        <div style="font-size:9.5px;color:var(--label3);margin-bottom:2px">COMPLETION</div>
+        <div style="font-size:13px;font-weight:600">—</div>
+      </div>
+    </div>
+    <div style="padding:10px 14px 12px;border-top:1px solid var(--line)">
+      <button style="width:100%;padding:9px;border-radius:10px;background:var(--accent-bg);border:1px solid var(--accent);font-size:12px;font-weight:600;color:var(--accent);cursor:pointer">Publish Course</button>
+    </div>
+  </div>
+
+  <div class="pb"></div>
+</div>
+</div>
+<!-- ════ REVENUE ═══════════════════════════ -->
+<div class="screen" id="s4">
+<div class="pg">
+  <header>
+    <div>
+      <div style="font-size:11px;color:var(--label3);margin-bottom:2px">ADMIN · APEX FX</div>
+      <span style="font-size:14px;font-weight:600">Revenue</span>
+    </div>
+    <div class="hr"><div class="av">DA</div></div>
+  </header>
+
+  <!-- Period toggle -->
+  <div style="display:flex;gap:6px;margin-bottom:16px">
+    <button class="per-btn on" onclick="setPer(this,'month')">This Month</button>
+    <button class="per-btn" onclick="setPer(this,'last')">Last Month</button>
+    <button class="per-btn" onclick="setPer(this,'all')">All Time</button>
+  </div>
+
+  <!-- Hero revenue card -->
+  <div style="position:relative;border-radius:28px;padding:22px;overflow:hidden;background:var(--card);box-shadow:var(--card-shadow);margin-bottom:14px;cursor:pointer" id="revCard2">
+    <div style="font-size:11px;color:var(--label2);margin-bottom:4px">Total Earned</div>
+    <div id="revMain" style="font-size:38px;font-weight:700;letter-spacing:-.025em;font-variant-numeric:tabular-nums;margin-bottom:8px">₦847,000</div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:12px;color:var(--label2)">Your cut (90%)</span>
+      <span id="revCut" style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--green)">₦762,300</span>
+    </div>
+    <div style="margin-top:4px;display:flex;align-items:center;gap:6px">
+      <span style="font-size:12px;color:var(--label2)">Platform fee (10%)</span>
+      <span style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--label3)">₦84,700</span>
+    </div>
+    <!-- spark -->
+    <svg style="position:absolute;right:0;bottom:24px;width:50%;height:48px;color:var(--label);opacity:.14" viewBox="0 0 200 48" preserveAspectRatio="none">
+      <path d="M0,38 L30,30 L60,33 L90,20 L120,24 L150,11 L180,14 L200,6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <!-- MRR + churn chips -->
+  <div style="display:flex;gap:8px;margin-bottom:18px">
+    <div style="flex:1;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:11px 12px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="font-size:9.5px;color:var(--label3);margin-bottom:3px">MRR</div>
+      <div id="mrrVal" style="font-size:15px;font-weight:700;font-variant-numeric:tabular-nums">₦847k</div>
+      <div style="font-size:10px;color:var(--green);margin-top:2px">↑ 12.5% vs last</div>
+    </div>
+    <div style="flex:1;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:11px 12px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="font-size:9.5px;color:var(--label3);margin-bottom:3px">NEW SUBS</div>
+      <div style="font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--green)">+8</div>
+      <div style="font-size:10px;color:var(--label3);margin-top:2px">this month</div>
+    </div>
+    <div style="flex:1;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:11px 12px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="font-size:9.5px;color:var(--label3);margin-bottom:3px">CHURN</div>
+      <div style="font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--red)">−3</div>
+      <div style="font-size:10px;color:var(--label3);margin-top:2px">this month</div>
+    </div>
+  </div>
+
+  <!-- Revenue by tier -->
+  <div class="sh" style="margin-top:0"><span class="sl">By Tier</span></div>
+  <div style="background:var(--glass);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-bottom:14px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+
+    <div style="padding:13px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+          <span style="font-size:12.5px;font-weight:600">Elite</span>
+          <span style="font-size:9.5px;color:var(--accent);background:var(--accent-bg);padding:2px 6px;border-radius:99px;font-weight:600">48 students</span>
+        </div>
+        <div style="height:5px;background:var(--line);border-radius:99px;overflow:hidden">
+          <div style="width:57%;height:100%;background:var(--accent);border-radius:99px"></div>
+        </div>
+      </div>
+      <span style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;flex-shrink:0">₦480,000</span>
+    </div>
+
+    <div style="padding:13px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+          <span style="font-size:12.5px;font-weight:600">Pro</span>
+          <span style="font-size:9.5px;color:var(--label2);background:var(--glass-hi);padding:2px 6px;border-radius:99px;font-weight:600;border:1px solid var(--line)">61 students</span>
+        </div>
+        <div style="height:5px;background:var(--line);border-radius:99px;overflow:hidden">
+          <div style="width:37%;height:100%;background:var(--label2);border-radius:99px"></div>
+        </div>
+      </div>
+      <span style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;flex-shrink:0">₦305,000</span>
+    </div>
+
+    <div style="padding:13px 14px;display:flex;align-items:center;gap:12px">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+          <span style="font-size:12.5px;font-weight:600">Starter</span>
+          <span style="font-size:9.5px;color:var(--label3);background:var(--glass-hi);padding:2px 6px;border-radius:99px;font-weight:600;border:1px solid var(--line)">33 students</span>
+        </div>
+        <div style="height:5px;background:var(--line);border-radius:99px;overflow:hidden">
+          <div style="width:7%;height:100%;background:var(--label3);border-radius:99px"></div>
+        </div>
+      </div>
+      <span style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;flex-shrink:0">₦62,000</span>
+    </div>
+  </div>
+
+  <!-- Recent payouts -->
+  <div class="sh" style="margin-top:0"><span class="sl">Recent Payouts</span></div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+
+    <div style="background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="width:34px;height:34px;border-radius:10px;background:var(--green-bg);border:1px solid var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:12.5px;font-weight:600;margin-bottom:2px">Paystack Settlement</div>
+        <div style="font-size:11px;color:var(--label3)">Jun 20 · T+1 · GTB ****4821</div>
+      </div>
+      <span style="font-size:13px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums">₦762,300</span>
+    </div>
+
+    <div style="background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="width:34px;height:34px;border-radius:10px;background:var(--green-bg);border:1px solid var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:12.5px;font-weight:600;margin-bottom:2px">Paystack Settlement</div>
+        <div style="font-size:11px;color:var(--label3)">May 20 · T+1 · GTB ****4821</div>
+      </div>
+      <span style="font-size:13px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums">₦668,100</span>
+    </div>
+
+    <div style="background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)">
+      <div style="width:34px;height:34px;border-radius:10px;background:var(--green-bg);border:1px solid var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:12.5px;font-weight:600;margin-bottom:2px">Paystack Settlement</div>
+        <div style="font-size:11px;color:var(--label3)">Apr 20 · T+1 · GTB ****4821</div>
+      </div>
+      <span style="font-size:13px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums">₦541,500</span>
+    </div>
+
+  </div>
+
+  <div class="pb"></div>
+</div>
+</div>
+
+</div><!-- /screens -->
+
+<!-- TAB BAR -->
+<nav class="tabbar">
+  <button class="tab on" data-s="0">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+    Home
+  </button>
+  <button class="tab" data-s="1">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Students
+  </button>
+  <button class="tab" data-s="2">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Signal
+  </button>
+  <button class="tab" data-s="3">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    Courses
+  </button>
+  <button class="tab" data-s="4">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="3.2" height="10"/><rect x="10.4" y="5" width="3.2" height="15"/><rect x="16.8" y="13" width="3.2" height="7"/></svg>
+    Revenue
+  </button>
+</nav>
+</div>
+
+<script>
+const rm=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+const SUN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+const MOON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+let theme=document.documentElement.getAttribute('data-theme')||'dark';
+const themeBtn=document.getElementById('themeBtn');
+const setIcon=()=>{themeBtn.innerHTML=theme==='dark'?SUN:MOON;};
+setIcon();
+themeBtn.addEventListener('click',()=>{
+  theme=theme==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',theme);
+  setIcon();playSheen();
+});
+
+const screens=[0,1,2,3,4].map(i=>document.getElementById('s'+i));
+const tabs=document.querySelectorAll('.tab');
+let cur=0;
+function go(i){
+  if(i===cur)return;
+  screens[cur].classList.remove('active');tabs[cur].classList.remove('on');
+  cur=i;
+  screens[cur].classList.add('active');tabs[cur].classList.add('on');
+}
+tabs.forEach(t=>t.addEventListener('click',()=>go(+t.dataset.s)));
+
+// ── POST SIGNAL ────────────────────────
+let sigState={pair:'XAUUSD',dir:'buy',risk:'0.5%'};
+function setMkt(btn){
+  document.querySelectorAll('.mkt-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const isCrypto=btn.dataset.m==='crypto';
+  const pairs=isCrypto?['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT']:['XAUUSD','EURUSD','GBPJPY','NAS100','USDJPY'];
+  const row=document.getElementById('pairRow');
+  const btns=row.querySelectorAll('.pair-btn:not(.custom-pair)');
+  btns.forEach((b,i)=>{b.textContent=pairs[i]||b.textContent;b.classList.remove('on');});
+  btns[0].classList.add('on');
+  sigState.pair=pairs[0];
+  updatePreview();
+}
+function setPair(btn){
+  if(btn.classList.contains('custom-pair'))return;
+  document.querySelectorAll('.pair-btn:not(.custom-pair)').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  sigState.pair=btn.textContent;
+  updatePreview();
+}
+function setDir(btn){
+  document.querySelectorAll('.dir-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  sigState.dir=btn.dataset.d;
+  document.getElementById('prevDir').textContent=sigState.dir.toUpperCase();
+  document.getElementById('prevDir').style.color=sigState.dir==='buy'?'var(--green)':'var(--red)';
+  document.getElementById('prevDir').style.background=sigState.dir==='buy'?'var(--green-bg)':'var(--red-bg)';
+  updatePreview();
+}
+function setRisk(btn){
+  document.querySelectorAll('.risk-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  sigState.risk=btn.textContent;
+  document.getElementById('prevRisk').textContent='Risk: '+sigState.risk;
+}
+function updatePreview(){
+  document.getElementById('prevPair').textContent=sigState.pair;
+  const e=parseFloat(document.getElementById('fEntry').value)||0;
+  const sl=parseFloat(document.getElementById('fSL').value)||0;
+  const tp=parseFloat(document.getElementById('fTP').value)||0;
+  document.getElementById('prevEntry').textContent=e||'—';
+  document.getElementById('prevSL').textContent=sl||'—';
+  document.getElementById('prevTP').textContent=tp||'—';
+  if(e&&sl&&tp){
+    const risk=Math.abs(e-sl);
+    const reward=Math.abs(tp-e);
+    const rr=risk>0?(reward/risk).toFixed(1):null;
+    if(rr){
+      document.getElementById('rrRow').style.display='block';
+      document.getElementById('rrVal').textContent='1 : '+rr;
+    }
+  } else {
+    document.getElementById('rrRow').style.display='none';
+  }
+}
+['fEntry','fSL','fTP'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',updatePreview);
+});
+function postSignal(){
+  const btn=document.getElementById('postBtn');
+  btn.textContent='Sending to 94 students…';
+  btn.style.opacity='.6';
+  setTimeout(()=>{
+    btn.textContent='✓ Signal Posted';
+    btn.style.opacity='1';
+    btn.style.background='var(--green)';
+    setTimeout(()=>{
+      btn.textContent='Post Signal';
+      btn.style.background='var(--accent)';
+      document.getElementById('fEntry').value='';
+      document.getElementById('fSL').value='';
+      document.getElementById('fTP').value='';
+      updatePreview();
+    },2200);
+  },1200);
+}
+
+let activeTierFilter='all';
+document.querySelectorAll('#stuFilter .ft').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#stuFilter .ft').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    activeTierFilter=btn.dataset.sf;
+    filterStudents();
+  });
+});
+function filterStudents(){
+  const q=(document.getElementById('stuSearch').value||'').toLowerCase();
+  document.querySelectorAll('.stu-row').forEach(row=>{
+    const name=row.dataset.name||'';
+    const tier=row.dataset.tier||'';
+    const status=row.dataset.status||'';
+    const tierOk=activeTierFilter==='all'||(activeTierFilter==='inactive'?status==='inactive':tier===activeTierFilter);
+    const nameOk=!q||name.includes(q);
+    row.style.display=(tierOk&&nameOk)?'':'none';
+  });
+}
+
+function playSheen(){
+  if(rm)return;
+  revCard.classList.remove('sheen');void revCard.offsetWidth;
+  revCard.classList.add('sheen');
+}
+revCard.addEventListener('click',playSheen);
+setTimeout(playSheen,450);
+
+// ── REVENUE PERIOD TOGGLE ──────────────
+const perData={
+  month:{main:'₦847,000',cut:'₦762,300',mrr:'₦847k'},
+  last: {main:'₦753,200',cut:'₦677,880',mrr:'₦753k'},
+  all:  {main:'₦4,218,000',cut:'₦3,796,200',mrr:'₦4.2M'}
+};
+function setPer(btn,key){
+  document.querySelectorAll('.per-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const d=perData[key];
+  document.getElementById('revMain').textContent=d.main;
+  document.getElementById('revCut').textContent=d.cut;
+  document.getElementById('mrrVal').textContent=d.mrr;
+}
+</script>
+</body>
+</html>

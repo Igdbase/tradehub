@@ -1,0 +1,14 @@
+import { apiError, apiJson } from "@/lib/admin/admin-api";
+import { requireStudent } from "@/lib/firebase/student-auth";
+import { exportStudentPracticeData } from "@/lib/practice/practice-repository";
+
+export async function POST(request: Request) {
+  try {
+    const actor = await requireStudent(request);
+    const payload = await request.json();
+
+    return apiJson(await exportStudentPracticeData(actor, payload));
+  } catch (error) {
+    return apiError(error);
+  }
+}

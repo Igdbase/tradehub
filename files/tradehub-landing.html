@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TradeHub — Your platform. Your brand.</title>
+<style>
+
+/* ============================================================
+   TOKENS — copied verbatim from doc 04 (locked design system)
+   Do not introduce new brand colors here. Marketing-only chrome
+   (button text contrast, container widths) is isolated below.
+   ============================================================ */
+:root[data-theme="dark"] {
+  --bg:         #000000;
+  --glass:      rgba(255, 255, 255, 0.047);
+  --glass-hi:   rgba(255, 255, 255, 0.09);
+  --line:       rgba(255, 255, 255, 0.09);
+  --label:      #F5F5F7;
+  --label2:     rgba(235, 235, 245, 0.60);
+  --label3:     rgba(235, 235, 245, 0.30);
+  --accent:     #D9C28C;
+  --accent-bg:  rgba(217, 194, 140, 0.12);
+  --green:      #30D158;
+  --green-bg:   rgba(48, 209, 88, 0.13);
+  --red:        #FF453A;
+  --red-bg:     rgba(255, 69, 58, 0.13);
+  --amber:      #FF9F0A;
+  --amber-bg:   rgba(255, 159, 10, 0.13);
+  --card:       linear-gradient(160deg, #3a3a3c, #232325 38%, #18181a 66%, #2a2a2c);
+  --card-shadow: 0 22px 40px -18px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06);
+  --sheen:      rgba(255, 255, 255, 0.22);
+  --tabbar:     rgba(8, 8, 9, 0.84);
+  --btn-primary-text: #100E09;
+}
+
+:root[data-theme="light"] {
+  --bg:         #F1F1F4;
+  --glass:      rgba(255, 255, 255, 0.76);
+  --glass-hi:   rgba(255, 255, 255, 0.96);
+  --line:       rgba(0, 0, 0, 0.08);
+  --label:      #1C1C1E;
+  --label2:     rgba(60, 60, 67, 0.60);
+  --label3:     rgba(60, 60, 67, 0.30);
+  --accent:     #93722F;
+  --accent-bg:  rgba(147, 114, 47, 0.10);
+  --green:      #1F9D44;
+  --green-bg:   rgba(31, 157, 68, 0.10);
+  --red:        #E0342A;
+  --red-bg:     rgba(224, 52, 42, 0.09);
+  --amber:      #B37000;
+  --amber-bg:   rgba(179, 112, 0, 0.10);
+  --card:       linear-gradient(160deg, #fcfcfd, #e8e8ec 35%, #cfcfd6 65%, #f3f3f5);
+  --card-shadow: 0 16px 32px -16px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.70);
+  --sheen:      rgba(255, 255, 255, 0.82);
+  --tabbar:     rgba(255, 255, 255, 0.84);
+  --btn-primary-text: #FFFFFF;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--label);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background 350ms ease, color 350ms ease;
+}
+
+img, svg { display: block; }
+.tabular { font-variant-numeric: tabular-nums; }
+
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+a { color: inherit; text-decoration: none; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ============================================================
+   TYPE SCALE — marketing-page roles, same single typeface,
+   same weight/tabular-num conventions as the locked system.
+   ============================================================ */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin: 0 0 14px;
+}
+
+h1.hero-headline {
+  font-size: clamp(34px, 5.4vw, 58px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin: 0 0 20px;
+  color: var(--label);
+}
+
+h2.section-heading {
+  font-size: clamp(26px, 3.4vw, 38px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0 0 16px;
+  max-width: 640px;
+}
+
+p.lede {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--label2);
+  max-width: 560px;
+  margin: 0 0 32px;
+}
+
+p.body-text {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--label2);
+  margin: 0;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--label);
+  margin: 0 0 8px;
+}
+
+/* ============================================================
+   NAV
+   ============================================================ */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--tabbar);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--line);
+}
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 68px;
+}
+.wordmark {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.nav-links {
+  display: flex;
+  gap: 28px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--label2);
+}
+.nav-links a:hover { color: var(--label); }
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--glass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--label2);
+}
+.theme-toggle svg { width: 16px; height: 16px; }
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+}
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--btn-primary-text);
+}
+.btn-primary:hover { opacity: 0.88; }
+
+.btn-secondary {
+  background: var(--glass);
+  border-color: var(--line);
+  color: var(--label);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+.btn-secondary:hover { border-color: var(--label3); }
+
+.btn-sm { height: 38px; padding: 0 18px; font-size: 13px; }
+
+/* ============================================================
+   GLASS CARD — verbatim from doc 04
+   ============================================================ */
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+/* ============================================================
+   SECTIONS — shared rhythm
+   ============================================================ */
+.section { padding: 88px 0; }
+.section-border-top { border-top: 1px solid var(--line); }
+
+.section-head { margin-bottom: 48px; }
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 880px) {
+  .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* reveal-on-scroll (JS adds .is-visible; CSS no-JS fallback keeps content shown) */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 600ms ease, transform 600ms ease;
+}
+.reveal.is-visible { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .reveal { opacity: 1; transform: none; }
+}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.hero {
+  padding: 96px 0 64px;
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 56px;
+  align-items: center;
+}
+@media (max-width: 880px) {
+  .hero-grid { grid-template-columns: 1fr; gap: 48px; }
+  .hero { padding: 56px 0 40px; text-align: left; }
+
+  /* The desktop hero-visual spreads the card and ticket across a tall
+     relative box on purpose — it works because it sits beside the text
+     column. Stacked to one column, that same height is just dead space.
+     Below this width, drop the fixed-height/absolute trick entirely and
+     let the ticket overlap the card's corner in normal flow instead. */
+  .hero-visual { height: auto; position: static; padding-bottom: 8px; }
+  .hero-card-wrap { position: static; width: 100%; max-width: 360px; margin: 0 auto; }
+  .hero-ticket-wrap {
+    position: relative;
+    width: min(280px, 84%);
+    margin: -36px 0 0 auto;
+    z-index: 3;
+  }
+}
+
+.cta-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.hero-microcopy {
+  font-size: 12.5px;
+  color: var(--label3);
+}
+
+.value-strip {
+  margin-top: 64px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 760px) {
+  .value-strip { grid-template-columns: 1fr; }
+}
+.value-item {
+  padding: 18px 0 0;
+  border-top: 1px solid var(--line);
+}
+.value-item .v-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--label);
+  margin-bottom: 4px;
+}
+.value-item .v-body {
+  font-size: 13px;
+  color: var(--label2);
+  line-height: 1.5;
+}
+
+/* ---- hero visual: stacked card + ticket mockup ---- */
+.hero-visual {
+  position: relative;
+  height: 420px;
+}
+
+.hero-card-wrap {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  width: min(340px, 88%);
+  z-index: 2;
+}
+
+.demo-card {
+  position: relative;
+  border-radius: 28px;
+  padding: 22px;
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: var(--card-shadow);
+  height: 196px;
+  color: #fff;
+}
+:root[data-theme="light"] .demo-card { color: #1c1c1e; }
+
+.demo-card::after {
+  content: '';
+  position: absolute;
+  top: -60%; left: -30%;
+  width: 55%; height: 220%;
+  background: linear-gradient(75deg, transparent, var(--sheen), transparent);
+  transform: translateX(-140%) rotate(8deg);
+  opacity: 0;
+  pointer-events: none;
+}
+.demo-card.sheen::after { animation: sweep 1.25s ease forwards; }
+@keyframes sweep {
+  0%   { transform: translateX(-140%) rotate(8deg); opacity: 0; }
+  12%  { opacity: 0.9; }
+  65%  { opacity: 0.4; }
+  100% { transform: translateX(140%) rotate(8deg); opacity: 0; }
+}
+
+.chip-glyph {
+  width: 32px; height: 22px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #e8d3a0, #b89559);
+}
+.demo-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.tier-badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+.demo-card-label {
+  margin-top: 28px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+}
+:root[data-theme="light"] .demo-card-label { color: rgba(28,28,30,0.6); }
+
+.demo-card-value {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin-top: 4px;
+}
+.demo-card-change {
+  font-size: 13px;
+  color: var(--green);
+  margin-top: 4px;
+  font-weight: 600;
+}
+.sparkline {
+  position: absolute;
+  right: -6px; bottom: -8px;
+  opacity: 0.15;
+}
+
+.hero-ticket-wrap {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: min(280px, 78%);
+  z-index: 3;
+}
+
+.ticket {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--glass-hi);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  transition: border-color 900ms ease;
+  box-shadow: 0 18px 30px -16px rgba(0,0,0,0.35);
+}
+.ticket.new {
+  border-color: var(--accent);
+  animation: cardIn 460ms cubic-bezier(0.3, 1.2, 0.6, 1) both, glowFade 1000ms ease-out;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(9px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes glowFade {
+  0%   { box-shadow: 0 0 0 0 rgba(217, 194, 140, 0.32); }
+  100% { box-shadow: 0 0 22px 3px rgba(217, 194, 140, 0); }
+}
+.ticket-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.ticket-pair { font-size: 13.5px; font-weight: 600; }
+.badge-buy {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--green);
+  background: var(--green-bg);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.ticket-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--label2);
+  padding: 3px 0;
+}
+.ticket-row span:last-child { color: var(--label); font-weight: 500; }
+
+/* ============================================================
+   PROBLEM / PILLAR / PERSONA CARDS
+   ============================================================ */
+.icon-tile {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: var(--accent-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--accent);
+}
+.icon-tile svg { width: 18px; height: 18px; }
+
+/* ============================================================
+   DIFFERENTIATOR SPLIT
+   ============================================================ */
+.diff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  align-items: center;
+}
+@media (max-width: 880px) { .diff-grid { grid-template-columns: 1fr; gap: 40px; } }
+
+.compare-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 520px) { .compare-row { grid-template-columns: 1fr; } }
+
+.compare-card { padding: 18px; }
+.compare-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--label3);
+  margin-bottom: 10px;
+}
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+.dot-green { background: var(--green); }
+.dot-amber { background: var(--amber); }
+.compare-status {
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+/* ============================================================
+   STEPS
+   ============================================================ */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+@media (max-width: 880px) { .steps { grid-template-columns: 1fr; } }
+.step-num {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+
+/* ============================================================
+   MODEL / SPLIT STATS
+   ============================================================ */
+.split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 700px) { .split-grid { grid-template-columns: 1fr; } }
+.split-value {
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 6px;
+}
+.split-label { font-size: 13.5px; color: var(--label2); }
+
+/* ============================================================
+   FINAL CTA
+   ============================================================ */
+.final-cta {
+  text-align: center;
+  padding: 96px 0;
+}
+.final-cta h2 { max-width: 100%; margin: 0 auto 16px; }
+.final-cta .lede { margin: 0 auto 32px; }
+.final-cta .cta-row { justify-content: center; }
+
+.apply-form {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px;
+  text-align: left;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.field-full { grid-column: 1 / -1; }
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+.field label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--label2);
+  margin-bottom: 6px;
+}
+.field input, .field select, .field textarea {
+  width: 100%;
+  background: var(--glass-hi);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--label);
+  font-family: inherit;
+  transition: border-color 200ms ease;
+}
+.field input::placeholder, .field textarea::placeholder { color: var(--label3); }
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.field textarea { resize: vertical; }
+.apply-status { margin-top: 16px; }
+
+.admin-panel { display: none; min-height: 100vh; padding: 56px 0 80px; }
+.admin-back {
+  font-size: 13px;
+  color: var(--label2);
+  display: inline-block;
+  margin-bottom: 28px;
+}
+.admin-back:hover { color: var(--label); }
+.app-card { margin-bottom: 14px; }
+.app-meta {
+  font-size: 11px;
+  color: var(--label3);
+  margin-bottom: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.app-card-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.app-card-row:last-child { border-bottom: none; }
+.app-card-row span:first-child { color: var(--label2); flex-shrink: 0; }
+.app-card-row span:last-child { color: var(--label); text-align: right; }
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.footer {
+  padding: 48px 0;
+  border-top: 1px solid var(--line);
+}
+.footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.footer-tagline {
+  font-size: 12.5px;
+  color: var(--label3);
+}
+.footer-links {
+  display: flex;
+  gap: 20px;
+  font-size: 12.5px;
+  color: var(--label3);
+}
+
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="container nav-inner">
+    <div class="wordmark">TradeHub</div>
+    <nav class="nav-links" id="navLinks">
+      <a href="#what-you-get">What you get</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#model">The model</a>
+    </nav>
+    <div class="nav-right">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark and light mode">
+        <svg id="themeIcon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+      </button>
+      <a href="#apply" class="btn btn-primary btn-sm">Apply</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================== HERO ============================== -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div>
+        <p class="eyebrow">For forex &amp; crypto educators</p>
+        <h1 class="hero-headline">Your platform.<br/>Your brand.<br/>Your students never see ours.</h1>
+        <p class="lede">Courses, signals, and a trading journal — live under your name in days. You keep teaching. We keep the lights on.</p>
+        <div class="cta-row">
+          <a href="#apply" class="btn btn-primary">Apply for a workspace</a>
+          <a href="#what-you-get" class="btn btn-secondary">See how it works</a>
+        </div>
+        <p class="hero-microcopy">No subscription fee. We're paid a share of what your students pay you — never before.</p>
+
+        <div class="value-strip">
+          <div class="value-item">
+            <div class="v-title">Days, not months</div>
+            <div class="v-body">A fully branded workspace, no code required from you.</div>
+          </div>
+          <div class="value-item">
+            <div class="v-title">Pay only when you earn</div>
+            <div class="v-body">No subscription. Revenue splits automatically on every payment.</div>
+          </div>
+          <div class="value-item">
+            <div class="v-title">Built around prop-firm rules</div>
+            <div class="v-body">Signals route safely for funded accounts, not just personal ones.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="hero-card-wrap">
+          <div class="demo-card" id="demoCard">
+            <div class="demo-card-top">
+              <div class="chip-glyph"></div>
+              <div class="tier-badge">ELITE</div>
+            </div>
+            <div class="demo-card-label">Revenue this month</div>
+            <div class="demo-card-value tabular">₦1,284,500</div>
+            <div class="demo-card-change tabular">▲ 18.4% vs last month</div>
+            <svg class="sparkline" aria-hidden="true" width="160" height="56" viewBox="0 0 160 56">
+              <path d="M0,44 C20,40 30,20 48,24 C66,28 70,8 92,12 C112,16 118,36 138,30 C150,26 154,18 160,14"
+                    fill="none" stroke="currentColor" stroke-width="2.5"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="hero-ticket-wrap">
+          <div class="ticket" id="demoTicket">
+            <div class="ticket-top">
+              <div class="ticket-pair">EUR/USD</div>
+              <div class="badge-buy">BUY</div>
+            </div>
+            <div class="ticket-row"><span>Entry</span><span class="tabular">1.0842</span></div>
+            <div class="ticket-row"><span>Stop loss</span><span class="tabular">1.0810</span></div>
+            <div class="ticket-row"><span>Take profit</span><span class="tabular">1.0910</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== PROBLEM ============================== -->
+  <section class="section section-border-top">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">The problem</p>
+        <h2 class="section-heading">Most trading education still runs on Telegram and a bank-transfer screenshot.</h2>
+      </div>
+      <div class="grid-3">
+        <div class="glass-card reveal">
+          <div class="icon-tile"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></div>
+          <div class="card-title">Manual, and a little fragile</div>
+          <p class="body-text">Bank transfers, WhatsApp confirmations, chasing renewals by hand. One refund dispute turns into a week of back-and-forth.</p>
+        </div>
+        <div class="glass-card reveal">
+          <div class="icon-tile"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg></div>
+          <div class="card-title">Built for courses, not for trading</div>
+          <p class="body-text">Generic course platforms host video fine. They have no signal delivery, no journal, and no idea what a funded account is.</p>
+        </div>
+        <div class="glass-card reveal">
+          <div class="icon-tile"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div>
+          <div class="card-title">One mistake from a banned account</div>
+          <p class="body-text">Auto-executing a signal into a prop-firm account is exactly the kind of "external trade copying" most firms terminate accounts for.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== WHAT YOU GET ============================== -->
+  <section class="section section-border-top" id="what-you-get">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">What your students get</p>
+        <h2 class="section-heading">One app. Your name on all of it.</h2>
+      </div>
+      <div class="grid-3">
+        <div class="glass-card reveal">
+          <div class="icon-tile"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+          <div class="card-title">Course Hub</div>
+          <p class="body-text">Lessons play inside your app — never a YouTube link. Progress tracking, locked chapters, and quizzes keep students moving instead of dropping off.</p>
+        </div>
+        <div class="glass-card reveal">
+          <div class="icon-tile"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+          <div class="card-title">Trade Signals</div>
+          <p class="body-text">Post once. Personal accounts can auto-copy the trade; funded accounts get an alert instead — so a prop-firm rule never costs a student their account.</p>
+        </div>
+        <div class="glass-card reveal">
+          <div class="icon-tile"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.83-2.83L7 14"/></svg></div>
+          <div class="card-title">Trading Journal</div>
+          <p class="body-text">Every trade logs itself from their exchange. They see what's working. You see who's actually trading, not just watching.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== DIFFERENTIATOR ============================== -->
+  <section class="section section-border-top">
+    <div class="container">
+      <div class="diff-grid">
+        <div class="reveal">
+          <p class="eyebrow">Why this matters</p>
+          <h2 class="section-heading">Most platforms don't know the difference. We built around it.</h2>
+          <p class="body-text" style="margin-bottom: 16px;">Prop-firm terms of service almost universally ban external trade copying — and most signal tools have no idea, because they treat every account the same way.</p>
+          <p class="body-text">TradeHub routes the two cases differently from the ground up. A personal account can auto-copy a signal the moment it's posted. A funded account gets a clean alert instead, so the student decides — and keeps their pass.</p>
+        </div>
+        <div class="reveal">
+          <div class="compare-row">
+            <div class="glass-card compare-card">
+              <div class="compare-label">Personal account</div>
+              <div class="compare-status"><span class="status-dot dot-green"></span>Auto-Copy active</div>
+              <p class="body-text" style="margin-top: 10px;">Trade executes automatically on the student's exchange.</p>
+            </div>
+            <div class="glass-card compare-card">
+              <div class="compare-label">Funded / prop-firm account</div>
+              <div class="compare-status"><span class="status-dot dot-amber"></span>Signal Alert sent</div>
+              <p class="body-text" style="margin-top: 10px;">Student reviews and places the trade themselves.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== PERSONAS ============================== -->
+  <section class="section section-border-top">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Built for</p>
+        <h2 class="section-heading">Whichever way you already teach, this fits it.</h2>
+      </div>
+      <div class="grid-4">
+        <div class="glass-card reveal">
+          <div class="card-title">The Telegram Signal Seller</div>
+          <p class="body-text">Already monetizing through a group chat and bank transfers. Keep the channel — add billing, structure, and a journal around it.</p>
+        </div>
+        <div class="glass-card reveal">
+          <div class="card-title">The Course-Only Educator</div>
+          <p class="body-text">Selling one-off courses with no recurring product. Add tiers, locked progression, and real completion data.</p>
+        </div>
+        <div class="glass-card reveal">
+          <div class="card-title">The Prop-Firm Mentor</div>
+          <p class="body-text">Coaching students through funded challenges — the highest exposure to ToS risk, and the clearest reason Signal Alerts exist.</p>
+        </div>
+        <div class="glass-card reveal">
+          <div class="card-title">The Crypto Trader</div>
+          <p class="body-text">Personal live accounts your audience wants to mirror. Auto-Copy ships for Binance and Bybit from day one.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== HOW IT WORKS ============================== -->
+  <section class="section section-border-top" id="how-it-works">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">How it works</p>
+        <h2 class="section-heading">Four steps, mostly ours.</h2>
+      </div>
+      <div class="steps">
+        <div class="reveal">
+          <div class="step-num tabular">01</div>
+          <div class="card-title">Apply</div>
+          <p class="body-text">Tell us about your audience and how you teach today.</p>
+        </div>
+        <div class="reveal">
+          <div class="step-num tabular">02</div>
+          <div class="card-title">A 15-minute call</div>
+          <p class="body-text">We confirm who you are and how you'll use signals — mostly so your students are protected too.</p>
+        </div>
+        <div class="reveal">
+          <div class="step-num tabular">03</div>
+          <div class="card-title">We build your workspace</div>
+          <p class="body-text">Branding, pricing tiers, your Telegram bot, your first course shell. You're not touching any code.</p>
+        </div>
+        <div class="reveal">
+          <div class="step-num tabular">04</div>
+          <div class="card-title">You launch</div>
+          <p class="body-text">Send your invite link. Your students never know TradeHub exists.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== MODEL ============================== -->
+  <section class="section section-border-top" id="model">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">The model</p>
+        <h2 class="section-heading">You set the price. You keep the majority. We get paid when you do.</h2>
+      </div>
+      <div class="split-grid">
+        <div class="glass-card reveal">
+          <div class="split-value tabular">90%</div>
+          <div class="split-label">Goes to you, by default — settled straight to your own account.</div>
+        </div>
+        <div class="glass-card reveal">
+          <div class="split-value tabular">10%</div>
+          <div class="split-label">Keeps the platform running. Nothing upfront, nothing if you don't earn.</div>
+        </div>
+      </div>
+      <p class="body-text" style="margin-top: 20px; max-width: 640px;">The split is negotiable, not a rule — some workspaces run differently by agreement. Payments settle automatically through Paystack on every charge; no invoicing, no chasing.</p>
+    </div>
+  </section>
+
+  <!-- ============================== FINAL CTA ============================== -->
+  <section class="final-cta section-border-top" id="apply">
+    <div class="container">
+      <p class="eyebrow" style="text-align:center;">Apply</p>
+      <h2 class="section-heading" style="margin:0 auto 16px;">Workspaces are vetted, not self-serve.</h2>
+      <p class="lede">We check who you are and how you trade before you go live — your students are about to trust a name, and that name is about to be a real product.</p>
+
+      <form id="applyForm" class="apply-form glass-card" novalidate>
+        <div class="form-grid">
+          <div class="field">
+            <label for="f-name">Full name</label>
+            <input type="text" id="f-name" name="name" required />
+          </div>
+          <div class="field">
+            <label for="f-email">Best email to reach you</label>
+            <input type="email" id="f-email" name="email" required />
+          </div>
+          <div class="field field-full">
+            <label for="f-handle">Primary platform &amp; handle</label>
+            <input type="text" id="f-handle" name="handle" placeholder="e.g. Instagram @yourhandle, or your YouTube channel" required />
+          </div>
+          <div class="field">
+            <label for="f-audience">Rough audience size</label>
+            <select id="f-audience" name="audience" required>
+              <option value="" disabled selected>Choose one</option>
+              <option>Under 1,000</option>
+              <option>1,000–10,000</option>
+              <option>10,000–50,000</option>
+              <option>50,000+</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-market">What do you trade?</label>
+            <select id="f-market" name="market" required>
+              <option value="" disabled selected>Choose one</option>
+              <option>Forex</option>
+              <option>Crypto</option>
+              <option>Both</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-accounts">How do your students mostly trade?</label>
+            <select id="f-accounts" name="accounts" required>
+              <option value="" disabled selected>Choose one</option>
+              <option>Personal accounts</option>
+              <option>Funded / prop-firm accounts</option>
+              <option>Both</option>
+              <option>Not sure yet</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-monetize">How are you monetizing today?</label>
+            <select id="f-monetize" name="monetize" required>
+              <option value="" disabled selected>Choose one</option>
+              <option>Telegram/WhatsApp + manual payments</option>
+              <option>A course platform (Kajabi, Teachable, etc.)</option>
+              <option>Not monetizing yet</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field field-full">
+            <label for="f-notes">Anything else we should know? (optional)</label>
+            <textarea id="f-notes" name="notes" rows="3"></textarea>
+          </div>
+        </div>
+
+        <div class="cta-row" style="margin-top: 22px; justify-content: flex-start;">
+          <button type="submit" class="btn btn-primary">Send application</button>
+          <button type="button" id="copyAppBtn" class="btn btn-secondary">Copy details instead</button>
+        </div>
+        <p class="hero-microcopy apply-status" id="applyStatus">Submits directly here — no email app needed. Most applications get a reply within 48 hours.</p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div>
+      <div class="wordmark" style="margin-bottom: 4px;">TradeHub</div>
+      <div class="footer-tagline">The platform that disappears so your brand doesn't have to.</div>
+    </div>
+    <div class="footer-links">
+      <span>Terms</span>
+      <span>Privacy</span>
+      <span>Risk Disclosure</span>
+    </div>
+  </div>
+</footer>
+
+<div id="adminPanel" class="admin-panel">
+  <div class="container">
+    <a href="#" id="adminBack" class="admin-back">← Back to site</a>
+
+    <div id="adminLogin">
+      <p class="eyebrow">Admin sign-in</p>
+      <h2 class="section-heading" style="max-width:100%;">Sign in to view applications.</h2>
+      <form id="adminLoginForm" class="apply-form glass-card" style="max-width:420px; margin:0;" novalidate>
+        <div class="field" style="margin-bottom:14px;">
+          <label for="a-email">Email</label>
+          <input type="email" id="a-email" required />
+        </div>
+        <div class="field" style="margin-bottom:14px;">
+          <label for="a-pass">Password</label>
+          <input type="password" id="a-pass" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Sign in</button>
+        <p class="hero-microcopy" id="adminLoginStatus" style="margin-top:12px;"></p>
+      </form>
+    </div>
+
+    <div id="adminContent" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:12px;">
+        <div>
+          <p class="eyebrow">Admin — signed in</p>
+          <h2 class="section-heading" style="max-width:100%; margin-bottom:0;">Applications</h2>
+        </div>
+        <button type="button" id="adminSignOut" class="btn btn-secondary btn-sm">Sign out</button>
+      </div>
+      <div id="adminList" style="margin-top:24px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase Auth (compat build) — gates the #admin view above.
+     Replace firebaseConfig below with your own project's config:
+     Firebase console → Project settings → General → Your apps.
+     Then in the Firebase console, enable Email/Password sign-in
+     (Authentication → Sign-in method) and add yourself as a user
+     (Authentication → Users → Add user) — that's the login this form
+     checks against.
+     NOTE: this calls Google's auth servers over the network. It will
+     work normally once this file is actually hosted (e.g. Vercel, per
+     the setup guide) — it may NOT work inside the Claude.ai artifact
+     preview itself, which sandboxes outbound calls to third-party
+     APIs. Test it by downloading this file and opening it directly in
+     a browser, or once it's deployed for real. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-auth-compat.min.js"></script>
+<script>
+  var firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID"
+  };
+  if (window.firebase) {
+    try { firebase.initializeApp(firebaseConfig); } catch (e) { /* config not filled in yet */ }
+  }
+</script>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---- theme: follow system by default, manual toggle overrides for this session ----
+  var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var theme = prefersDark ? 'dark' : 'light';
+  root.setAttribute('data-theme', theme);
+
+  var sunPath = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>';
+  var moonPath = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+  var icon = document.getElementById('themeIcon');
+  function paintIcon() { icon.innerHTML = theme === 'dark' ? sunPath : moonPath; }
+  paintIcon();
+
+  document.getElementById('themeToggle').addEventListener('click', function () {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', theme);
+    paintIcon();
+    if (!reduceMotion) triggerSheen();
+  });
+
+  // ---- hero card sheen sweep: on load, on click, on theme switch ----
+  var demoCard = document.getElementById('demoCard');
+  function triggerSheen() {
+    demoCard.classList.remove('sheen');
+    void demoCard.offsetWidth; // restart animation
+    demoCard.classList.add('sheen');
+  }
+  demoCard.addEventListener('click', function () { if (!reduceMotion) triggerSheen(); });
+  if (!reduceMotion) {
+    setTimeout(triggerSheen, 450);
+  }
+
+  // ---- signal ticket "new" motion: glow in, then fade border back to --line ----
+  var ticket = document.getElementById('demoTicket');
+  if (!reduceMotion) {
+    setTimeout(function () {
+      ticket.classList.add('new');
+      setTimeout(function () { ticket.classList.remove('new'); }, 700);
+    }, 900);
+  }
+
+  // ---- scroll reveal ----
+  if (!reduceMotion && 'IntersectionObserver' in window) {
+    var targets = document.querySelectorAll('.reveal');
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    targets.forEach(function (t) { io.observe(t); });
+  } else {
+    document.querySelectorAll('.reveal').forEach(function (t) { t.classList.add('is-visible'); });
+  }
+
+  // ---- collapse middle nav links on small screens (no hamburger needed for a single page) ----
+  function handleNavWidth() {
+    document.getElementById('navLinks').style.display = window.innerWidth < 720 ? 'none' : 'flex';
+  }
+  handleNavWidth();
+  window.addEventListener('resize', handleNavWidth);
+
+  // ---- application form: save directly via persistent storage ----
+  // NOTE: this uses SHARED storage — submissions are visible to anyone who
+  // opens this page (see the #admin view below). There's no auth on that
+  // view; the hash is a deterrent, not a real access control, same as the
+  // hidden Super Admin path pattern in the PRD itself.
+  var APPLY_EMAIL = 'apply@tradehub.com'; // used only by the copy-fallback below
+
+  var applyForm = document.getElementById('applyForm');
+  var applyStatus = document.getElementById('applyStatus');
+  var submitBtn = applyForm.querySelector('button[type="submit"]');
+
+  function collectFormData() {
+    var fd = new FormData(applyForm);
+    return {
+      name: (fd.get('name') || '').trim(),
+      email: (fd.get('email') || '').trim(),
+      handle: (fd.get('handle') || '').trim(),
+      audience: fd.get('audience') || '',
+      market: fd.get('market') || '',
+      accounts: fd.get('accounts') || '',
+      monetize: fd.get('monetize') || '',
+      notes: (fd.get('notes') || '').trim()
+    };
+  }
+
+  function buildApplicationText(data) {
+    return [
+      'New TradeHub workspace application',
+      '',
+      'Name: ' + data.name,
+      'Email: ' + data.email,
+      'Platform & handle: ' + data.handle,
+      'Audience size: ' + data.audience,
+      'Trades: ' + data.market,
+      'Students mostly trade via: ' + data.accounts,
+      'Currently monetizing via: ' + data.monetize,
+      'Notes: ' + (data.notes || '—')
+    ].join('\n');
+  }
+
+  applyForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (!applyForm.checkValidity()) {
+      applyForm.reportValidity();
+      return;
+    }
+    var data = collectFormData();
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting…';
+    try {
+      var key = 'applications:' + new Date().toISOString() + '-' + Math.random().toString(36).slice(2, 6);
+      var result = await window.storage.set(key, JSON.stringify(data), true);
+      if (!result) { throw new Error('storage returned no result'); }
+      applyStatus.textContent = 'Application received — thank you. Most applications get a reply within 48 hours.';
+      applyForm.reset();
+    } catch (err) {
+      applyStatus.textContent = 'Could not submit automatically — use "Copy details instead" and send it to ' + APPLY_EMAIL + '.';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send application';
+    }
+  });
+
+  document.getElementById('copyAppBtn').addEventListener('click', function () {
+    if (!applyForm.checkValidity()) {
+      applyForm.reportValidity();
+      return;
+    }
+    var text = buildApplicationText(collectFormData());
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        applyStatus.textContent = 'Copied — paste it into an email or DM to apply.';
+      }).catch(function () {
+        applyStatus.textContent = 'Could not copy automatically — select and copy the details manually.';
+      });
+    } else {
+      applyStatus.textContent = 'Clipboard not available on this browser — select and copy the details manually.';
+    }
+  });
+
+  // ---- admin view: #admin shows submitted applications (shared storage) ----
+  function escapeHtml(str) {
+    return String(str == null ? '' : str).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function appRow(label, value) {
+    return '<div class="app-card-row"><span>' + escapeHtml(label) + '</span><span>' + escapeHtml(value) + '</span></div>';
+  }
+  function renderAppCard(data, key) {
+    var ts = key.indexOf('applications:') === 0 ? key.slice('applications:'.length) : key;
+    return '<div class="glass-card app-card">' +
+      '<div class="app-meta">' + escapeHtml(ts) + '</div>' +
+      appRow('Name', data.name) + appRow('Email', data.email) +
+      appRow('Platform & handle', data.handle) + appRow('Audience', data.audience) +
+      appRow('Trades', data.market) + appRow('Accounts', data.accounts) +
+      appRow('Monetizing via', data.monetize) + appRow('Notes', data.notes || '—') +
+      '</div>';
+  }
+  async function loadApplications() {
+    var listEl = document.getElementById('adminList');
+    listEl.innerHTML = '<p class="body-text">Loading…</p>';
+    try {
+      var result = await window.storage.list('applications:', true);
+      var keys = (result && result.keys) || [];
+      if (keys.length === 0) {
+        listEl.innerHTML = '<p class="body-text">No applications yet.</p>';
+        return;
+      }
+      keys.sort().reverse();
+      var html = '';
+      for (var i = 0; i < keys.length; i++) {
+        try {
+          var rec = await window.storage.get(keys[i], true);
+          html += renderAppCard(JSON.parse(rec.value), keys[i]);
+        } catch (e) { /* skip an unreadable entry rather than fail the whole list */ }
+      }
+      listEl.innerHTML = html || '<p class="body-text">No applications yet.</p>';
+    } catch (e) {
+      listEl.innerHTML = '<p class="body-text">Could not load applications right now.</p>';
+    }
+  }
+  function showAdmin() {
+    document.querySelector('.nav').style.display = 'none';
+    document.querySelector('main').style.display = 'none';
+    document.querySelector('.footer').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+
+    if (!window.firebase || !firebase.apps || !firebase.apps.length) {
+      document.getElementById('adminLoginStatus').textContent =
+        'Firebase isn\'t configured yet — add your project config near the top of this file.';
+      return;
+    }
+    firebase.auth().onAuthStateChanged(function (user) {
+      var loginEl = document.getElementById('adminLogin');
+      var contentEl = document.getElementById('adminContent');
+      if (user) {
+        loginEl.style.display = 'none';
+        contentEl.style.display = 'block';
+        loadApplications();
+      } else {
+        loginEl.style.display = 'block';
+        contentEl.style.display = 'none';
+      }
+    });
+  }
+  function showSite() {
+    document.querySelector('.nav').style.display = '';
+    document.querySelector('main').style.display = '';
+    document.querySelector('.footer').style.display = '';
+    document.getElementById('adminPanel').style.display = 'none';
+  }
+  function checkHash() {
+    if (window.location.hash === '#admin') { showAdmin(); } else { showSite(); }
+  }
+  document.getElementById('adminBack').addEventListener('click', function (ev) {
+    ev.preventDefault();
+    window.location.hash = '';
+  });
+
+  var adminLoginForm = document.getElementById('adminLoginForm');
+  adminLoginForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = document.getElementById('a-email').value.trim();
+    var pass = document.getElementById('a-pass').value;
+    var statusEl = document.getElementById('adminLoginStatus');
+    statusEl.textContent = 'Signing in…';
+    firebase.auth().signInWithEmailAndPassword(email, pass)
+      .catch(function (err) {
+        statusEl.textContent = err.message || 'Could not sign in.';
+      });
+  });
+
+  document.getElementById('adminSignOut').addEventListener('click', function () {
+    firebase.auth().signOut();
+  });
+
+  window.addEventListener('hashchange', checkHash);
+  checkHash();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,76 @@
+:root,
+:root[data-theme="dark"],
+[data-theme-surface="dark"] {
+  --bg: #000000;
+  --glass: rgba(255, 255, 255, 0.047);
+  --glass-hi: rgba(255, 255, 255, 0.09);
+  --line: rgba(255, 255, 255, 0.09);
+  --label: #f5f5f7;
+  --label2: rgba(235, 235, 245, 0.6);
+  --label3: rgba(235, 235, 245, 0.3);
+  --accent: #d9c28c;
+  --accent-bg: rgba(217, 194, 140, 0.12);
+  --green: #30d158;
+  --green-bg: rgba(48, 209, 88, 0.13);
+  --red: #ff453a;
+  --red-bg: rgba(255, 69, 58, 0.13);
+  --amber: #ff9f0a;
+  --amber-bg: rgba(255, 159, 10, 0.13);
+  --card: linear-gradient(160deg, #3a3a3c, #232325 38%, #18181a 66%, #2a2a2c);
+  --card-shadow:
+    0 22px 40px -18px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --sheen: rgba(255, 255, 255, 0.22);
+  --tabbar: rgba(8, 8, 9, 0.84);
+}
+
+:root[data-theme="light"],
+[data-theme-surface="light"] {
+  --bg: #f1f1f4;
+  --glass: rgba(255, 255, 255, 0.76);
+  --glass-hi: rgba(255, 255, 255, 0.96);
+  --line: rgba(0, 0, 0, 0.08);
+  --label: #1c1c1e;
+  --label2: rgba(60, 60, 67, 0.6);
+  --label3: rgba(60, 60, 67, 0.3);
+  --accent: #93722f;
+  --accent-bg: rgba(147, 114, 47, 0.1);
+  --green: #1f9d44;
+  --green-bg: rgba(31, 157, 68, 0.1);
+  --red: #e0342a;
+  --red-bg: rgba(224, 52, 42, 0.09);
+  --amber: #b37000;
+  --amber-bg: rgba(179, 112, 0, 0.1);
+  --card: linear-gradient(160deg, #fcfcfd, #e8e8ec 35%, #cfcfd6 65%, #f3f3f5);
+  --card-shadow:
+    0 16px 32px -16px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --sheen: rgba(255, 255, 255, 0.82);
+  --tabbar: rgba(255, 255, 255, 0.84);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #f1f1f4;
+    --glass: rgba(255, 255, 255, 0.76);
+    --glass-hi: rgba(255, 255, 255, 0.96);
+    --line: rgba(0, 0, 0, 0.08);
+    --label: #1c1c1e;
+    --label2: rgba(60, 60, 67, 0.6);
+    --label3: rgba(60, 60, 67, 0.3);
+    --accent: #93722f;
+    --accent-bg: rgba(147, 114, 47, 0.1);
+    --green: #1f9d44;
+    --green-bg: rgba(31, 157, 68, 0.1);
+    --red: #e0342a;
+    --red-bg: rgba(224, 52, 42, 0.09);
+    --amber: #b37000;
+    --amber-bg: rgba(179, 112, 0, 0.1);
+    --card: linear-gradient(160deg, #fcfcfd, #e8e8ec 35%, #cfcfd6 65%, #f3f3f5);
+    --card-shadow:
+      0 16px 32px -16px rgba(0, 0, 0, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    --sheen: rgba(255, 255, 255, 0.82);
+    --tabbar: rgba(255, 255, 255, 0.84);
+  }
+}
