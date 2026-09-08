@@ -25,8 +25,21 @@ Important project traits:
 - Firebase Admin SDK is used for server-owned writes.
 - The production Practice Terminal uses KLineChart 10.0.3 with TradeHub-owned overlays. `@klinecharts/extension` remains installed for the isolated feasibility spike; `lightweight-charts` remains only in frozen/non-terminal compatibility code.
 - Browser tests use Playwright.
-- The repo often appears in this shell as not mounted as a Git repository, so do not rely on `git status` or `git diff`.
+- This workspace is a Git repository on `main` with private remote `https://github.com/Igdbase/tradehub.git`.
 - Some screenshots/errors came from Safari and stale dev-server state. Always restart cleanly before trusting browser behavior.
+
+## Required GitHub Backup Workflow
+
+After each completed and verified change set, and after preparing the adviser/owner acceptance prompt:
+
+1. Run the required final QA and inspect `git status` and the diff.
+2. Scan staged changes for credentials, private keys, tokens, provider payloads, and generated artifacts. Never commit local `.env` files or real secrets.
+3. Commit the coherent verified checkpoint to `main` with a descriptive message.
+4. Fetch `origin/main` and reconcile safely if the remote has advanced. Never force-push or overwrite remote work.
+5. Push to the private `Igdbase/tradehub` GitHub repository and verify that `origin/main` points to the new commit.
+6. Report the commit hash and push result with the acceptance prompt or final review result.
+
+Do not leave a verified checkpoint only on the local device unless GitHub authentication or availability blocks the push; if blocked, report the exact blocker immediately.
 
 ## Must-Read Files For The Next Chat
 
