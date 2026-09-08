@@ -135,12 +135,11 @@ export function SignalManagementSection({
   const blockedPreferenceCount = draft.market === "crypto"
     ? autoCopyPosture?.blockedCount ?? 0
     : forexSummary?.routing.riskBlockedCount ?? autoCopyPosture?.blockedCount ?? 0;
-  const productionGates = cryptoSummary?.liveProduction?.preflightChecks.filter((check) => check.status !== "ready") ?? [];
   const expectedRoutingMode = draft.market === "forex"
-    ? "forex paper simulation; MetaAPI demo proof when gated"
+    ? "Forex student review"
     : estimatedEligibleCount > 0
-      ? "paper routing with testnet proof; production gated"
-      : "production gated; no eligible paper candidates in the bounded sample";
+      ? "Crypto student review"
+      : "No ready students in view";
 
   async function submit(publish: boolean) {
     if (levelError || marketPairError) {
@@ -163,9 +162,8 @@ export function SignalManagementSection({
             Structured signal drafts
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[color:var(--label2)]">
-            Create one workspace signal document. Crypto publishes can create bounded paper/testnet
-            routing records; forex publishes can create paper simulation records only. Live forex,
-            broker connections, and external broadcasts remain deferred.
+            Create direct TradeHub signals for students in this workspace. Student setup, consent,
+            risk limits, and workspace controls still decide who can copy a published signal.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -314,7 +312,7 @@ export function SignalManagementSection({
             <div className="min-w-0">
               <p className="break-safe text-sm font-semibold text-[color:var(--label)]">Publish review</p>
               <p className="mt-1 break-safe text-xs leading-5 text-[color:var(--label2)]">
-                Review the market, levels, and expected routing before publishing. Server validation still enforces the same checks.
+                Review the market, levels, and student readiness before publishing.
               </p>
             </div>
             <Badge tone={draft.market === "crypto" ? "amber" : "neutral"}>
@@ -345,13 +343,13 @@ export function SignalManagementSection({
               <p className="mt-1 break-safe text-sm font-semibold text-[color:var(--label)]">{draft.deliveryMode.replace(/_/g, " ")}</p>
             </div>
             <div className="rounded-[16px] border border-[color:var(--line)] px-3 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--label3)]">Eligible sample</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--label3)]">Ready students</p>
               <p className="mt-1 break-safe text-sm font-semibold text-[color:var(--label)]">
                 {draft.market === "crypto" ? estimatedEligibleCount : 0}
               </p>
             </div>
             <div className="rounded-[16px] border border-[color:var(--line)] px-3 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--label3)]">Full auto</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--label3)]">Auto copy</p>
               <p className="mt-1 break-safe text-sm font-semibold text-[color:var(--label)]">{fullAutoCount}</p>
             </div>
             <div className="rounded-[16px] border border-[color:var(--line)] px-3 py-2">
@@ -363,30 +361,20 @@ export function SignalManagementSection({
               <p className="mt-1 break-safe text-sm font-semibold text-[color:var(--label)]">{alertsOnlyCount}</p>
             </div>
             <div className="rounded-[16px] border border-[color:var(--line)] px-3 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--label3)]">Blocked prefs</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--label3)]">Blocked</p>
               <p className="mt-1 break-safe text-sm font-semibold text-[color:var(--label)]">{blockedPreferenceCount}</p>
             </div>
           </div>
           {draft.market === "crypto" && estimatedEligibleCount === 0 ? (
             <p className="break-safe rounded-[14px] border border-[color:var(--line)] px-3 py-2 text-xs leading-5 text-[color:var(--label2)]">
-              No paper-ready students are present in the bounded sample. Common blockers include entitlement,
-              paused consent, missing verified connection, alerts-only mode, stale-signal policy, or symbol allowlist.
+              No ready crypto students are present in the current view. Common blockers include
+              missing payment, paused consent, missing setup, alerts-only mode, or unsupported symbols.
             </p>
           ) : null}
           {draft.market === "forex" ? (
             <p className="break-safe rounded-[14px] border border-[color:var(--line)] px-3 py-2 text-xs leading-5 text-[color:var(--label2)]">
-              Forex publishes can create paper simulation intents and, for paid eligible students with demo
-              MetaAPI connections, demo proof records. Live forex broker execution is not enabled.
+              Forex signals stay controlled by each student&apos;s paid setup, consent, risk limits, and workspace controls.
             </p>
-          ) : productionGates.length > 0 ? (
-            <div className="bounded-list-4 space-y-2">
-              {productionGates.slice(0, 4).map((check) => (
-                <p key={check.key} className="break-safe rounded-[14px] border border-[color:var(--line)] px-3 py-2 text-xs leading-5 text-[color:var(--label2)]">
-                  <span className="font-semibold text-[color:var(--label)]">{check.label}: </span>
-                  {check.safeMessage}
-                </p>
-              ))}
-            </div>
           ) : null}
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
@@ -403,8 +391,7 @@ export function SignalManagementSection({
         <div className="rounded-[22px] border border-dashed border-[color:var(--line)] p-6">
           <p className="text-sm font-semibold text-[color:var(--label)]">No signals yet</p>
           <p className="mt-2 text-sm leading-6 text-[color:var(--label2)]">
-            Draft a signal when ready. Crypto publishes can run paper routing, while forex publishes
-            can run paper simulation only.
+            Draft a signal when ready. Published signals remain controlled by student setup and workspace safety checks.
           </p>
         </div>
       ) : (

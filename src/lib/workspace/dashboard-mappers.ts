@@ -46,6 +46,74 @@ function asBoolean(value: unknown, fallback = false) {
   return typeof value === "boolean" ? value : fallback;
 }
 
+function normalizeSignalSource(value: unknown) {
+  if (value === undefined || value === null || value === "") {
+    return "legacy_in_app";
+  }
+
+  if (value === "in_app") {
+    return "in_app";
+  }
+
+  if (
+    value === "telegram_channel" ||
+    value === "webhook_source" ||
+    value === "master_trader_feed" ||
+    value === "external_preview"
+  ) {
+    return value;
+  }
+
+  return "unknown";
+}
+
+function normalizeSignalStatus(value: unknown) {
+  return value === "draft" || value === "published" || value === "cancelled"
+    ? value
+    : "unknown";
+}
+
+function normalizeSignalLifecycle(value: unknown) {
+  return value === "closed" ? "closed" : value === "open" ? "open" : undefined;
+}
+
+function mapExternalSignalProof(value: unknown) {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  if (
+    value.sourceType !== "telegram_channel" ||
+    value.proofStatus !== "moderated_published"
+  ) {
+    return undefined;
+  }
+
+  const sourceLabel = asString(value.sourceLabel).replace(/[<>]/g, "").trim().slice(0, 80);
+  const sourceSafeRef = asString(value.sourceSafeRef).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+  const candidateSafeRef = asString(value.candidateSafeRef).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+  const bridgeAttestationRef = asString(value.bridgeAttestationRef).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+  const moderationVersion = asString(value.moderationVersion).replace(/[^a-zA-Z0-9_.-]/g, "").slice(0, 48);
+  const approvedAt = normalizeIsoDate(value.approvedAt, "");
+  const publishedAt = normalizeIsoDate(value.publishedAt, "");
+
+  if (!sourceLabel || !sourceSafeRef || !candidateSafeRef || !moderationVersion || !approvedAt || !publishedAt) {
+    return undefined;
+  }
+
+  return {
+    sourceType: "telegram_channel" as const,
+    proofStatus: "moderated_published" as const,
+    sourceLabel,
+    sourceSafeRef,
+    candidateSafeRef,
+    bridgeAttestationRef: bridgeAttestationRef || undefined,
+    moderationVersion,
+    approvedAt,
+    publishedAt
+  };
+}
+
 function normalizeIsoDate(value: unknown, fallback = new Date().toISOString()) {
   if (typeof value === "string" && Number.isFinite(Date.parse(value))) {
     return value;
@@ -497,7 +565,9 @@ export function mapSignalRecord(record: Record<string, unknown>, workspaceId: st
   return {
     signalId: asString(record.signalId),
     workspaceId: asString(record.workspaceId, workspaceId),
-    status: asString(record.status, "draft") as WorkspaceSignalRecord["status"],
+    source: normalizeSignalSource(record.source),
+    status: normalizeSignalStatus(record.status),
+    lifecycle: normalizeSignalLifecycle(record.lifecycle),
     market: asString(record.market, "forex") as WorkspaceSignalRecord["market"],
     pair: asString(record.pair),
     direction: asString(record.direction, asString(record.action, "buy")) as WorkspaceSignalRecord["direction"],
@@ -507,6 +577,7 @@ export function mapSignalRecord(record: Record<string, unknown>, workspaceId: st
     riskLabel: asString(record.riskLabel, "medium") as WorkspaceSignalRecord["riskLabel"],
     notes: asString(record.notes) || undefined,
     deliveryMode: asString(record.deliveryMode, "alerts_only") as WorkspaceSignalRecord["deliveryMode"],
+    externalSignalProof: mapExternalSignalProof(record.externalSignalProof),
     createdAt,
     updatedAt: normalizeIsoDate(record.updatedAt, createdAt),
     publishedAt: record.publishedAt ? normalizeIsoDate(record.publishedAt) : undefined

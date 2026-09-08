@@ -30,6 +30,7 @@ function assertBefore(source, first, second, message) {
 const packageJson = JSON.parse(read("package.json"));
 const types = read("src/types/crypto-execution.ts");
 const subscriptionRepo = read("src/lib/crypto-execution/crypto-autocopy-subscription-repository.ts");
+const tradeCopierBilling = read("src/lib/student-copier/student-copier-billing.ts");
 const executionRepo = read("src/lib/crypto-execution/crypto-execution-repository.ts");
 const validation = read("src/lib/crypto-execution/crypto-execution-validation.ts");
 const riskEngine = read("src/lib/crypto-execution/crypto-risk-engine.ts");
@@ -92,9 +93,9 @@ assertIncludesAll(
     "value === \"expired\"",
     "entitled: status === \"active_paid\"",
     "active: status === \"active_paid\"",
-    "Purchase Crypto AutoCopy before connecting Binance or Bybit for AutoCopy.",
-    "Crypto AutoCopy billing is cancelled. Exchange setup and routing are locked.",
-    "Renew Crypto AutoCopy before exchange setup or routing can continue."
+    "Purchase Trade Copier before connecting Binance, Bybit, or MT4/MT5 for Copier setup.",
+    "Trade Copier billing is cancelled. Setup and routing are locked.",
+    "Renew Trade Copier before setup or routing can continue."
   ],
   "Only active_paid may unlock Crypto AutoCopy, and unpaid/cancelled/expired states must relock setup and routing."
 );
@@ -111,12 +112,12 @@ assert(
 );
 
 assert(
-  executionRepo.includes("loadCryptoAutoCopySubscriptionPreview") &&
+  executionRepo.includes("loadTradeCopierSubscriptionPreview") &&
     executionRepo.includes("cryptoAutoCopy: base.cryptoAutoCopy") &&
     executionRepo.includes("crypto_autocopy_subscription_required") &&
     validation.includes("needs_crypto_autocopy_payment") &&
     validation.includes("cryptoAutoCopy && !cryptoAutoCopy.billing.entitled"),
-  "Student overview and mutation paths must require active paid Crypto AutoCopy billing before Binance/Bybit setup."
+  "Student overview and mutation paths must require active paid unified Trade Copier billing before Binance/Bybit setup."
 );
 
 assertIncludesAll(
@@ -149,20 +150,20 @@ assertBefore(
 assert(
   riskEngine.includes("crypto_autocopy_billing") &&
     riskEngine.includes("Paid Crypto AutoCopy add-on is active.") &&
-    routing.includes("isCryptoAutoCopyBillingActive") &&
+    routing.includes("isTradeCopierBillingActive") &&
     routing.includes("cryptoAutoCopyBilling") &&
-    liveSandbox.includes("isCryptoAutoCopyBillingActive") &&
+    liveSandbox.includes("isTradeCopierBillingActive") &&
     liveSandbox.includes("live_sandbox.order.failed") &&
-    liveProduction.includes("isCryptoAutoCopyBillingActive") &&
+    liveProduction.includes("isTradeCopierBillingActive") &&
     liveProduction.includes("Production worker blocked an intent because paid Crypto AutoCopy billing was missing or inactive.") &&
     liveProduction.includes("Production canary blocked an intent because paid Crypto AutoCopy billing was missing or inactive."),
-  "Crypto paper, live sandbox, production, and canary routing must block unpaid Crypto AutoCopy students, including already-connected students."
+  "Crypto paper, live sandbox, production, and canary routing must block students without active unified Trade Copier billing, including already-connected students."
 );
 
 assertIncludesAll(
   routing,
   [
-    "isCryptoAutoCopyBillingActive(actor.workspaceId",
+    "isTradeCopierBillingActive(actor.workspaceId",
     "status: cryptoAutoCopyBillingStates[index].status",
     "entitled: cryptoAutoCopyBillingStates[index].active",
     "cryptoAutoCopyBilling: {",
@@ -191,7 +192,7 @@ assertIncludesAll(
   [
     "rawEnvironment !== \"sandbox\"",
     "intent.environment !== \"sandbox\"",
-    "const cryptoAutoCopyBilling = await isCryptoAutoCopyBillingActive(workspaceId, intent.studentId);",
+    "const cryptoAutoCopyBilling = await isTradeCopierBillingActive(workspaceId, intent.studentId);",
     "if (!cryptoAutoCopyBilling.active)",
     "failureCode: \"crypto_autocopy_subscription_required\"",
     "Live sandbox worker blocked an intent because paid Crypto AutoCopy billing was missing or inactive.",
@@ -233,45 +234,60 @@ assertBefore(
 
 assert(
   checkoutRoute.includes("requireStudent") &&
-    checkoutRoute.includes("createStudentCryptoAutoCopyCheckout") &&
+    checkoutRoute.includes("createStudentTradeCopierCheckout") &&
     verifyRoute.includes("requireStudent") &&
-    verifyRoute.includes("verifyStudentCryptoAutoCopyCheckout") &&
+    verifyRoute.includes("verifyLegacyTradeCopierCheckout") &&
+    verifyRoute.includes("\"crypto_autocopy\"") &&
     cancelRoute.includes("requireStudent") &&
-    cancelRoute.includes("cancelStudentCryptoAutoCopySubscription"),
-  "Crypto AutoCopy subscription mutations must go through authenticated student API routes."
+    cancelRoute.includes("cancelStudentTradeCopierSubscription"),
+  "Crypto AutoCopy compatibility subscription mutations must go through authenticated student API routes and the unified Trade Copier lifecycle."
+);
+
+assert(
+  tradeCopierBilling.includes("TRADE_COPIER_PRODUCT_ID = \"trade_copier\"") &&
+    tradeCopierBilling.includes("PAYSTACK_TRADE_COPIER_PLAN_CODE") &&
+    tradeCopierBilling.includes("verifyLegacyTradeCopierCheckout") &&
+    tradeCopierBilling.includes("crypto_autocopy_payment_intents") &&
+    tradeCopierBilling.includes("crypto_autocopy_subscriptions/current") &&
+    tradeCopierBilling.includes("product: TRADE_COPIER_PRODUCT_ID") &&
+    tradeCopierBilling.includes("legacyGrandfathered"),
+  "Stage 29I unified Trade Copier lifecycle preserves Crypto legacy callback/grandfather compatibility while using canonical trade_copier billing for new access."
 );
 
 assert(
   connectionRoute.includes("requireStudent") &&
     connectionRoute.includes("createStudentCryptoExecutionConnection") &&
     overviewRoute.includes("requireStudent") &&
-    overviewRoute.includes("getStudentCryptoExecutionOverview"),
-  "Crypto exchange setup and overview must go through authenticated student API routes."
+    overviewRoute.includes("getStudentCopierOverview"),
+  "Crypto exchange setup and overview must go through authenticated student API routes and the Stage 29I allowlisted Copier DTO."
 );
 
 assert(
-  studentUi.includes("Crypto AutoCopy billing") &&
-    studentUi.includes("Purchase Crypto AutoCopy") &&
-    studentUi.includes("Renew Crypto AutoCopy") &&
-    studentUi.includes("Cancel Crypto AutoCopy billing") &&
+  studentUi.includes("Trade Copier subscription") &&
+    studentUi.includes("Purchase Trade Copier") &&
+    studentUi.includes("Cancel Trade Copier") &&
+    studentUi.includes("copierReference") &&
     studentUi.includes("cryptoReference") &&
-    studentUi.includes("/api/student/crypto-execution/subscription/checkout") &&
-    studentUi.includes("/api/student/crypto-execution/subscription/verify") &&
-    studentUi.includes("/api/student/crypto-execution/subscription/cancel"),
-  "Student UI must expose Crypto AutoCopy checkout/verify/cancel controls and Paystack callback verification."
+    studentUi.includes("/api/student/copier/checkout") &&
+    studentUi.includes("/api/student/copier/crypto/verify") &&
+    studentUi.includes("/api/student/copier/cancel") &&
+    !studentUi.includes("Purchase Crypto Copier") &&
+    !studentUi.includes("Cancel Crypto Copier") &&
+    studentUi.includes("StudentCopierOverviewResponse"),
+  "Accepted Stage 29I Student UI must expose unified Trade Copier checkout/verify/cancel controls through the allowlisted Copier DTO."
 );
 
 assertIncludesAll(
   studentUi,
   [
-    "/api/student/crypto-execution/connections",
+    "/api/student/copier/crypto/connections",
     "connectionForm.apiKey",
     "connectionForm.apiSecret",
-    "Paper Auto-Copy and Testnet Proof are available for visibility. Production Beta is gated",
-    "Consent is only one gate. TradeHub still requires vault readiness, allowlists, dry-run/order controls, caps, and a server-side balance precheck before any canary order.",
-    "Cancel Crypto AutoCopy billing"
+    "Trade Copier is purchased by the student separately",
+    "not included in workspace Launch, Pro, or Enterprise packages",
+    "Cancel Trade Copier"
   ],
-  "Client UI must submit setup through server APIs and explain that production remains separately gated."
+  "Client UI must submit setup through allowlisted server APIs and keep Copier separate from workspace packages and Journal Sync."
 );
 assert(
   !studentUi.includes("getExchangeOrderPlacementAdapter") &&
@@ -344,8 +360,10 @@ assert(
 assert(
   envExample.includes("PAYSTACK_CRYPTO_AUTOCOPY_PLAN_CODE") &&
     envExample.includes("PAYSTACK_CRYPTO_AUTOCOPY_CHECKOUT_EMAIL") &&
-    envExample.includes("CRYPTO_AUTOCOPY_PRICE_NGN"),
-  ".env.example must document Crypto AutoCopy Paystack checkout settings."
+    envExample.includes("CRYPTO_AUTOCOPY_PRICE_NGN") &&
+    envExample.includes("PAYSTACK_TRADE_COPIER_PLAN_CODE") &&
+    envExample.includes("TRADE_COPIER_PRICE_NGN"),
+  ".env.example must document historical Crypto AutoCopy settings and canonical Trade Copier checkout settings."
 );
 
 assert(

@@ -3,7 +3,7 @@ import { buildMetadata } from "@/config/app";
 
 export const metadata = buildMetadata({
   title: "Student Copier",
-  description: "Student Binance and Bybit crypto execution setup with prop-firm-safe gating.",
+  description: "Student Trade Copier purchase and Crypto or Forex account setup.",
   pathname: "/app/copier"
 });
 

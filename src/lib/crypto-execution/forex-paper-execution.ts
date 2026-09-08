@@ -10,6 +10,7 @@ import {
 import { resolveStudentEntitlements } from "@/lib/entitlements/student-entitlements";
 import { getFirebaseAdminClients } from "@/lib/firebase/admin";
 import { AdminApiError } from "@/lib/firebase/admin-errors";
+import { isPublishedRoutableTradeHubSignalForMarket } from "@/lib/signals/tradehub-signal-source-guards";
 import type { VerifiedSuperAdmin } from "@/lib/firebase/admin-auth";
 import type { VerifiedInfluencer } from "@/lib/firebase/influencer-auth";
 import {
@@ -540,7 +541,7 @@ export async function routePublishedForexSignalForPaperExecution({
   let staleExpiredCount = 0;
   let intentCount = 0;
 
-  if (signal.status !== "published" || signal.market !== "forex") {
+  if (!isPublishedRoutableTradeHubSignalForMarket(signal, "forex")) {
     return {
       workspaceId: signal.workspaceId,
       signalId: signal.signalId,
@@ -555,7 +556,7 @@ export async function routePublishedForexSignalForPaperExecution({
       staleExpiredCount,
       intentCount,
       bounded: false,
-      warnings: ["Forex paper routing only runs for newly published forex signals."],
+      warnings: ["Forex paper routing only runs for newly published in-app forex signals."],
       completedAt: now
     };
   }

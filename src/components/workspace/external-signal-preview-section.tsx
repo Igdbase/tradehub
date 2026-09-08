@@ -3,8 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { StatChip } from "@/components/ui/stat-chip";
+import { requestWorkspaceDashboardApi } from "@/lib/workspace/dashboard-api-client";
 import type {
   ExternalSignalAssetClass,
+  WorkspaceExternalSignalPromotionResponse,
   WorkspaceExternalSignalPreviewRecord,
   WorkspaceExternalSignalPreviewResponse
 } from "@/types/external-signal-ingestion";
@@ -45,6 +47,9 @@ export function ExternalSignalPreviewSection({
   const [sourceFilter, setSourceFilter] = useState("");
   const [reviewStatusFilter, setReviewStatusFilter] = useState<"all" | "approved_for_workspace_preview">("all");
   const [dateFilter, setDateFilter] = useState("");
+  const [publishingPreviewId, setPublishingPreviewId] = useState<string | null>(null);
+  const [localMessage, setLocalMessage] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const filteredPreviews = useMemo(() => {
     const normalizedSymbol = symbolFilter.trim().toUpperCase();
@@ -74,6 +79,39 @@ export function ExternalSignalPreviewSection({
       return true;
     });
   }, [assetClassFilter, dateFilter, preview?.previews, reviewStatusFilter, sourceFilter, symbolFilter]);
+
+  async function publishPreview(entry: WorkspaceExternalSignalPreviewRecord) {
+    const confirmed = window.confirm(
+      `Publish ${entry.symbol} as a moderated TradeHub signal? Existing Copier gates still decide student routing.`
+    );
+
+    if (!confirmed) return;
+
+    setPublishingPreviewId(entry.previewId);
+    setLocalMessage(null);
+    setLocalError(null);
+
+    try {
+      const body = await requestWorkspaceDashboardApi<WorkspaceExternalSignalPromotionResponse>(
+        "/api/workspace/signals/external-preview/publish",
+        {
+        method: "POST",
+        body: JSON.stringify({ previewId: entry.previewId })
+        }
+      );
+
+      if (body?.ok !== true) {
+        throw new Error("TradeHub could not publish this preview.");
+      }
+
+      setLocalMessage(typeof body.safeMessage === "string" ? body.safeMessage : "Preview published as a moderated TradeHub signal.");
+      onRefresh();
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : "TradeHub could not publish this preview.");
+    } finally {
+      setPublishingPreviewId(null);
+    }
+  }
 
   if (!preview) {
     return (
@@ -205,9 +243,21 @@ export function ExternalSignalPreviewSection({
         </p>
       ) : null}
 
+      {localMessage ? (
+        <p className="break-safe rounded-[8px] border border-[color:color-mix(in_srgb,var(--green)_30%,transparent)] px-4 py-3 text-sm leading-6 text-[color:var(--label2)]">
+          {localMessage}
+        </p>
+      ) : null}
+
+      {localError ? (
+        <p className="break-safe rounded-[8px] border border-[color:color-mix(in_srgb,var(--red)_34%,transparent)] px-4 py-3 text-sm leading-6 text-[color:var(--red)]">
+          {localError}
+        </p>
+      ) : null}
+
       <div className="rounded-[8px] border border-[color:var(--line)] bg-[color:var(--surface)] px-4 py-3 text-sm leading-6 text-[color:var(--label2)]">
-        Workspace preview has no publish, convert, route, or order action. These records are inspection-only and
-        remain outside student signals, AutoCopy, broker execution, and exchange execution.
+        Only approved Telegram previews can be published as moderated TradeHub signals. Publishing never bypasses
+        student billing, setup, consent, risk, pause, or execution gates.
       </div>
 
       {filteredPreviews.length ? (
@@ -226,7 +276,21 @@ export function ExternalSignalPreviewSection({
                     {entry.sourceLabel} · {entry.assetClass} · {formatDateTime(entry.updatedAt)}
                   </p>
                 </div>
-                <Badge tone="amber">Not executable</Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={entry.publishedSignalRef ? "green" : "amber"}>
+                    {entry.publishedSignalRef ? "Published" : "Approved preview"}
+                  </Badge>
+                  {entry.publishable ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={publishingPreviewId === entry.previewId}
+                      onClick={() => publishPreview(entry)}
+                    >
+                      {publishingPreviewId === entry.previewId ? "Publishing..." : "Publish"}
+                    </Button>
+                  ) : null}
+                </div>
               </div>
 
               <div className="grid gap-2 text-sm sm:grid-cols-2">

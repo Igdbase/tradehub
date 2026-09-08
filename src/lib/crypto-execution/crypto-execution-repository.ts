@@ -15,7 +15,7 @@ import {
 } from "@/lib/crypto-execution/credential-vault";
 import { loadLiveProductionExecutionPreview } from "@/lib/crypto-execution/crypto-live-production";
 import { loadLiveSandboxExecutionPreview } from "@/lib/crypto-execution/crypto-live-sandbox";
-import { loadCryptoAutoCopySubscriptionPreview } from "@/lib/crypto-execution/crypto-autocopy-subscription-repository";
+import { loadTradeCopierSubscriptionPreview } from "@/lib/student-copier/student-copier-billing";
 import { loadForexDemoExecutionPreview } from "@/lib/crypto-execution/forex-demo-execution";
 import { loadForexLiveCanaryExecutionPreview } from "@/lib/crypto-execution/forex-live-canary-execution";
 import { loadForexPaperExecutionPreview } from "@/lib/crypto-execution/forex-paper-execution";
@@ -1021,7 +1021,7 @@ async function getStudentExecutionBase(actor: VerifiedStudent): Promise<StudentE
       studentId: actor.studentId,
       market: "forex"
     }),
-    loadCryptoAutoCopySubscriptionPreview({
+    loadTradeCopierSubscriptionPreview({
       workspaceId: actor.workspaceId,
       studentId: actor.studentId
     })
@@ -1164,10 +1164,10 @@ export async function updateStudentAutoCopyPreferences(
     throw new AdminApiError(403, "auto_copy_not_entitled", base.entitlements.features.autoCopy.reason);
   }
 
-  if (market === "crypto" && !base.cryptoAutoCopy.billing.entitled) {
+  if (!base.cryptoAutoCopy.billing.entitled) {
     throw new AdminApiError(
       403,
-      "crypto_autocopy_subscription_required",
+      "trade_copier_subscription_required",
       base.cryptoAutoCopy.billing.reason
     );
   }

@@ -1,10 +1,10 @@
 # TradeHub Manual Browser QA And Demo Readiness Pack
 
-Reference: `TH-2026-09-03-STAGE29G-CRYPTO-JOURNAL-SYNC-HANDOFF`
+Reference: `TH-2026-09-08-STAGE29L-WORKSPACE-NAVIGATION-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`
 
 Purpose: this is the short, practical demo path for showing TradeHub in a local browser. It is manual QA plus a presenter script, not a production launch checklist.
 
-Frozen foundations:
+Frozen foundations and current checkpoint:
 
 - Practice/backtesting: `TH-2026-08-20-STAGE18X-PRACTICE-MVP-FINAL-HANDOFF`
 - Course/lesson: `TH-2026-08-20-STAGE19I-COURSE-MVP-FINAL-HANDOFF`
@@ -24,6 +24,13 @@ Frozen foundations:
 - Final demo readiness: `TH-2026-08-24-STAGE28F-FINAL-DEMO-READINESS-HANDOFF`
 - Journal redesign: `TH-2026-09-03-STAGE29F-JOURNAL-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`
 - Crypto Journal Sync: `TH-2026-09-03-STAGE29G-CRYPTO-JOURNAL-SYNC-HANDOFF`
+- Copier purchase/setup: `TH-2026-09-06-STAGE29I-COPIER-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`
+- Signals feed/routing: `TH-2026-09-07-STAGE29J-SIGNALS-FEED-ROUTING-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`
+- Workspace navigation: `TH-2026-09-08-STAGE29L-WORKSPACE-NAVIGATION-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`
+
+Current source-QA checkpoint:
+
+- Telegram Signal Ingestion And Controlled Bridge: `TH-2026-09-08-STAGE29K-TELEGRAM-SIGNAL-BRIDGE-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`
 
 ## Local Run Commands
 
@@ -164,8 +171,16 @@ Student routes:
 Workspace routes:
 
 - `/workspace`
+- `/workspace/students`
+- `/workspace/signals`
 - `/workspace/courses`
+- `/workspace/courses/hub`
 - `/workspace/courses/[courseId]`
+- `/workspace/practice`
+- `/workspace/copier`
+- `/workspace/billing`
+- `/workspace/branding`
+- `/workspace/enterprise`
 - `/workspace/onboarding`
 
 Super Admin route:
@@ -722,7 +737,7 @@ Browser-run note on 1 September 2026: the complete Equity-corrected run passed 1
 
 ## Stage 29G Crypto Journal Sync Demo
 
-Stage 29G is implemented/source-QA ready. Real Binance/Bybit owner acceptance is pending until approved read-only test accounts are exercised.
+Stage 29G is implemented/source-QA ready. Real Binance/Bybit owner acceptance is owner-deferred because no Google Cloud Secret Manager project and no approved provider accounts are currently available.
 
 Reference: `TH-2026-09-03-STAGE29G-CRYPTO-JOURNAL-SYNC-HANDOFF`
 
@@ -746,3 +761,100 @@ Reference: `TH-2026-09-03-STAGE29G-CRYPTO-JOURNAL-SYNC-HANDOFF`
 18. Switch to `Backtesting` and confirm simulated Practice results remain separate.
 19. Do not show or type real credentials during a live sales demo. Use owner-approved read-only test credentials only in a private QA session.
 20. Confirm no provider payloads, permission dumps, raw ids, secrets, mutation identifiers, credential version markers, cleanup targets, vault refs, payments, AutoCopy internals, or live-order controls are visible.
+
+## Stage 29I Copier Purchase And Account Setup Demo
+
+Status: owner-accepted, closed, and frozen after successful local owner testing on 6 September 2026. Real Paystack sandbox/production acceptance remains deferred.
+
+Reference: `TH-2026-09-06-STAGE29I-COPIER-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`
+
+Owner-accepted local scope: One Trade Copier purchase unlocks both Crypto Setup and Forex Setup. The unified purchase button, local checkout callback, persistent entitlement, separate setup controls, and unified cancellation were owner-accepted on 6 September 2026. Real Paystack sandbox/production acceptance remains deferred and is not claimed complete. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29J Signals Feed And TradeHub Signal Routing is owner-accepted, closed, and frozen after successful local owner testing on 7 September 2026.
+
+1. Open `/app/copier` as the active demo student.
+2. In the unpaid state, show the single Trade Copier subscription card and the one `Purchase Trade Copier` action.
+3. Point out that Trade Copier is a separate paid student add-on, is not included in Launch, Pro, or Enterprise packages, and is one subscription rather than separate Crypto/Forex products.
+4. Confirm the page shows no public package prices.
+5. After the unified Trade Copier payment is verified or the local unified entitlement fixture is enabled, show that both `Crypto Setup` and `Forex Setup` tabs become available.
+6. Explain that the internal billing record is the canonical `trade_copier` entitlement: old Crypto-only or Forex-only paid records can be honored once, but a canonical cancellation, failed payment, past-due, or expired state remains authoritative.
+7. Confirm the demo cleanup ends with the normal active demo student still eligible and unpaid, so the single `Purchase Trade Copier` action is enabled for the next run.
+8. Open `Crypto Setup`; show Binance/Bybit setup, connection status, consent, risk limits, pause/resume, refresh, and disable controls.
+9. Switch to `Forex Setup`; show MT4/MT5 setup, broker status, consent, risk limits, pause/resume, and disable controls without implying live execution or completed provisioning when unavailable.
+10. If cancellation is demonstrated in a sandbox account, confirm the owner can cancel an existing Trade Copier subscription even after purchase eligibility changes, access locks immediately, the provider-disable task is queued for leased retry processing, and completion is described only after Paystack confirms; provider failures should show safe needs-attention wording without exposing renewal details.
+11. For adviser QA, repeat cancellation against already pending, in-progress, blocked, final-failed, and resolved provider-disable states; confirm retries/support states are not reset, resolved work reconciles to cancelled without another provider call, and audit wording distinguishes requested from completed cancellation.
+12. For adviser QA, inspect the Copier API responses and confirm they use the allowlisted student DTO; checkout initiation should return only `ok` and `authorizationUrl`.
+13. Confirm Trade Copier webhooks are product-routed in server QA, recurring renewals can be matched by stored subscription code with a new transaction reference, `subscription.not_renew` is shown truthfully as non-renewing rather than expired, a matching `subscription.disable` resolves the exact pending provider-disable task, stale or mismatched events are not reported as applied, and course/package subscriptions are not updated by Trade Copier events.
+14. Confirm the old student execution URLs are no longer a demo path; they either return the same student-safe Copier response or a safe retired-route message.
+15. Switch between `Crypto Setup` and `Forex Setup` to show that the normal page keeps one setup path in focus instead of showing every operational panel at once.
+16. Open `/app/journal` and point out that Journal Sync remains separate from Copier. Journal Sync can be available without a Copier purchase.
+17. Do not mention or show stages, workers, vaults, canaries, raw readiness gates, provider payloads, fingerprints, credential versions, internal ids, infrastructure diagnostics, provider subscription codes, email tokens, or support internals during the student demo.
+18. State clearly that the demo does not enable live execution; all server-side consent, billing, risk, pause, entitlement, retry, webhook, and execution gates remain in force.
+19. Stage 29H remains deferred/unstarted. Stage 29J is owner-accepted, closed, and frozen. Stage 29K is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026, with real Telegram/provider acceptance deferred.
+20. Stage 29K adviser correction is source-QA covered for deterministic Telegram source setup, stale-preview rejection, exact source/version attestation, destination-aware routing checkpoints, independent per-destination retry exhaustion, infrastructure exhaustion truthfulness, expired outbox lease recovery, and malformed timestamp rejection.
+
+## Stage 29J Signals Feed And Routing Demo
+
+Status: owner-accepted, closed, and frozen after successful local owner testing on 7 September 2026. External provider acceptance remains deferred and is not claimed.
+
+Reference: `TH-2026-09-07-STAGE29J-SIGNALS-FEED-ROUTING-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`
+
+Owner-accepted local scope: the compact Signals feed, `All`/`Forex`/`Crypto`/`Open` filters, direct in-app signal display, provider-confirmed copied/executed badges, P&L omission rules, routing gates, projection-repair posture, and responsive student experience were owner-accepted on 7 September 2026. Stage 29J is closed and frozen unless a new reproducible defect is reported.
+
+1. Open `/app/signals` as the active demo student.
+2. Show the compact `All`, `Forex`, `Crypto`, and `Open` filters.
+3. Point out the required row hierarchy: symbol, Buy/Sell, entry, SL, TP, age, lifecycle status, copied/executed state, and P&L only when typed authoritative linked execution data with explicit currency exists.
+4. Switch between filters and confirm Forex/Crypto/Open views do not mix market or lifecycle data.
+5. If enough signals are present, use `Load more` and confirm older rows append without replacing already loaded rows.
+6. Confirm unsupported P&L is omitted unless authoritative value and explicit currency exist; missing currency is not shown as USD.
+7. Confirm copied/executed state appears only for provider-confirmed linked execution history with copied origin, matching market, matching symbol, and server-side TradeHub signal linkage.
+8. Confirm the page does not mention workers, vaults, canaries, readiness gates, provider payloads, stages, source-QA, Telegram, or external-preview routing.
+9. Confirm `/api/student/signals` responses are allowlisted and include safe truncation metadata only.
+10. Confirm wrong-role accounts cannot open the student Signals page.
+11. If routing is demonstrated from the workspace side, publish only direct in-app TradeHub signals and confirm all existing Copier billing, consent, risk, connection, pause, freshness, kill-switch, idempotency, reconciliation, and execution gates still block unsafe or ineligible students without creating executable intents, attempts, provider requests, or provider-confirmed ledger records.
+12. Confirm unknown, webhook-like, future-source, and unapproved external-preview candidates remain absent and non-executable. Stage 29K permits only explicitly moderated Telegram candidates through the controlled bridge.
+13. If a bounded-history notice appears, explain that it is separate from Load More: Load More means another page exists inside the loaded cohort, while the notice means older records may exist beyond the scan boundary.
+14. For local routed-signal QA, confirm route-then-cancel/edit/pause/revoke/kill-switch changes terminate safely before any provider call.
+15. For local routed-signal QA, confirm provider-confirmed attempt truth remains terminal if ledger projection fails, then indexed leased projection repair writes exactly one canonical ledger row without another provider call, credential load, or live-gate dependency.
+16. Confirm stale projection workers are fenced after lease expiry: they cannot clear another worker's lease, increment attempts, overwrite projected state, or regress provider-confirmed truth.
+17. Confirm projection repair counters are truthful: repaired increments only after ledger persistence, skipped/not-applicable/final-failed outcomes are separate, retry/final-failed states do not emit a repaired warning, and active leased, full due queues, full expired-lease queues, or poisoned records do not block older eligible work.
+
+## Stage 29K Telegram Signal Ingestion Demo Notes
+
+Status: owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Real Telegram/provider acceptance remains deferred and is not claimed. Live execution acceptance is not claimed.
+
+Reference: `TH-2026-09-08-STAGE29K-TELEGRAM-SIGNAL-BRIDGE-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`
+
+Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29L is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29M remains unstarted and next.
+
+Owner-accepted local scope: visible Super Admin Telegram source setup, server-only conversion of raw Telegram identity, quarantined candidate creation, explicit Super Admin approval, explicit workspace publication, safe student Signals display, absence of raw Telegram identifiers/messages, and preserved routing and execution gates were accepted on 8 September 2026.
+
+1. Do not demo real Telegram unless an owner-approved non-production bot, HTTPS webhook endpoint, and source allowlist are configured.
+2. Confirm the webhook is disabled by default and accepts only POST requests with the Telegram secret-token header.
+3. In Super Admin, create the Telegram source through the visible source form using the source type, safe label, workspace scope, enabled status, allowed symbols, allowed markets, and the owner-approved test chat/channel identity. The form should not expose parser controls or raw identity after save.
+4. For local/emulator QA, send deterministic allowlisted Telegram-style text and confirm it creates a quarantined external candidate rather than a student-visible or executable signal.
+5. Approve the candidate through the existing Super Admin moderation workflow, then promote it from the workspace bridge only after it is `approved_for_workspace_preview`.
+6. Confirm the resulting student Signal uses safe source copy and the same Stage 29J copied/executed/P&L rules.
+7. Confirm malformed, stale, duplicate, unknown-source, disabled-source, webhook-like, future-source, and unapproved external records remain non-executable.
+8. Confirm final worker revalidation blocks routing if the Telegram source is disabled or mismatched before credential/token loading or provider calls.
+9. Inspect responses and confirm no raw Telegram message, chat id, username, bot token, webhook secret, source account id, provider payload, credential, vault ref, internal execution data, student id, or workspace id appears.
+
+Real Telegram bot ownership, HTTPS webhook hosting, production secrets, source ownership, and real provider behavior remain deferred. Do not claim real Telegram/provider acceptance. Do not claim live execution acceptance.
+
+## Stage 29L Workspace Navigation And Focused Views Demo Flow
+
+Status: owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026.
+
+Reference: `TH-2026-09-08-STAGE29L-WORKSPACE-NAVIGATION-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`
+
+Owner-accepted local scope: focused Workspace navigation, concise Home, all nine responsibility views, direct routes, browser history, scoped loading, and responsive navigation were accepted on 8 September 2026. Stage 29F remains owner-accepted, closed, and frozen. Stage 29K is owner-accepted, closed, and frozen. Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29M remains unstarted and next.
+
+- Sign in as `demo.pro.influencer@example.test`.
+- Open `/workspace` and show the concise Home summary, readiness snapshot, and next-action links.
+- Open each focused workspace route from the nav: Students, Signals, Courses, Practice, Copier, Billing, Branding, and Enterprise.
+- Refresh `/workspace/signals` and `/workspace/enterprise` directly to show deep links work.
+- Use browser Back/Forward between two sections and confirm the active nav moves with the URL.
+- At mobile width, direct-load `/workspace/branding` and `/workspace/enterprise` and confirm the active nav chip scrolls into the nav viewport while the page itself has no horizontal overflow.
+- From Courses, click `Open Course Hub` to show authoring remains available without turning Home into a long page.
+- From Signals, show approved Telegram previews can still be published only from the focused Signals view.
+- Create a normal workspace Signal and confirm the Signals view refresh stays scoped to signal/readiness data, with no hidden Practice requests.
+- Update a Student support note and confirm the Students view refresh stays scoped to student/dashboard data, with no Billing overview request.
+- Confirm no section shows raw student ids, raw payment refs, credentials, provider payloads, vault refs, hidden candles, or execution internals.

@@ -7,6 +7,7 @@ import { resolveStudentEntitlements } from "@/lib/entitlements/student-entitleme
 import { getFirebaseAdminClients } from "@/lib/firebase/admin";
 import { AdminApiError } from "@/lib/firebase/admin-errors";
 import type { VerifiedStudent } from "@/lib/firebase/student-auth";
+import { resolveTradeCopierBillingAccess } from "@/lib/student-copier/student-copier-billing";
 import {
   mapStudentProfile,
   mapWorkspaceForStudent,
@@ -203,7 +204,7 @@ function validateBrokerProvisioningPayload(payload: unknown): BrokerProvisioning
   }
 
   if (!safeBoolean(record.billingAcknowledged)) {
-    throw new AdminApiError(400, "forex_billing_ack_required", "Confirm Forex AutoCopy is billed separately before connecting a broker account.");
+    throw new AdminApiError(400, "forex_billing_ack_required", "Confirm Trade Copier covers this Forex setup before connecting a broker account.");
   }
 
   if (!safeBoolean(record.dryRunAcknowledged)) {
@@ -250,82 +251,15 @@ async function getPlatformExecutionControl() {
   );
 }
 
-function mapForexBillingState(record: Record<string, unknown> | null): ForexBillingState {
-  const rawStatus = safeString(record?.status);
-  const status: ForexAutoCopyBillingStatus =
-    rawStatus === "active_paid" ||
-    rawStatus === "trial_only" ||
-    rawStatus === "payment_pending" ||
-    rawStatus === "payment_failed" ||
-    rawStatus === "past_due" ||
-    rawStatus === "cancelled" ||
-    rawStatus === "expired" ||
-    rawStatus === "not_purchased"
-      ? rawStatus
-      : "not_purchased";
-  const rail =
-    record?.rail === "paystack" || record?.rail === "solana" || record?.rail === "manual"
-      ? record.rail
-      : "unknown";
-
-  if (status === "active_paid") {
-    return {
-      status,
-      entitled: true,
-      rail,
-      reason: "Forex AutoCopy is purchased and active for this student."
-    };
-  }
-
-  if (status === "trial_only") {
-    return {
-      status,
-      entitled: false,
-      rail,
-      reason: "Forex AutoCopy requires a paid subscription before broker provisioning."
-    };
-  }
-
-  if (status === "payment_pending") {
-    return {
-      status,
-      entitled: false,
-      rail,
-      reason: "Forex AutoCopy checkout is pending. Broker provisioning unlocks only after payment is verified."
-    };
-  }
-
-  if (status === "payment_failed") {
-    return {
-      status,
-      entitled: false,
-      rail,
-      reason: "Forex AutoCopy payment was not completed. Start checkout again to unlock broker provisioning."
-    };
-  }
-
-  if (status === "past_due" || status === "cancelled" || status === "expired") {
-    return {
-      status,
-      entitled: false,
-      rail,
-      reason: "Forex AutoCopy billing is not active enough for broker provisioning."
-    };
-  }
+async function loadForexBillingState(workspaceId: string, studentId: string): Promise<ForexBillingState> {
+  const billing = await resolveTradeCopierBillingAccess(workspaceId, studentId);
 
   return {
-    status: "not_purchased",
-    entitled: false,
-    rail,
-    reason: "Purchase Forex AutoCopy before connecting an MT4/MT5 broker account."
+    status: billing.status as ForexAutoCopyBillingStatus,
+    entitled: billing.active,
+    rail: billing.source === "legacy_grandfathered" ? "manual" : "paystack",
+    reason: billing.reason
   };
-}
-
-async function loadForexBillingState(workspaceId: string, studentId: string): Promise<ForexBillingState> {
-  const { db } = getFirebaseAdminClients();
-  const snapshot = await db.doc(`workspaces/${workspaceId}/students/${studentId}/forex_autocopy_subscriptions/current`).get();
-
-  return mapForexBillingState(snapshot.exists ? snapshot.data() ?? null : null);
 }
 
 export async function getForexAutoCopyBillingState(workspaceId: string, studentId: string) {

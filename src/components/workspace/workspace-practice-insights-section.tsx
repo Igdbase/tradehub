@@ -65,7 +65,9 @@ export function WorkspacePracticeInsightsSection({
             Student backtesting progress
           </h2>
           <p className="mt-2 break-safe text-sm leading-6 text-[color:var(--label2)]">
-            Aggregate simulated-practice activity only. Use this to spot participation, symbols, playbooks, and challenge outcomes without seeing private journal entries, raw trade history, hidden candles, or execution internals. Private journal entries, raw trade history, hidden candles, and execution internals are not shown.
+            Aggregate simulated-practice activity only. Use this to spot participation, symbols,
+            strategies, and challenge outcomes without seeing private student journals, raw trade
+            history, or hidden candles.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

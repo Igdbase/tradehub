@@ -1,14 +1,9 @@
-import { apiError, apiJson } from "@/lib/admin/admin-api";
-import { updateStudentLiveProductionConsent } from "@/lib/crypto-execution/crypto-execution-repository";
-import { requireStudent } from "@/lib/firebase/student-auth";
+import { apiError } from "@/lib/admin/admin-api";
+import { legacyStudentCopierRouteRetired } from "@/lib/student-copier/legacy-copier-routes";
 
 export async function POST(request: Request) {
   try {
-    const actor = await requireStudent(request);
-    const payload = await request.json();
-    const response = await updateStudentLiveProductionConsent(actor, "accept", payload);
-
-    return apiJson(response);
+    return await legacyStudentCopierRouteRetired(request);
   } catch (error) {
     return apiError(error);
   }

@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/ui/glass-card";
+import { maskOpsReference } from "@/components/workspace/workspace-formatters";
 import type { AdminAuditEvent } from "@/types/admin-api";
 
 function formatDate(value: string) {
@@ -46,7 +47,8 @@ export function AuditLogPreview({ events }: { events: AdminAuditEvent[] }) {
                 <Badge tone="accent">{formatTargetLabel(event.targetType)}</Badge>
               </div>
               <p className="mt-2 break-safe text-sm leading-6 text-[color:var(--label2)]">
-                {event.actorEmail ?? event.actorUid} updated {event.targetId}
+                {event.actorEmail ?? maskOpsReference(event.actorUid, "actor")} updated{" "}
+                {maskOpsReference(event.targetId, "target")}
               </p>
               <p className="mt-1 text-xs leading-5 text-[color:var(--label3)]">
                 {formatDate(event.createdAt)}

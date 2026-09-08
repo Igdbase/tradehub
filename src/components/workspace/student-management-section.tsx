@@ -185,10 +185,9 @@ export function StudentManagementSection({
             Workspace-scoped students
           </h2>
           <p className="break-safe mt-2 text-sm leading-6 text-[color:var(--label2)]">
-            Live student rows come from this workspace only, with current subscription rail,
-            entitlement posture, and saved lesson progress hydrated server-side. Rows show safe
-            operational summaries only, not private course notes, practice trades, journal entries,
-            payment payloads, provider payloads, or credentials.
+            Student rows come from this workspace only, with current access, billing posture,
+            and lesson progress summarized safely. Private notes, trades, journal entries,
+            payment details, and account data stay out of this view.
           </p>
         </div>
         <Button onClick={onRefresh} variant="secondary" size="sm" disabled={loading}>
@@ -415,7 +414,7 @@ export function StudentManagementSection({
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--line)] pt-4">
                 <p className="break-safe text-xs leading-5 text-[color:var(--label3)]">
                   Detail view is limited to operational summaries. It does not include private notes,
-                  journal entries, trades, payment refs, provider payloads, credentials, or AutoCopy internals.
+                  journal entries, trades, payment details, account data, or private Copier controls.
                 </p>
                 <Button
                   type="button"

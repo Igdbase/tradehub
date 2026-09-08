@@ -1,12 +1,12 @@
-import { CourseListClient } from "@/components/course-hub/course-list-client";
+import { WorkspacePageClient } from "@/app/(influencer)/workspace/workspace-page-client";
 import { buildMetadata } from "@/config/app";
 
 export const metadata = buildMetadata({
   title: "Workspace Courses",
-  description: "Influencer Course Hub for draft and published TradeHub lessons.",
+  description: "Focused course visibility and authoring navigation for the influencer workspace.",
   pathname: "/workspace/courses"
 });
 
 export default function WorkspaceCoursesPage() {
-  return <CourseListClient />;
+  return <WorkspacePageClient activeView="courses" />;
 }

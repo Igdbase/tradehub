@@ -1,13 +1,9 @@
 import { apiError } from "@/lib/admin/admin-api";
-import { AdminApiError } from "@/lib/firebase/admin-errors";
+import { legacyStudentCopierRouteRetired } from "@/lib/student-copier/legacy-copier-routes";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    throw new AdminApiError(
-      403,
-      "forex_live_canary_operator_only",
-      "Production MetaAPI canary setup is operator-only. Normal students use MT4/MT5 broker setup."
-    );
+    return await legacyStudentCopierRouteRetired(request);
   } catch (error) {
     return apiError(error);
   }

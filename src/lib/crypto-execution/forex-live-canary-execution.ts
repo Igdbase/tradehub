@@ -1,5 +1,6 @@
 import "server-only";
 
+import crypto from "crypto";
 import type { Firestore, WriteBatch } from "firebase-admin/firestore";
 import { mapSubscriptionRecord, recordFromSnapshot as billingRecordFromSnapshot } from "@/lib/billing/billing-mappers";
 import {
@@ -10,12 +11,19 @@ import {
 import { loadForexMetaApiToken } from "@/lib/crypto-execution/credential-vault";
 import { getForexLiveCanaryOrderPlacementAdapter } from "@/lib/crypto-execution/forex";
 import { getForexAutoCopyBillingState } from "@/lib/crypto-execution/forex-provisioning-repository";
+import { mapForexLiveCanaryAttemptToLedgerEntry, writeAccountLinkedLedgerEntry } from "@/lib/journal/account-linked-performance-ledger";
+import { createProviderOrderExecutionIdentity } from "@/lib/journal/provider-execution-identity";
 import { resolveStudentEntitlements } from "@/lib/entitlements/student-entitlements";
 import { getFirebaseAdminClients } from "@/lib/firebase/admin";
 import { AdminApiError } from "@/lib/firebase/admin-errors";
+import {
+  isPublishedRoutableTradeHubSignalForMarket,
+  isSignalSourceStillAllowedForExecution
+} from "@/lib/signals/tradehub-signal-source-guards";
 import type { VerifiedSuperAdmin } from "@/lib/firebase/admin-auth";
 import type { VerifiedInfluencer } from "@/lib/firebase/influencer-auth";
 import {
+  mapSignalRecord,
   mapWorkspaceForDashboard,
   recordFromSnapshot as workspaceRecordFromSnapshot
 } from "@/lib/workspace/dashboard-mappers";
@@ -50,6 +58,10 @@ const FOREX_LIVE_CANARY_VISIBLE_LIMIT = 4;
 const FOREX_LIVE_CANARY_READ_LIMIT = FOREX_LIVE_CANARY_VISIBLE_LIMIT + 1;
 const FOREX_LIVE_CANARY_OVERVIEW_LIMIT = 25;
 const FOREX_LIVE_CANARY_WORKER_LIMIT = 1;
+const LEDGER_PROJECTION_REPAIR_BATCH_LIMIT = 10;
+const LEDGER_PROJECTION_MAX_ATTEMPTS = 3;
+const LEDGER_PROJECTION_RETRY_DELAY_MS = 60_000;
+const LEDGER_PROJECTION_LEASE_MS = 120_000;
 
 type ForexLiveCanaryGateEvaluation = {
   status: RiskDecisionStatus;
@@ -656,7 +668,25 @@ export async function routePublishedForexSignalForLiveCanaryExecution({
   let blockedCount = 0;
   let intentCount = 0;
 
-  if (signal.status !== "published" || signal.market !== "forex") {
+  if (actor.workspaceId !== signal.workspaceId) {
+    return {
+      workspaceId: actor.workspaceId,
+      signalId: signal.signalId,
+      trigger,
+      routed: false,
+      candidateLimit: FOREX_LIVE_CANARY_CANDIDATE_LIMIT,
+      candidateCount: 0,
+      readyCount,
+      blockedCount,
+      intentCount,
+      dryRunOnly: true,
+      bounded: false,
+      warnings: ["Forex live canary routing skipped because the actor workspace does not own the signal."],
+      completedAt: now
+    };
+  }
+
+  if (!isPublishedRoutableTradeHubSignalForMarket(signal, "forex")) {
     return {
       workspaceId: signal.workspaceId,
       signalId: signal.signalId,
@@ -669,7 +699,7 @@ export async function routePublishedForexSignalForLiveCanaryExecution({
       intentCount,
       dryRunOnly: true,
       bounded: false,
-      warnings: ["Forex live canary routing only runs for newly published forex signals."],
+      warnings: ["Forex live canary routing only runs for newly published in-app forex signals."],
       completedAt: now
     };
   }
@@ -1177,11 +1207,335 @@ function buildAttempt(intent: ForexLiveCanaryIntentRecord, now: string, status: 
     idempotencyKey: `forex-live-canary-attempt:${intent.workspaceId}:${intent.intentId}`.toLowerCase(),
     providerClientOrderId: intent.providerClientOrderId,
     providerOrderRef: intent.dryRun ? `dry-${intent.providerClientOrderId.slice(-8)}` : undefined,
+    ledgerProjectionStatus: status === "filled_live_forex_canary" || status === "partially_filled_live_forex_canary"
+      ? "pending"
+      : "not_applicable",
+    ledgerProjectionAttempts: 0,
+    ledgerProjectionNextAttemptAt: status === "filled_live_forex_canary" || status === "partially_filled_live_forex_canary"
+      ? now
+      : "",
+    ledgerProjectionLeaseOwner: "",
+    ledgerProjectionLeaseExpiresAt: "",
     dryRun: intent.dryRun,
     sanitizedFailureReason: message,
     submittedAt: now,
     updatedAt: now
   }) satisfies ForexLiveCanaryOrderAttemptRecord;
+}
+
+function isProviderConfirmedForexStatus(status: ForexLiveCanaryIntentStatus) {
+  return status === "filled_live_forex_canary" || status === "partially_filled_live_forex_canary";
+}
+
+type LedgerProjectionRepairSummary = {
+  attemptedCount: number;
+  repairedCount: number;
+  retryScheduledCount: number;
+  finalFailedCount: number;
+  skippedCount: number;
+  notApplicableCount: number;
+};
+
+function emptyLedgerProjectionRepairSummary(): LedgerProjectionRepairSummary {
+  return {
+    attemptedCount: 0,
+    repairedCount: 0,
+    retryScheduledCount: 0,
+    finalFailedCount: 0,
+    skippedCount: 0,
+    notApplicableCount: 0
+  };
+}
+
+function projectionOwnerToken(prefix: string) {
+  return `${prefix}_${crypto.randomBytes(8).toString("hex")}`;
+}
+
+function retryableProjectionStatuses(status: unknown) {
+  return status === "pending" || status === "retry_scheduled" || status === "failed" || status === "in_progress";
+}
+
+type ForexLedgerProjectionClaimResult =
+  | { outcome: "claimed"; attempt: ForexLiveCanaryOrderAttemptRecord }
+  | { outcome: "skipped" }
+  | { outcome: "not_applicable" }
+  | { outcome: "final_failed" };
+
+type ForexLedgerProjectionResult =
+  | { outcome: "projected" }
+  | { outcome: "retry_scheduled" }
+  | { outcome: "final_failed" }
+  | { outcome: "not_applicable" }
+  | { outcome: "stale" };
+
+async function finalizeForexLedgerProjection({
+  attempt,
+  ownerToken,
+  success,
+  notApplicable = false
+}: {
+  attempt: ForexLiveCanaryOrderAttemptRecord;
+  ownerToken: string;
+  success: boolean;
+  notApplicable?: boolean;
+}): Promise<ForexLedgerProjectionResult> {
+  const { db } = getFirebaseAdminClients();
+  const now = new Date().toISOString();
+  const attemptRef = db.doc(`workspaces/${attempt.workspaceId}/forex_live_canary_order_attempts/${attempt.attemptId}`);
+
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(attemptRef);
+
+    if (!snapshot.exists) {
+      return { outcome: "stale" as const };
+    }
+
+    const current = snapshot.data() as ForexLiveCanaryOrderAttemptRecord;
+
+    if (current.ledgerProjectionStatus !== "in_progress" || current.ledgerProjectionLeaseOwner !== ownerToken) {
+      return { outcome: "stale" as const };
+    }
+
+    const ledgerProjectionAttempts = (current.ledgerProjectionAttempts ?? 0) + 1;
+
+    if (notApplicable || !isProviderConfirmedForexStatus(current.status) || !current.providerExecutionIdentity) {
+      transaction.set(attemptRef, {
+        ledgerProjectionStatus: "not_applicable",
+        ledgerProjectionAttempts,
+        ledgerProjectionLeaseOwner: "",
+        ledgerProjectionLeaseExpiresAt: "",
+        updatedAt: now
+      }, { merge: true });
+      return { outcome: "not_applicable" as const };
+    }
+
+    if (success) {
+      transaction.set(attemptRef, {
+        ledgerProjectionStatus: "projected",
+        ledgerProjectionAttempts,
+        ledgerProjectionLastError: "",
+        ledgerProjectionNextAttemptAt: "",
+        ledgerProjectionLeaseOwner: "",
+        ledgerProjectionLeaseExpiresAt: "",
+        ledgerProjectedAt: now,
+        updatedAt: now
+      }, { merge: true });
+      return { outcome: "projected" as const };
+    }
+
+    const terminal = ledgerProjectionAttempts >= LEDGER_PROJECTION_MAX_ATTEMPTS;
+    const retryAt = new Date(Date.now() + LEDGER_PROJECTION_RETRY_DELAY_MS).toISOString();
+    transaction.set(attemptRef, {
+      ledgerProjectionStatus: terminal ? "final_failed" : "retry_scheduled",
+      ledgerProjectionAttempts,
+      ledgerProjectionLastError: "ledger_projection_failed",
+      ledgerProjectionNextAttemptAt: terminal ? "" : retryAt,
+      ledgerProjectionLeaseOwner: "",
+      ledgerProjectionLeaseExpiresAt: "",
+      updatedAt: now
+    }, { merge: true });
+    return { outcome: terminal ? "final_failed" as const : "retry_scheduled" as const };
+  });
+}
+
+async function projectForexLiveCanaryAttemptToLedger(attempt: ForexLiveCanaryOrderAttemptRecord, ownerToken: string): Promise<ForexLedgerProjectionResult> {
+  if (!isProviderConfirmedForexStatus(attempt.status) || !attempt.providerExecutionIdentity) {
+    return finalizeForexLedgerProjection({ attempt, ownerToken, success: false, notApplicable: true });
+  }
+
+  try {
+    await writeAccountLinkedLedgerEntry(mapForexLiveCanaryAttemptToLedgerEntry({
+      ...attempt,
+      workspaceId: attempt.workspaceId,
+      connectionId: attempt.connectionId
+    }));
+    return finalizeForexLedgerProjection({ attempt, ownerToken, success: true });
+  } catch {
+    return finalizeForexLedgerProjection({ attempt, ownerToken, success: false });
+  }
+}
+
+async function claimForexLedgerProjectionAttempt(
+  workspaceId: string,
+  attemptId: string,
+  ownerToken: string,
+  nowMs: number
+): Promise<ForexLedgerProjectionClaimResult> {
+  const { db } = getFirebaseAdminClients();
+  const attemptRef = db.doc(`workspaces/${workspaceId}/forex_live_canary_order_attempts/${attemptId}`);
+  const now = new Date(nowMs).toISOString();
+  const leaseExpiresAt = new Date(nowMs + LEDGER_PROJECTION_LEASE_MS).toISOString();
+
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(attemptRef);
+
+    if (!snapshot.exists) {
+      return { outcome: "skipped" as const };
+    }
+
+    const attempt = snapshot.data() as ForexLiveCanaryOrderAttemptRecord;
+    const leaseExpiresMs = Date.parse(attempt.ledgerProjectionLeaseExpiresAt ?? "");
+    const nextAttemptMs = Date.parse(attempt.ledgerProjectionNextAttemptAt ?? now);
+
+    if (!retryableProjectionStatuses(attempt.ledgerProjectionStatus)) {
+      return { outcome: "skipped" as const };
+    }
+
+    if (attempt.ledgerProjectionStatus === "in_progress" && Number.isFinite(leaseExpiresMs) && leaseExpiresMs > nowMs) {
+      return { outcome: "skipped" as const };
+    }
+
+    if (Number.isFinite(nextAttemptMs) && nextAttemptMs > nowMs) {
+      return { outcome: "skipped" as const };
+    }
+
+    if (!isProviderConfirmedForexStatus(attempt.status) || !attempt.providerExecutionIdentity) {
+      transaction.set(attemptRef, {
+        ledgerProjectionStatus: "not_applicable",
+        ledgerProjectionLeaseOwner: "",
+        ledgerProjectionLeaseExpiresAt: "",
+        updatedAt: now
+      }, { merge: true });
+      return { outcome: "not_applicable" as const };
+    }
+
+    if ((attempt.ledgerProjectionAttempts ?? 0) >= LEDGER_PROJECTION_MAX_ATTEMPTS) {
+      transaction.set(attemptRef, {
+        ledgerProjectionStatus: "final_failed",
+        ledgerProjectionNextAttemptAt: "",
+        ledgerProjectionLeaseOwner: "",
+        ledgerProjectionLeaseExpiresAt: "",
+        updatedAt: now
+      }, { merge: true });
+      return { outcome: "final_failed" as const };
+    }
+
+    transaction.set(attemptRef, {
+      ledgerProjectionStatus: "in_progress",
+      ledgerProjectionLeaseOwner: ownerToken,
+      ledgerProjectionLeaseExpiresAt: leaseExpiresAt,
+      updatedAt: now
+    }, { merge: true });
+
+    return {
+      outcome: "claimed" as const,
+      attempt: { ...attempt, ledgerProjectionStatus: "in_progress" as const, ledgerProjectionLeaseOwner: ownerToken, ledgerProjectionLeaseExpiresAt: leaseExpiresAt }
+    };
+  });
+}
+
+async function queryForexLedgerProjectionWork(workspaceId: string, now: string, limit: number) {
+  const { db } = getFirebaseAdminClients();
+  const collection = db.collection(`workspaces/${workspaceId}/forex_live_canary_order_attempts`);
+  const boundedLimit = Math.max(1, Math.min(limit, LEDGER_PROJECTION_REPAIR_BATCH_LIMIT));
+  const [dueSnapshot, expiredSnapshot] = await Promise.all([
+    collection
+      .where("executionMode", "==", "forex_live_canary")
+      .where("environment", "==", "production")
+      .where("ledgerProjectionStatus", "in", ["pending", "retry_scheduled", "failed"])
+      .where("ledgerProjectionNextAttemptAt", "<=", now)
+      .orderBy("ledgerProjectionNextAttemptAt", "asc")
+      .orderBy("updatedAt", "asc")
+      .limit(boundedLimit)
+      .get(),
+    collection
+      .where("executionMode", "==", "forex_live_canary")
+      .where("environment", "==", "production")
+      .where("ledgerProjectionStatus", "==", "in_progress")
+      .where("ledgerProjectionLeaseExpiresAt", "<=", now)
+      .orderBy("ledgerProjectionLeaseExpiresAt", "asc")
+      .orderBy("updatedAt", "asc")
+      .limit(boundedLimit)
+      .get()
+  ]);
+
+  return [...dueSnapshot.docs, ...expiredSnapshot.docs]
+    .sort((left, right) => {
+      const leftData = left.data();
+      const rightData = right.data();
+      const leftEligibleAt = leftData.ledgerProjectionStatus === "in_progress"
+        ? safeString(leftData.ledgerProjectionLeaseExpiresAt)
+        : safeString(leftData.ledgerProjectionNextAttemptAt);
+      const rightEligibleAt = rightData.ledgerProjectionStatus === "in_progress"
+        ? safeString(rightData.ledgerProjectionLeaseExpiresAt)
+        : safeString(rightData.ledgerProjectionNextAttemptAt);
+      const eligibleCompare = leftEligibleAt.localeCompare(rightEligibleAt);
+      if (eligibleCompare !== 0) return eligibleCompare;
+      const updatedCompare = safeString(leftData.updatedAt).localeCompare(safeString(rightData.updatedAt));
+      if (updatedCompare !== 0) return updatedCompare;
+      return left.id.localeCompare(right.id);
+    })
+    .slice(0, boundedLimit);
+}
+
+export async function repairPendingForexLedgerProjections(workspaceId: string, limit = LEDGER_PROJECTION_REPAIR_BATCH_LIMIT): Promise<LedgerProjectionRepairSummary> {
+  const nowMs = Date.now();
+  const now = new Date(nowMs).toISOString();
+  const ownerToken = projectionOwnerToken("forex_projection");
+  const summary = emptyLedgerProjectionRepairSummary();
+
+  for (const doc of await queryForexLedgerProjectionWork(workspaceId, now, limit)) {
+    const claim = await claimForexLedgerProjectionAttempt(workspaceId, doc.id, ownerToken, nowMs);
+
+    if (claim.outcome === "skipped") {
+      summary.skippedCount += 1;
+      continue;
+    }
+
+    if (claim.outcome === "not_applicable") {
+      summary.notApplicableCount += 1;
+      continue;
+    }
+
+    if (claim.outcome === "final_failed") {
+      summary.finalFailedCount += 1;
+      continue;
+    }
+
+    summary.attemptedCount += 1;
+    const result = await projectForexLiveCanaryAttemptToLedger(claim.attempt, ownerToken);
+
+    if (result.outcome === "projected") {
+      summary.repairedCount += 1;
+    } else if (result.outcome === "final_failed") {
+      summary.finalFailedCount += 1;
+    } else if (result.outcome === "retry_scheduled") {
+      summary.retryScheduledCount += 1;
+    } else if (result.outcome === "not_applicable") {
+      summary.notApplicableCount += 1;
+    } else {
+      summary.skippedCount += 1;
+    }
+  }
+
+  return summary;
+}
+
+async function revalidateForexIntentBeforeProvider(workspaceId: string, intent: ForexLiveCanaryIntentRecord) {
+  const { db } = getFirebaseAdminClients();
+  const signalSnapshot = await db.doc(`workspaces/${workspaceId}/signals/${intent.signalId}`).get();
+
+  if (!signalSnapshot.exists) {
+    return { ok: false as const, blockedReason: "signal_missing", safeMessage: "Tiny live Forex canary stopped because the signal is no longer available." };
+  }
+
+  const signal = mapSignalRecord(workspaceRecordFromSnapshot(signalSnapshot, "signalId"), workspaceId);
+  const normalizedPair = normalizeForexLivePair(signal.pair);
+  const signalSourceAllowed = await isSignalSourceStillAllowedForExecution(signal, workspaceId);
+
+  if (
+    signal.workspaceId !== workspaceId ||
+    signal.signalId !== intent.signalId ||
+    !isPublishedRoutableTradeHubSignalForMarket(signal, "forex") ||
+    !signalSourceAllowed ||
+    normalizedPair !== intent.pair ||
+    signal.direction !== intent.side ||
+    signal.updatedAt !== intent.sourceSignalVersion
+  ) {
+    return { ok: false as const, blockedReason: "signal_changed", safeMessage: "Tiny live Forex canary stopped because the signal changed after routing." };
+  }
+
+  return loadForexLiveCanaryWorkerPrerequisites(workspaceId, intent);
 }
 
 export async function runForexLiveCanaryWorker(actor: VerifiedSuperAdmin, payload: unknown): Promise<ForexLiveCanaryWorkerRunResponse> {
@@ -1223,6 +1577,15 @@ export async function runForexLiveCanaryWorker(actor: VerifiedSuperAdmin, payloa
   let submittedCount = 0;
   let skippedCount = 0;
   let failedCount = 0;
+  const projectionRepair = await repairPendingForexLedgerProjections(workspaceId);
+
+  if (projectionRepair.repairedCount > 0) {
+    warnings.push("Tiny live Forex canary repaired pending provider-confirmed ledger projection work without another provider order.");
+  }
+
+  if (projectionRepair.retryScheduledCount > 0 || projectionRepair.finalFailedCount > 0) {
+    warnings.push("Tiny live Forex canary found provider-confirmed ledger projection work that still needs support-safe retry or review.");
+  }
 
   if (!env.liveCanaryEnabled) {
     warnings.push("Tiny live Forex canary worker is disabled by FOREX_LIVE_CANARY_ENABLED.");
@@ -1240,6 +1603,7 @@ export async function runForexLiveCanaryWorker(actor: VerifiedSuperAdmin, payloa
       submittedCount,
       skippedCount,
       failedCount,
+      projectionRepair,
       bounded: false,
       warnings,
       updatedAt: now
@@ -1273,7 +1637,7 @@ export async function runForexLiveCanaryWorker(actor: VerifiedSuperAdmin, payloa
       continue;
     }
 
-    const prerequisites = await loadForexLiveCanaryWorkerPrerequisites(workspaceId, intent);
+    const prerequisites = await revalidateForexIntentBeforeProvider(workspaceId, intent);
 
     if (!prerequisites.ok) {
       batch.set(attemptRef, buildAttempt(intent, now, "failed_live_forex_canary", prerequisites.safeMessage), { merge: true });
@@ -1324,6 +1688,8 @@ export async function runForexLiveCanaryWorker(actor: VerifiedSuperAdmin, payloa
       continue;
     }
 
+    let providerResultCommitted = false;
+
     try {
       const token = await loadForexMetaApiToken({ workspaceId, studentId: intent.studentId, connectionId: intent.connectionId });
 
@@ -1357,6 +1723,13 @@ export async function runForexLiveCanaryWorker(actor: VerifiedSuperAdmin, payloa
         ...buildAttempt(intent, now, status, result.sanitizedFailureReason),
         providerOrderId: result.providerOrderId,
         providerOrderRef: result.providerOrderRef,
+        providerExecutionIdentity: createProviderOrderExecutionIdentity({
+          provider: intent.provider,
+          symbol: result.canonicalSymbol || intent.pair,
+          side: intent.side,
+          providerOrderId: result.providerOrderId,
+          clientOrderId: intent.providerClientOrderId
+        }),
         providerHttpStatus: result.providerHttpStatus,
         canonicalSymbol: result.canonicalSymbol,
         providerSymbol: result.providerSymbol,
@@ -1384,18 +1757,30 @@ export async function runForexLiveCanaryWorker(actor: VerifiedSuperAdmin, payloa
         createdAt: now
       });
       await batch.commit();
+      providerResultCommitted = true;
+      const projectionOwner = projectionOwnerToken("forex_projection_initial");
+      const projectionClaim = await claimForexLedgerProjectionAttempt(workspaceId, attempt.attemptId, projectionOwner, Date.now());
+      if (projectionClaim.outcome === "claimed") {
+        await projectForexLiveCanaryAttemptToLedger(projectionClaim.attempt, projectionOwner);
+      }
       if (result.ok) {
         submittedCount += 1;
       } else {
         failedCount += 1;
       }
     } catch (error) {
+      if (providerResultCommitted) {
+        failedCount += 1;
+        continue;
+      }
+
       const safeMessage = error instanceof AdminApiError
         ? error.message
         : "Tiny live Forex canary worker failed safely before MetaAPI order submission.";
-      batch.set(attemptRef, buildAttempt(intent, now, "failed_live_forex_canary", safeMessage), { merge: true });
-      batch.set(doc.ref, { status: "failed_live_forex_canary", updatedAt: now }, { merge: true });
-      await batch.commit();
+      const failureBatch = db.batch();
+      failureBatch.set(attemptRef, buildAttempt(intent, now, "failed_live_forex_canary", safeMessage), { merge: true });
+      failureBatch.set(doc.ref, { status: "failed_live_forex_canary", updatedAt: now }, { merge: true });
+      await failureBatch.commit();
       failedCount += 1;
     }
   }
@@ -1417,6 +1802,7 @@ export async function runForexLiveCanaryWorker(actor: VerifiedSuperAdmin, payloa
     submittedCount,
     skippedCount,
     failedCount,
+    projectionRepair,
     bounded,
     warnings,
     updatedAt: now

@@ -163,7 +163,7 @@ function callbackUrl(reference: string) {
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
     "http://localhost:3000";
   const url = new URL("/app/copier", appUrl);
-  url.searchParams.set("cryptoReference", reference);
+  url.searchParams.set("copierReference", reference);
   return url.toString();
 }
 
@@ -201,26 +201,26 @@ function mapVerificationStatus(status: string): "verified" | "pending" | "failed
 
 function billingReason(status: CryptoAutoCopyBillingStatus) {
   if (status === "active_paid") {
-    return "Crypto AutoCopy billing is active. Binance/Bybit setup and routing gates can proceed.";
+    return "Trade Copier billing is active. Crypto and Forex setup can proceed through their own safety gates.";
   }
 
   if (status === "payment_pending") {
-    return "Crypto AutoCopy payment is pending. Return from Paystack so TradeHub can verify it.";
+    return "Trade Copier payment is pending. Return from Paystack so TradeHub can verify it.";
   }
 
   if (status === "payment_failed") {
-    return "Crypto AutoCopy payment failed. Exchange setup remains locked.";
+    return "Trade Copier payment failed. Setup remains locked.";
   }
 
   if (status === "cancelled") {
-    return "Crypto AutoCopy billing is cancelled. Exchange setup and routing are locked.";
+    return "Trade Copier billing is cancelled. Setup and routing are locked.";
   }
 
   if (status === "past_due" || status === "expired") {
-    return "Renew Crypto AutoCopy before exchange setup or routing can continue.";
+    return "Renew Trade Copier before setup or routing can continue.";
   }
 
-  return "Purchase Crypto AutoCopy before connecting Binance or Bybit for AutoCopy.";
+  return "Purchase Trade Copier before connecting Binance, Bybit, or MT4/MT5 for Copier setup.";
 }
 
 function mapPaymentIntentSummary(record: Record<string, unknown>, paymentIntentId: string) {

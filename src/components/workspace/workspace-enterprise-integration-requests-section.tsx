@@ -163,8 +163,7 @@ export function WorkspaceEnterpriseIntegrationRequestsSection({
               (enterpriseAvailable
                 ? "Enterprise workspaces can request custom integration scoping."
                 : "Custom integrations require an Enterprise agreement.")}
-            {" "}Do not include credentials, API keys, tokens, webhook secrets, private URLs,
-            broker passwords, vault refs, payment refs, or provider payloads.
+            {" "}Do not include passwords, private links, payment references, or account details.
           </p>
         </div>
         <Badge tone={enterpriseAvailable ? "green" : "amber"}>
@@ -244,12 +243,12 @@ export function WorkspaceEnterpriseIntegrationRequestsSection({
                 maxLength={700}
                 rows={4}
                 className="mt-1 w-full resize-y rounded-[12px] border border-[color:var(--line)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--label)]"
-                placeholder="Describe the workflow and desired business outcome. Leave out credentials, URLs, account IDs, tokens, and secrets."
+                placeholder="Describe the workflow and desired business outcome. Leave out passwords, private links, and account details."
               />
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="space-y-1 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--label3)]">
-                Provider label
+                Service label
                 <input
                   value={requestedProviderLabel}
                   onChange={(event) => setRequestedProviderLabel(event.target.value.slice(0, 80))}

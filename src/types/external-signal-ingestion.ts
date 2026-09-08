@@ -68,6 +68,7 @@ export interface ExternalSignalSourceAllowlistRecord {
   allowedAssetClasses: ExternalSignalAssetClass[];
   riskLimits: ExternalSignalRiskLimits;
   maskedSourceRef: string;
+  expectedSourceIdentity?: string;
   safeLabel: string;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
@@ -95,6 +96,9 @@ export interface ExternalSignalCandidateRecord {
   parserVersion: string;
   maskedSourceRef: string;
   sourceSafeRef?: string;
+  deliverySafeRef?: string;
+  immutableModerationProofRef?: string;
+  publishedSignalRef?: string;
   fingerprint: string;
   normalized?: ExternalSignalNormalizedCandidate;
   parseWarnings: string[];
@@ -105,6 +109,7 @@ export interface ExternalSignalCandidateRecord {
   adminNote?: string;
   reviewedBy?: string;
   reviewedAt?: IsoDateString;
+  promotedAt?: IsoDateString;
   receivedAt: IsoDateString;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
@@ -166,6 +171,8 @@ export interface WorkspaceExternalSignalPreviewRecord {
   riskFlags: ExternalSignalRiskFlag[];
   receivedAt: IsoDateString;
   reviewedAt?: IsoDateString;
+  publishable: boolean;
+  publishedSignalRef?: string;
   updatedAt: IsoDateString;
 }
 
@@ -218,6 +225,7 @@ export interface ExternalSignalSourceAllowlistUpsertInput {
   action?: "upsert" | "disable";
   sourceId?: string;
   sourceRef?: string;
+  telegramChatIdentity?: string;
   sourceType?: ExternalSignalSourceType;
   workspaceId?: string;
   status?: ExternalSignalSourceStatus;
@@ -231,4 +239,28 @@ export interface ExternalSignalSourceAllowlistUpsertInput {
 export interface ExternalSignalSourceAllowlistMutationResponse {
   ok: true;
   source: ExternalSignalSourceAllowlistRecord;
+}
+
+export interface TelegramSignalWebhookReceiptResponse {
+  ok: true;
+  accepted: boolean;
+  status:
+    | "received"
+    | "parsed"
+    | "quarantined"
+    | "rejected"
+    | "duplicate"
+    | "needs_review"
+    | "ignored";
+  safeReason: string;
+  candidateRef?: string;
+}
+
+export interface WorkspaceExternalSignalPromotionResponse {
+  ok: true;
+  promoted: boolean;
+  dispatchStatus?: "pending" | "completed" | "completed_with_failures" | "retry_scheduled" | "failed";
+  signalRef: string;
+  sourceLabel: string;
+  safeMessage: string;
 }

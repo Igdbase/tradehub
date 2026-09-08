@@ -1,11 +1,11 @@
 import { apiError, apiJson } from "@/lib/admin/admin-api";
 import { requireStudent } from "@/lib/firebase/student-auth";
-import { listStudentSignals } from "@/lib/student-app/student-app-repository";
+import { listStudentSignalFeed } from "@/lib/student-app/student-signals-repository";
 
 export async function GET(request: Request) {
   try {
     const actor = await requireStudent(request);
-    const response = await listStudentSignals(actor, request);
+    const response = await listStudentSignalFeed(actor, request);
 
     return apiJson(response);
   } catch (error) {

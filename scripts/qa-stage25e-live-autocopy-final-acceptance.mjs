@@ -228,16 +228,25 @@ const cohortWorker = sliceBetween(
 ].forEach((needle) => assertIncludes(workspacePanel, needle, "workspace live AutoCopy status-only panel"));
 
 [
-  "StudentBroadLiveAutoCopyStatusCard",
-  "response.broadLiveStatus"
+  "student-copier-workspace",
+  "Trade Copier",
+  "Purchase Trade Copier",
+  "copier-crypto-setup-panel",
+  "copier-forex-setup-panel"
 ].forEach((needle) => assertIncludes(studentCopier, needle, "student live AutoCopy status-only copy"));
+[
+  "BroadLiveAutoCopyStatusCard",
+  "broadLiveStatus",
+  "live order execution",
+  "provider payload"
+].forEach((needle) => assertNotIncludes(studentCopier, needle, "student live AutoCopy status-only copy"));
 
 [
   "Not a TradeHub signal",
   "Not student-visible",
   "Not AutoCopy executable",
-  "no publish, convert, route, or order action",
-  "Not executable",
+  "Only approved Telegram previews can be published as moderated TradeHub signals",
+  "Publishing never bypasses",
   "approved_for_workspace_preview"
 ].forEach((needle) => assertIncludes(externalPreview, needle, "external signal preview must remain non-executable"));
 

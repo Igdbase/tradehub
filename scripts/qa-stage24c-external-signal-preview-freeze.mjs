@@ -105,14 +105,15 @@ assertNotIncludes(workspaceRoute, "routeWorkspaceSignalForAutoCopy", "workspace 
   "No execution",
   "No approved external preview candidates match these filters",
   "Rejected, quarantined, duplicate, and unreviewed",
-  "publish, convert, route, or order action"
+  "Only approved Telegram previews can be published as moderated TradeHub signals",
+  "Publishing never bypasses",
+  "entry.publishable"
 ].forEach((needle) => assertIncludes(workspaceComponent, needle, "workspace external preview component"));
 
 [
   "onCreateSignal",
   "requestWorkspaceDashboardApi<WorkspaceSignalMutationResponse>",
   "/api/workspace/signals\",",
-  "method: \"POST\"",
   "routeWorkspaceSignalForAutoCopy",
   "AutoCopyWorker",
   "placeOrder",
@@ -154,9 +155,6 @@ const stage24cBundle = [
   "telegramBot",
   "webhookReceiver",
   "rawMessage",
-  "rawTelegram",
-  "chatId",
-  "telegramChat",
   "telegramUsername",
   "phoneNumber",
   "botToken",
@@ -164,9 +162,14 @@ const stage24cBundle = [
   "providerPayload",
   "vaultRef",
   "providerSecret",
-  "publishWorkspaceSignal",
   "routeWorkspaceSignalForAutoCopy"
 ].forEach((needle) => assertNotIncludes(stage24cBundle, needle, "Stage 24C external preview source bundle"));
+
+assertIncludes(
+  workspaceComponent,
+  "/api/workspace/signals/external-preview/publish",
+  "Stage 29K controlled Telegram preview publication extension"
+);
 
 const studentFiles = walkFiles("src/app", (relativePath) =>
   relativePath.includes("/api/student/") && /\.(ts|tsx)$/.test(relativePath)

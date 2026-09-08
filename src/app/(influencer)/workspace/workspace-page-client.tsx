@@ -1,18 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { RoleGate } from "@/components/auth/role-gate";
-import { CryptoExecutionOpsSection } from "@/components/workspace/crypto-execution-ops-section";
 import { CourseVisibilitySection } from "@/components/workspace/course-visibility-section";
 import { ExternalSignalPreviewSection } from "@/components/workspace/external-signal-preview-section";
 import { SignalManagementSection } from "@/components/workspace/signal-management-section";
 import { StudentManagementSection } from "@/components/workspace/student-management-section";
 import { WorkspaceBillingPanel } from "@/components/workspace/workspace-billing-panel";
+import { WorkspaceEnterpriseIntegrationRequestsSection } from "@/components/workspace/workspace-enterprise-integration-requests-section";
 import { WorkspaceOverview } from "@/components/workspace/workspace-overview";
 import { WorkspacePracticeAssignmentsSection } from "@/components/workspace/workspace-practice-assignments-section";
 import { WorkspacePracticeInsightsSection } from "@/components/workspace/workspace-practice-insights-section";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
+import { StatChip } from "@/components/ui/stat-chip";
+import { cn } from "@/lib/utils";
 import { requestWorkspaceDashboardApi } from "@/lib/workspace/dashboard-api-client";
 import type { WorkspaceCryptoExecutionOverviewResponse } from "@/types/crypto-execution";
 import type { WorkspaceExternalSignalPreviewResponse } from "@/types/external-signal-ingestion";
@@ -41,6 +46,29 @@ import type {
   WorkspaceStudentStatus
 } from "@/types/workspace-dashboard";
 
+export type WorkspaceView =
+  | "home"
+  | "students"
+  | "signals"
+  | "courses"
+  | "practice"
+  | "copier"
+  | "billing"
+  | "branding"
+  | "enterprise";
+
+const workspaceNavItems: Array<{ label: string; href: string; view: WorkspaceView; description: string }> = [
+  { label: "Home", href: "/workspace", view: "home", description: "Summary and next actions" },
+  { label: "Students", href: "/workspace/students", view: "students", description: "Student support and access" },
+  { label: "Signals", href: "/workspace/signals", view: "signals", description: "Signal drafts and previews" },
+  { label: "Courses", href: "/workspace/courses", view: "courses", description: "Visibility and authoring" },
+  { label: "Practice", href: "/workspace/practice", view: "practice", description: "Assignments and insights" },
+  { label: "Copier", href: "/workspace/copier", view: "copier", description: "Setup readiness" },
+  { label: "Billing", href: "/workspace/billing", view: "billing", description: "Licence and payments" },
+  { label: "Branding", href: "/workspace/branding", view: "branding", description: "Brand and domain state" },
+  { label: "Enterprise", href: "/workspace/enterprise", view: "enterprise", description: "SLA and integrations" }
+];
+
 function WorkspaceNotPrepared() {
   return (
     <div className="mx-auto flex min-h-[60vh] w-full max-w-3xl items-center py-10">
@@ -67,10 +95,315 @@ function LoadingState() {
       <GlassCard className="space-y-3">
         <p className="eyebrow !text-[color:var(--label3)]">Influencer workspace</p>
         <p className="text-sm leading-6 text-[color:var(--label2)]">
-          Loading workspace data through the verified API...
+          Loading workspace data...
         </p>
       </GlassCard>
     </div>
+  );
+}
+
+function label(value: string) {
+  return value.replace(/_/g, " ");
+}
+
+function formatSeatCap(value: number | null) {
+  return value === null ? "Custom" : String(value);
+}
+
+function statusTone(value?: string, dangerValues: string[] = [], warningValues: string[] = []) {
+  if (value && dangerValues.includes(value)) {
+    return "red" as const;
+  }
+
+  if (value && warningValues.includes(value)) {
+    return "amber" as const;
+  }
+
+  return value ? "green" as const : "neutral" as const;
+}
+
+function WorkspaceNavigation({
+  activeView,
+  workspaceName
+}: {
+  activeView: WorkspaceView;
+  workspaceName?: string;
+}) {
+  const navRef = useRef<HTMLElement | null>(null);
+  const activeLinkRef = useRef<HTMLAnchorElement | null>(null);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    const activeLink = activeLinkRef.current;
+
+    if (!nav || !activeLink) {
+      return;
+    }
+
+    const navRect = nav.getBoundingClientRect();
+    const linkRect = activeLink.getBoundingClientRect();
+    const leftOverflow = linkRect.left - navRect.left;
+    const rightOverflow = linkRect.right - navRect.right;
+
+    if (leftOverflow < 0) {
+      nav.scrollLeft += leftOverflow - 8;
+      return;
+    }
+
+    if (rightOverflow > 0) {
+      nav.scrollLeft += rightOverflow + 8;
+    }
+  }, [activeView]);
+
+  return (
+    <div className="space-y-4" data-testid="workspace-focused-navigation">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="eyebrow">Workspace</p>
+          <h1 className="mt-2 break-safe text-2xl font-semibold text-[color:var(--label)] sm:text-3xl">
+            {workspaceName ?? "TradeHub workspace"}
+          </h1>
+        </div>
+        <Button href="/workspace/onboarding" variant="ghost" size="sm">
+          Setup wizard
+        </Button>
+      </div>
+      <nav
+        ref={navRef}
+        aria-label="Workspace sections"
+        data-testid="workspace-focused-nav-scroll"
+        className="no-scrollbar max-w-full overscroll-x-contain flex gap-2 overflow-x-auto rounded-[22px] border border-[color:var(--line)] bg-[color:color-mix(in_srgb,var(--glass)_62%,transparent)] p-2"
+      >
+        {workspaceNavItems.map((item) => {
+          const isActive = item.view === activeView;
+
+          return (
+            <Link
+              key={item.view}
+              ref={isActive ? activeLinkRef : undefined}
+              href={item.href}
+              aria-current={isActive ? "page" : undefined}
+              data-testid={`workspace-nav-${item.view}`}
+              className={cn(
+                "focus-ring min-w-fit rounded-[16px] border px-4 py-3 text-sm font-semibold transition",
+                isActive
+                  ? "border-[color:var(--accent)] bg-[color:color-mix(in_srgb,var(--accent-bg)_72%,transparent)] text-[color:var(--label)]"
+                  : "border-transparent text-[color:var(--label2)] hover:border-[color:var(--line)] hover:text-[color:var(--label)]"
+              )}
+              title={item.description}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
+function WorkspaceViewFrame({
+  eyebrow,
+  title,
+  description,
+  children,
+  actions
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  children: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <section className="space-y-5" data-testid="workspace-active-view">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 max-w-3xl">
+          <p className="eyebrow !text-[color:var(--label3)]">{eyebrow}</p>
+          <h2 className="mt-2 break-safe text-2xl font-semibold text-[color:var(--label)]">
+            {title}
+          </h2>
+          <p className="mt-2 break-safe text-sm leading-6 text-[color:var(--label2)]">
+            {description}
+          </p>
+        </div>
+        {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function WorkspacePackageStatusSection({ summary }: { summary: WorkspaceDashboardResponse["summary"] }) {
+  const packageStatus = summary.packageStatus;
+  const tone = packageStatus.overLimit
+    ? "red"
+    : statusTone(packageStatus.licenceHealth, ["blocked", "expired", "suspended"], ["custom_review", "needs_attention", "due_soon"]);
+
+  return (
+    <GlassCard className="space-y-4" data-testid="workspace-billing-package-card">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="eyebrow !text-[color:var(--label3)]">Workspace licence</p>
+          <h3 className="mt-2 text-xl font-semibold text-[color:var(--label)]">
+            {packageStatus.packageName}
+          </h3>
+          <p className="mt-2 break-safe text-sm leading-6 text-[color:var(--label2)]">
+            {packageStatus.safeSummary} Pricing is handled by private quote/contact sales, and
+            Trade Copier remains a separate optional add-on.
+          </p>
+        </div>
+        <Badge tone={tone}>{packageStatus.overLimit ? "Over limit" : label(packageStatus.licenceHealth)}</Badge>
+      </div>
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
+        <StatChip label="Active students" value={String(packageStatus.activeStudentCount)} tone="green" />
+        <StatChip label="Seat cap" value={formatSeatCap(packageStatus.studentSeatCap)} tone={tone} />
+        <StatChip label="Seats left" value={formatSeatCap(packageStatus.remainingSeats)} tone={tone} />
+        <StatChip label="Support" value={label(packageStatus.supportStatus)} tone={tone} />
+        <StatChip label="Renewal" value={label(packageStatus.maintenanceRenewalStatus)} tone={tone} />
+      </div>
+      <p className="break-safe rounded-[14px] border border-[color:var(--line)] px-4 py-3 text-sm leading-6 text-[color:var(--label2)]">
+        {packageStatus.overLimit
+          ? packageStatus.upgradePrompt
+          : `${packageStatus.supportPrompt} ${packageStatus.maintenanceSummary} ${packageStatus.tradeCopierAddOnLabel}`}
+      </p>
+    </GlassCard>
+  );
+}
+
+function WorkspaceBrandingStatusSection({ summary }: { summary: WorkspaceDashboardResponse["summary"] }) {
+  const branding = summary.brandingReadiness;
+  const tone = statusTone(
+    branding.customDomainStatus,
+    ["blocked"],
+    ["requested", "dns_pending", "verifying", "custom_review"]
+  );
+
+  return (
+    <GlassCard className="space-y-4" data-testid="workspace-branding-card">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="eyebrow !text-[color:var(--label3)]">Workspace brand</p>
+          <h3 className="mt-2 text-xl font-semibold text-[color:var(--label)]">
+            {branding.displayName}
+          </h3>
+          <p className="mt-2 break-safe text-sm leading-6 text-[color:var(--label2)]">
+            {branding.packageAvailabilityMessage} Logo and domain changes stay reviewed by TradeHub.
+          </p>
+        </div>
+        <Badge tone={tone}>{label(branding.brandingMode)}</Badge>
+      </div>
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
+        <StatChip label="Mode" value={label(branding.brandingMode)} tone="accent" />
+        <StatChip label="Student view" value={label(branding.studentFacingBrandVisibilityStatus)} tone="green" />
+        <StatChip label="Logo" value={branding.logoUrl ? "Ready" : "Not set"} tone={branding.logoUrl ? "green" : "neutral"} />
+        <StatChip label="Domain" value={label(branding.customDomainStatus)} tone={tone} />
+        <StatChip label="Checklist" value={label(branding.dnsChecklistStatus)} tone={tone} />
+      </div>
+      <p className="break-safe rounded-[14px] border border-[color:var(--line)] px-4 py-3 text-sm leading-6 text-[color:var(--label2)]">
+        {branding.contactPrompt}
+      </p>
+    </GlassCard>
+  );
+}
+
+function WorkspaceEnterpriseStatusSection({ summary }: { summary: WorkspaceDashboardResponse["summary"] }) {
+  const enterprise = summary.enterpriseReadiness;
+  const tone = statusTone(
+    enterprise.deploymentStatus,
+    ["blocked"],
+    ["requested", "scoping", "security_review", "ready_for_contract", "custom_review"]
+  );
+
+  return (
+    <GlassCard className="space-y-4" data-testid="workspace-enterprise-card">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="eyebrow !text-[color:var(--label3)]">Enterprise readiness</p>
+          <h3 className="mt-2 text-xl font-semibold text-[color:var(--label)]">
+            Deployment and SLA scope
+          </h3>
+          <p className="mt-2 break-safe text-sm leading-6 text-[color:var(--label2)]">
+            {enterprise.packageAvailabilityMessage} Enterprise deployment, data residency, support,
+            backup, and rollback terms are contract-scoped.
+          </p>
+        </div>
+        <Badge tone={tone}>{label(enterprise.deploymentStatus)}</Badge>
+      </div>
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
+        <StatChip label="Mode" value={label(enterprise.deploymentMode)} tone="accent" />
+        <StatChip label="SLA" value={label(enterprise.slaStatus)} tone={tone} />
+        <StatChip label="Backup" value={label(enterprise.backupRestoreStatus)} tone={tone} />
+        <StatChip label="Residency" value={label(enterprise.dataResidencyStatus)} tone="neutral" />
+      </div>
+      <p className="break-safe rounded-[14px] border border-[color:var(--line)] px-4 py-3 text-sm leading-6 text-[color:var(--label2)]">
+        {enterprise.contractScopePrompt}
+      </p>
+    </GlassCard>
+  );
+}
+
+function WorkspaceCopierFocusedSection({
+  overview,
+  loading,
+  errorMessage,
+  onRefresh
+}: {
+  overview: WorkspaceCryptoExecutionOverviewResponse | null;
+  loading: boolean;
+  errorMessage: string | null;
+  onRefresh: () => void;
+}) {
+  if (!overview) {
+    return (
+      <GlassCard className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="eyebrow !text-[color:var(--label3)]">Trade Copier</p>
+            <h3 className="mt-2 text-xl font-semibold text-[color:var(--label)]">Setup readiness</h3>
+          </div>
+          <Button onClick={onRefresh} variant="secondary" size="sm" disabled={loading}>
+            {loading ? "Loading..." : "Load"}
+          </Button>
+        </div>
+        <p className="break-safe text-sm leading-6 text-[color:var(--label2)]">
+          {errorMessage ?? "Trade Copier readiness has not loaded yet."}
+        </p>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <GlassCard className="space-y-4" data-testid="workspace-copier-card">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="eyebrow !text-[color:var(--label3)]">Trade Copier</p>
+          <h3 className="mt-2 text-xl font-semibold text-[color:var(--label)]">Workspace setup readiness</h3>
+          <p className="mt-2 break-safe text-sm leading-6 text-[color:var(--label2)]">
+            Student setup remains gated by subscription, account connection, consent, risk limits, and workspace controls.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Badge tone={overview.workspaceControl.killSwitchEnabled ? "red" : "green"}>
+            {overview.workspaceControl.killSwitchEnabled ? "Workspace paused" : "Workspace active"}
+          </Badge>
+          <Button onClick={onRefresh} variant="secondary" size="sm" disabled={loading}>
+            {loading ? "Refreshing..." : "Refresh"}
+          </Button>
+        </div>
+      </div>
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))]">
+        <StatChip label="Verified crypto setup" value={String(overview.summary.connectionCounts.verified)} tone="green" />
+        <StatChip label="Ready for paper" value={String(overview.summary.readinessCounts.paper_ready)} tone="amber" />
+        <StatChip label="Forex setup requests" value={String(overview.summary.forexProvisioning?.requests.length ?? 0)} tone="accent" />
+        <StatChip label="Needs attention" value={String(overview.summary.recentFailureCount)} tone={overview.summary.recentFailureCount > 0 ? "red" : "green"} />
+      </div>
+      {overview.warnings.length > 0 ? (
+        <p className="break-safe rounded-[14px] border border-[color:var(--line)] px-4 py-3 text-sm leading-6 text-[color:var(--label2)]">
+          {overview.warnings.length} setup note{overview.warnings.length === 1 ? "" : "s"} need review in
+          this workspace. Student controls remain gated by their own setup and consent.
+        </p>
+      ) : null}
+    </GlassCard>
   );
 }
 
@@ -135,7 +468,7 @@ function buildPracticeReviewQueuePath(filters: {
   return `/api/workspace/practice/assignments/feedback?${params.toString()}`;
 }
 
-function WorkspaceDashboard() {
+function WorkspaceDashboard({ activeView }: { activeView: WorkspaceView }) {
   const [dashboard, setDashboard] = useState<WorkspaceDashboardResponse | null>(null);
   const [billingOverview, setBillingOverview] = useState<WorkspaceBillingOverviewResponse | null>(null);
   const [cryptoExecution, setCryptoExecution] = useState<WorkspaceCryptoExecutionOverviewResponse | null>(null);
@@ -343,41 +676,98 @@ function WorkspaceDashboard() {
     }
   }, []);
 
-  async function refreshAll() {
+  async function refreshActiveView() {
     setMessage(null);
     setErrorMessage(null);
-    await Promise.all([
-      loadDashboard(),
-      loadBillingOverview(),
-      loadCryptoExecution(),
-      loadPracticeInsights(),
-      loadPracticeAssignments(),
-      loadPracticeAssignmentFeedback(),
-      loadStudents(),
-      loadCourses(),
-      loadSignals(),
-      loadExternalSignalPreview()
-    ]);
+
+    if (activeView === "students") {
+      await Promise.all([loadDashboard(), loadStudents()]);
+      return;
+    }
+
+    if (activeView === "signals") {
+      await Promise.all([loadDashboard(), loadSignals(), loadExternalSignalPreview(), loadCryptoExecution()]);
+      return;
+    }
+
+    if (activeView === "courses") {
+      await Promise.all([loadDashboard(), loadCourses()]);
+      return;
+    }
+
+    if (activeView === "practice") {
+      await Promise.all([
+        loadDashboard(),
+        loadPracticeInsights(),
+        loadPracticeAssignments(),
+        loadPracticeAssignmentFeedback(),
+        loadStudents()
+      ]);
+      return;
+    }
+
+    if (activeView === "copier") {
+      await Promise.all([loadDashboard(), loadCryptoExecution()]);
+      return;
+    }
+
+    if (activeView === "billing") {
+      await Promise.all([loadDashboard(), loadBillingOverview()]);
+      return;
+    }
+
+    if (activeView === "enterprise") {
+      await loadDashboard();
+      return;
+    }
+
+    await loadDashboard();
   }
 
   useEffect(() => {
     void loadDashboard();
-    void loadBillingOverview();
-    void loadCryptoExecution();
-    void loadPracticeInsights();
-    void loadPracticeAssignments();
-    void loadPracticeAssignmentFeedback();
-    void loadCourses();
-    void loadExternalSignalPreview();
-  }, [loadBillingOverview, loadCourses, loadCryptoExecution, loadDashboard, loadExternalSignalPreview, loadPracticeAssignmentFeedback, loadPracticeAssignments, loadPracticeInsights]);
+  }, [loadDashboard]);
 
   useEffect(() => {
-    void loadStudents();
-  }, [loadStudents]);
+    if (activeView === "students") {
+      void loadStudents();
+    }
+  }, [activeView, loadStudents]);
 
   useEffect(() => {
-    void loadSignals();
-  }, [loadSignals]);
+    if (activeView === "signals") {
+      void loadSignals();
+      void loadExternalSignalPreview();
+      void loadCryptoExecution();
+    }
+  }, [activeView, loadCryptoExecution, loadExternalSignalPreview, loadSignals]);
+
+  useEffect(() => {
+    if (activeView === "courses") {
+      void loadCourses();
+    }
+  }, [activeView, loadCourses]);
+
+  useEffect(() => {
+    if (activeView === "practice") {
+      void loadPracticeInsights();
+      void loadPracticeAssignments();
+      void loadPracticeAssignmentFeedback();
+      void loadStudents();
+    }
+  }, [activeView, loadPracticeAssignmentFeedback, loadPracticeAssignments, loadPracticeInsights, loadStudents]);
+
+  useEffect(() => {
+    if (activeView === "copier") {
+      void loadCryptoExecution();
+    }
+  }, [activeView, loadCryptoExecution]);
+
+  useEffect(() => {
+    if (activeView === "billing") {
+      void loadBillingOverview();
+    }
+  }, [activeView, loadBillingOverview]);
 
   async function createSignal(payload: WorkspaceSignalDraftPayload) {
     setIsSavingSignal(true);
@@ -408,13 +798,7 @@ function WorkspaceDashboard() {
           ? "Signal marked published inside the workspace. No external delivery was triggered."
           : "Signal draft saved inside the workspace."
       );
-      await Promise.all([
-        loadDashboard(),
-        loadCryptoExecution(),
-        loadPracticeAssignments(),
-        loadPracticeAssignmentFeedback(),
-        loadPracticeInsights()
-      ]);
+      await Promise.all([loadDashboard(), loadSignals(), loadExternalSignalPreview(), loadCryptoExecution()]);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "TradeHub could not save that signal.");
     } finally {
@@ -449,7 +833,7 @@ function WorkspaceDashboard() {
           : current
       );
       setMessage("Student CRM support state updated.");
-      await Promise.all([loadDashboard(), loadBillingOverview()]);
+      await Promise.all([loadDashboard(), loadStudents()]);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "TradeHub could not update that student support state.");
       throw error;
@@ -559,7 +943,7 @@ function WorkspaceDashboard() {
   if (!dashboard) {
     return (
       <GlassCard className="mx-auto max-w-3xl space-y-4">
-        <p className="eyebrow !text-[color:var(--red)]">Workspace API</p>
+        <p className="eyebrow !text-[color:var(--red)]">Workspace unavailable</p>
         <p className="text-sm leading-6 text-[color:var(--label2)]">
           {errorMessage ?? "TradeHub could not load the workspace dashboard."}
         </p>
@@ -574,27 +958,215 @@ function WorkspaceDashboard() {
     return <WorkspaceNotPrepared />;
   }
 
-  return (
-    <div className="mx-auto w-full max-w-[112rem] space-y-6">
+  const activeContent = (() => {
+    if (activeView === "students") {
+      return (
+        <WorkspaceViewFrame
+          eyebrow="Students"
+          title="Student management"
+          description="Review workspace students, access posture, progress summaries, and support follow-up without exposing private student records."
+          actions={
+            <Button onClick={refreshActiveView} variant="secondary" size="sm" disabled={isLoadingStudents}>
+              {isLoadingStudents ? "Refreshing..." : "Refresh"}
+            </Button>
+          }
+        >
+          <StudentManagementSection
+            students={students?.students ?? []}
+            loading={isLoadingStudents}
+            query={studentQuery}
+            status={studentStatus}
+            warnings={students?.warnings ?? []}
+            onQueryChange={setStudentQuery}
+            onStatusChange={setStudentStatus}
+            onSupportAction={updateStudentSupportState}
+            onRefresh={loadStudents}
+          />
+        </WorkspaceViewFrame>
+      );
+    }
+
+    if (activeView === "signals") {
+      return (
+        <WorkspaceViewFrame
+          eyebrow="Signals"
+          title="Signal management"
+          description="Create direct TradeHub signals, review drafts, and publish approved Telegram previews through the existing protected flow."
+          actions={
+            <Button onClick={refreshActiveView} variant="secondary" size="sm" disabled={isLoadingSignals || isLoadingExternalSignalPreview}>
+              {isLoadingSignals || isLoadingExternalSignalPreview ? "Refreshing..." : "Refresh"}
+            </Button>
+          }
+        >
+          <div className="space-y-6">
+            <SignalManagementSection
+              signals={signals?.signals ?? []}
+              cryptoExecution={cryptoExecution}
+              loading={isLoadingSignals}
+              saving={isSavingSignal}
+              status={signalStatus}
+              warnings={signals?.warnings ?? []}
+              onStatusChange={setSignalStatus}
+              onRefresh={loadSignals}
+              onCreateSignal={createSignal}
+            />
+
+            <ExternalSignalPreviewSection
+              preview={externalSignalPreview}
+              loading={isLoadingExternalSignalPreview}
+              errorMessage={externalSignalPreviewErrorMessage}
+              onRefresh={loadExternalSignalPreview}
+            />
+          </div>
+        </WorkspaceViewFrame>
+      );
+    }
+
+    if (activeView === "courses") {
+      return (
+        <WorkspaceViewFrame
+          eyebrow="Courses"
+          title="Course visibility"
+          description="Review which courses are visible to students and open the Course Hub when you need to author or edit lessons."
+          actions={
+            <>
+              <Button href="/workspace/courses/hub" variant="primary" size="sm">
+                Open Course Hub
+              </Button>
+              <Button onClick={loadCourses} variant="secondary" size="sm" disabled={isLoadingCourses}>
+                {isLoadingCourses ? "Refreshing..." : "Refresh"}
+              </Button>
+            </>
+          }
+        >
+          <CourseVisibilitySection
+            courses={courses?.courses ?? []}
+            loading={isLoadingCourses}
+            warnings={courses?.warnings ?? []}
+            onRefresh={loadCourses}
+          />
+        </WorkspaceViewFrame>
+      );
+    }
+
+    if (activeView === "practice") {
+      return (
+        <WorkspaceViewFrame
+          eyebrow="Practice"
+          title="Practice insights and assignments"
+          description="See aggregate practice participation, manage drills, review cohorts, and handle feedback without opening private student journals."
+          actions={
+            <Button onClick={refreshActiveView} variant="secondary" size="sm" disabled={isLoadingPracticeInsights || isLoadingPracticeAssignments}>
+              {isLoadingPracticeInsights || isLoadingPracticeAssignments ? "Refreshing..." : "Refresh"}
+            </Button>
+          }
+        >
+          <div className="space-y-6">
+            <WorkspacePracticeInsightsSection
+              insights={practiceInsights}
+              loading={isLoadingPracticeInsights}
+              errorMessage={practiceInsightsErrorMessage}
+              filters={practiceInsightsFilters}
+              onFiltersChange={setPracticeInsightsFilters}
+              onRefresh={loadPracticeInsights}
+            />
+
+            <WorkspacePracticeAssignmentsSection
+              overview={practiceAssignments}
+              students={students?.students ?? []}
+              feedbackOverview={practiceAssignmentFeedback}
+              feedbackFilters={practiceReviewQueueFilters}
+              loading={isLoadingPracticeAssignments}
+              feedbackLoading={isLoadingPracticeAssignmentFeedback}
+              errorMessage={practiceAssignmentsErrorMessage}
+              feedbackErrorMessage={practiceAssignmentFeedbackErrorMessage}
+              onCreateAssignment={createPracticeAssignment}
+              onArchiveAssignment={archivePracticeAssignment}
+              onSaveCohort={savePracticeCohort}
+              onSaveFeedback={savePracticeAssignmentFeedback}
+              onFeedbackFiltersChange={setPracticeReviewQueueFilters}
+              onRefresh={loadPracticeAssignments}
+              onRefreshFeedback={loadPracticeAssignmentFeedback}
+            />
+          </div>
+        </WorkspaceViewFrame>
+      );
+    }
+
+    if (activeView === "copier") {
+      return (
+        <WorkspaceViewFrame
+          eyebrow="Copier"
+          title="Trade Copier readiness"
+          description="Review workspace-level student setup readiness. Student billing, consent, risk, and connection checks remain separate per account."
+        >
+          <WorkspaceCopierFocusedSection
+            overview={cryptoExecution}
+            loading={isLoadingCryptoExecution}
+            errorMessage={cryptoExecutionErrorMessage}
+            onRefresh={loadCryptoExecution}
+          />
+        </WorkspaceViewFrame>
+      );
+    }
+
+    if (activeView === "billing") {
+      return (
+        <WorkspaceViewFrame
+          eyebrow="Billing"
+          title="Licence and billing status"
+          description="Review package capacity, support status, checkout readiness, and verified workspace revenue without changing payment rails."
+        >
+          <div className="space-y-6">
+            <WorkspacePackageStatusSection summary={dashboard.summary} />
+            <WorkspaceBillingPanel overview={billingOverview} loading={isLoadingBilling} />
+          </div>
+        </WorkspaceViewFrame>
+      );
+    }
+
+    if (activeView === "branding") {
+      return (
+        <WorkspaceViewFrame
+          eyebrow="Branding"
+          title="Brand and domain readiness"
+          description="Review workspace display, logo, and domain readiness. TradeHub still reviews brand and domain changes before they appear to students."
+        >
+          <WorkspaceBrandingStatusSection summary={dashboard.summary} />
+        </WorkspaceViewFrame>
+      );
+    }
+
+    if (activeView === "enterprise") {
+      return (
+        <WorkspaceViewFrame
+          eyebrow="Enterprise"
+          title="Deployment, SLA, and integrations"
+          description="Review Enterprise readiness and submit contract-scoped integration requests when this workspace is eligible."
+        >
+          <div className="space-y-6">
+            <WorkspaceEnterpriseStatusSection summary={dashboard.summary} />
+            <WorkspaceEnterpriseIntegrationRequestsSection packageStatus={dashboard.summary.packageStatus} />
+          </div>
+        </WorkspaceViewFrame>
+      );
+    }
+
+    return (
       <WorkspaceOverview
         workspace={dashboard.workspace}
         onboarding={dashboard.onboarding}
         summary={dashboard.summary}
         warnings={dashboard.warnings}
-        onRefresh={refreshAll}
-        loading={
-          isLoadingDashboard ||
-          isLoadingBilling ||
-          isLoadingCryptoExecution ||
-          isLoadingPracticeInsights ||
-          isLoadingPracticeAssignments ||
-          isLoadingPracticeAssignmentFeedback ||
-          isLoadingStudents ||
-          isLoadingCourses ||
-          isLoadingSignals ||
-          isLoadingExternalSignalPreview
-        }
+        onRefresh={refreshActiveView}
+        loading={isLoadingDashboard}
       />
+    );
+  })();
+
+  return (
+    <div className="mx-auto w-full max-w-[112rem] space-y-6">
+      <WorkspaceNavigation activeView={activeView} workspaceName={dashboard.workspace.name} />
 
       <div aria-live="polite" className="space-y-3">
         {errorMessage ? (
@@ -609,88 +1181,15 @@ function WorkspaceDashboard() {
         ) : null}
       </div>
 
-      <WorkspaceBillingPanel overview={billingOverview} loading={isLoadingBilling} />
-
-      <CryptoExecutionOpsSection
-        overview={cryptoExecution}
-        loading={isLoadingCryptoExecution}
-        errorMessage={cryptoExecutionErrorMessage}
-        onRefresh={loadCryptoExecution}
-      />
-
-      <WorkspacePracticeInsightsSection
-        insights={practiceInsights}
-        loading={isLoadingPracticeInsights}
-        errorMessage={practiceInsightsErrorMessage}
-        filters={practiceInsightsFilters}
-        onFiltersChange={setPracticeInsightsFilters}
-        onRefresh={loadPracticeInsights}
-      />
-
-      <WorkspacePracticeAssignmentsSection
-        overview={practiceAssignments}
-        students={students?.students ?? []}
-        feedbackOverview={practiceAssignmentFeedback}
-        feedbackFilters={practiceReviewQueueFilters}
-        loading={isLoadingPracticeAssignments}
-        feedbackLoading={isLoadingPracticeAssignmentFeedback}
-        errorMessage={practiceAssignmentsErrorMessage}
-        feedbackErrorMessage={practiceAssignmentFeedbackErrorMessage}
-        onCreateAssignment={createPracticeAssignment}
-        onArchiveAssignment={archivePracticeAssignment}
-        onSaveCohort={savePracticeCohort}
-        onSaveFeedback={savePracticeAssignmentFeedback}
-        onFeedbackFiltersChange={setPracticeReviewQueueFilters}
-        onRefresh={loadPracticeAssignments}
-        onRefreshFeedback={loadPracticeAssignmentFeedback}
-      />
-
-      <section className="grid gap-6 2xl:grid-cols-[minmax(680px,1.08fr)_minmax(520px,0.92fr)]">
-        <StudentManagementSection
-          students={students?.students ?? []}
-          loading={isLoadingStudents}
-          query={studentQuery}
-          status={studentStatus}
-          warnings={students?.warnings ?? []}
-          onQueryChange={setStudentQuery}
-          onStatusChange={setStudentStatus}
-          onSupportAction={updateStudentSupportState}
-          onRefresh={loadStudents}
-        />
-        <CourseVisibilitySection
-          courses={courses?.courses ?? []}
-          loading={isLoadingCourses}
-          warnings={courses?.warnings ?? []}
-          onRefresh={loadCourses}
-        />
-      </section>
-
-      <SignalManagementSection
-        signals={signals?.signals ?? []}
-        cryptoExecution={cryptoExecution}
-        loading={isLoadingSignals}
-        saving={isSavingSignal}
-        status={signalStatus}
-        warnings={signals?.warnings ?? []}
-        onStatusChange={setSignalStatus}
-        onRefresh={loadSignals}
-        onCreateSignal={createSignal}
-      />
-
-      <ExternalSignalPreviewSection
-        preview={externalSignalPreview}
-        loading={isLoadingExternalSignalPreview}
-        errorMessage={externalSignalPreviewErrorMessage}
-        onRefresh={loadExternalSignalPreview}
-      />
+      {activeContent}
     </div>
   );
 }
 
-export function WorkspacePageClient() {
+export function WorkspacePageClient({ activeView = "home" }: { activeView?: WorkspaceView }) {
   return (
     <RoleGate allowedRole="influencer" nextPath="/workspace">
-      <WorkspaceDashboard />
+      <WorkspaceDashboard activeView={activeView} />
     </RoleGate>
   );
 }

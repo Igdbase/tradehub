@@ -1,16 +1,9 @@
-import { apiError, apiJson } from "@/lib/admin/admin-api";
-import { getStudentCryptoExecutionOverview } from "@/lib/crypto-execution/crypto-execution-repository";
-import { createStudentForexConnection } from "@/lib/crypto-execution/forex-connection-repository";
-import { requireStudent } from "@/lib/firebase/student-auth";
+import { apiError } from "@/lib/admin/admin-api";
+import { legacyStudentCopierRouteRetired } from "@/lib/student-copier/legacy-copier-routes";
 
 export async function POST(request: Request) {
   try {
-    const actor = await requireStudent(request);
-    const payload = await request.json();
-
-    await createStudentForexConnection(actor, payload);
-
-    return apiJson(await getStudentCryptoExecutionOverview(actor), { status: 201 });
+    return await legacyStudentCopierRouteRetired(request);
   } catch (error) {
     return apiError(error);
   }

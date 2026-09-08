@@ -39,7 +39,7 @@ export function WorkspaceBillingPanel({
     return (
       <GlassCard>
         <p className="text-sm leading-6 text-[color:var(--label2)]">
-          Loading workspace billing readiness through the verified API...
+          Loading workspace billing readiness...
         </p>
       </GlassCard>
     );
@@ -50,7 +50,7 @@ export function WorkspaceBillingPanel({
       <GlassCard className="border-[color:color-mix(in_srgb,var(--amber)_26%,transparent)]">
         <p className="eyebrow !text-[color:var(--amber)]">Billing operations</p>
         <p className="mt-2 text-sm leading-6 text-[color:var(--label2)]">
-          Billing overview is not available yet. The workspace dashboard still avoids direct client Firestore reads.
+          Billing overview is not available yet.
         </p>
       </GlassCard>
     );
@@ -72,7 +72,7 @@ export function WorkspaceBillingPanel({
             </h2>
             <p className="break-safe mt-2 text-sm leading-6 text-[color:var(--label2)]">
               Influencer revenue only shows successful Paystack payments and verified Solana
-              payments. Pending, expired, failed, and abandoned intents stay in admin ops.
+              payments. Pending, expired, failed, and abandoned checkouts stay out of influencer revenue.
             </p>
           </div>
           <Badge tone={overview.workspace.paystackSplitReady ? "green" : "amber"}>

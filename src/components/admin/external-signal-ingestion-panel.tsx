@@ -93,6 +93,7 @@ export function ExternalSignalIngestionPanel({
   });
   const [sourceForm, setSourceForm] = useState({
     sourceRef: "manual_seed_stage24b",
+    telegramChatIdentity: "",
     safeLabel: "Manual seed source",
     sourceType: "manual_admin_seed" as ExternalSignalSourceType,
     workspaceId: "",
@@ -190,9 +191,12 @@ export function ExternalSignalIngestionPanel({
   }
 
   async function submitSource() {
+    const sourceType = sourceForm.sourceType;
+
     await upsertSource({
       action: "upsert",
       ...sourceForm,
+      parserMode: sourceType === "telegram_channel" ? "telegram_like_mock" : sourceForm.parserMode,
       allowedSymbols: splitList(sourceForm.allowedSymbols),
       allowedAssetClasses: splitList(sourceForm.allowedAssetClasses) as ExternalSignalAssetClass[],
       riskLimits: {
@@ -214,10 +218,9 @@ export function ExternalSignalIngestionPanel({
             Master-trader candidate moderation
           </h2>
           <p className="break-safe mt-2 text-sm leading-6 text-[color:var(--label2)]">
-            Master-trader signal intake contract plus Super Admin-only workflow for manual/mock parsing,
-            source allowlists, and preview-only review. Approved preview candidates are non-executable:
-            they do not publish workspace signals, trigger AutoCopy, reach students, call providers, or
-            place broker/exchange orders.
+            Super Admin-only workflow for manual/mock parsing, Telegram source setup, source allowlists,
+            and preview review. Telegram webhook ingestion stays disabled unless configured, and approved
+            previews publish only through the controlled workspace bridge with existing Copier gates.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -285,20 +288,23 @@ export function ExternalSignalIngestionPanel({
             <div className="rounded-[18px] border border-[color:var(--glass-border)] bg-[color:var(--surface)] p-4">
               <h3 className="text-sm font-semibold text-[color:var(--label)]">Source allowlist controls</h3>
               <p className="mt-1 text-xs leading-5 text-[color:var(--label3)]">
-                Store masked source refs only. This does not connect to Telegram, webhooks, or external feeds.
+                Telegram chat/channel identity is converted server-side into a keyed opaque identity. Raw identities,
+                tokens, handles, provider payloads, and webhook secrets are not stored or returned.
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <input className="rounded-full border border-[color:var(--glass-border)] bg-transparent px-4 py-2 text-sm" value={sourceForm.sourceRef} onChange={(event) => setSourceForm((current) => ({ ...current, sourceRef: event.target.value }))} placeholder="Source ref" />
-                <input className="rounded-full border border-[color:var(--glass-border)] bg-transparent px-4 py-2 text-sm" value={sourceForm.safeLabel} onChange={(event) => setSourceForm((current) => ({ ...current, safeLabel: event.target.value }))} placeholder="Safe label" />
-                <select className="rounded-full border border-[color:var(--glass-border)] bg-[color:var(--surface)] px-4 py-2 text-sm" value={sourceForm.sourceType} onChange={(event) => setSourceForm((current) => ({ ...current, sourceType: event.target.value as ExternalSignalSourceType }))}>
+                <input aria-label="Source reference" className="rounded-full border border-[color:var(--glass-border)] bg-transparent px-4 py-2 text-sm" value={sourceForm.sourceRef} onChange={(event) => setSourceForm((current) => ({ ...current, sourceRef: event.target.value }))} placeholder="Source ref" />
+                <input aria-label="Telegram channel identity" className="rounded-full border border-[color:var(--glass-border)] bg-transparent px-4 py-2 text-sm" value={sourceForm.telegramChatIdentity} onChange={(event) => setSourceForm((current) => ({ ...current, telegramChatIdentity: event.target.value }))} placeholder="Telegram chat/channel identity" />
+                <input aria-label="Source label" className="rounded-full border border-[color:var(--glass-border)] bg-transparent px-4 py-2 text-sm" value={sourceForm.safeLabel} onChange={(event) => setSourceForm((current) => ({ ...current, safeLabel: event.target.value }))} placeholder="Safe label" />
+                <select aria-label="Source type" className="rounded-full border border-[color:var(--glass-border)] bg-[color:var(--surface)] px-4 py-2 text-sm" value={sourceForm.sourceType} onChange={(event) => setSourceForm((current) => ({ ...current, sourceType: event.target.value as ExternalSignalSourceType }))}>
                   {sourceTypes.map((sourceType) => <option key={sourceType} value={sourceType}>{sourceType.replace(/_/g, " ")}</option>)}
                 </select>
-                <select className="rounded-full border border-[color:var(--glass-border)] bg-[color:var(--surface)] px-4 py-2 text-sm" value={sourceForm.status} onChange={(event) => setSourceForm((current) => ({ ...current, status: event.target.value as "enabled" | "disabled" }))}>
+                <select aria-label="Source status" className="rounded-full border border-[color:var(--glass-border)] bg-[color:var(--surface)] px-4 py-2 text-sm" value={sourceForm.status} onChange={(event) => setSourceForm((current) => ({ ...current, status: event.target.value as "enabled" | "disabled" }))}>
                   <option value="disabled">disabled</option>
                   <option value="enabled">enabled</option>
                 </select>
-                <input className="rounded-full border border-[color:var(--glass-border)] bg-transparent px-4 py-2 text-sm" value={sourceForm.allowedSymbols} onChange={(event) => setSourceForm((current) => ({ ...current, allowedSymbols: event.target.value }))} placeholder="Allowed symbols" />
-                <input className="rounded-full border border-[color:var(--glass-border)] bg-transparent px-4 py-2 text-sm" value={sourceForm.workspaceId} onChange={(event) => setSourceForm((current) => ({ ...current, workspaceId: event.target.value }))} placeholder="Workspace scope optional" />
+                <input aria-label="Allowed symbols" className="rounded-full border border-[color:var(--glass-border)] bg-transparent px-4 py-2 text-sm" value={sourceForm.allowedSymbols} onChange={(event) => setSourceForm((current) => ({ ...current, allowedSymbols: event.target.value }))} placeholder="Allowed symbols" />
+                <input aria-label="Workspace scope" className="rounded-full border border-[color:var(--glass-border)] bg-transparent px-4 py-2 text-sm" value={sourceForm.workspaceId} onChange={(event) => setSourceForm((current) => ({ ...current, workspaceId: event.target.value }))} placeholder="Workspace scope" />
+                <input aria-label="Allowed markets" className="rounded-full border border-[color:var(--glass-border)] bg-transparent px-4 py-2 text-sm sm:col-span-2" value={sourceForm.allowedAssetClasses} onChange={(event) => setSourceForm((current) => ({ ...current, allowedAssetClasses: event.target.value }))} placeholder="Allowed markets" />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button type="button" size="sm" disabled={isSubmitting} onClick={submitSource}>
@@ -403,7 +409,7 @@ export function ExternalSignalIngestionPanel({
                           {source.safeLabel}
                         </p>
                         <p className="break-safe mt-1 text-xs leading-5 text-[color:var(--label3)]">
-                          {source.maskedSourceRef} / {source.sourceType.replace(/_/g, " ")} / {source.parserMode.replace(/_/g, " ")}
+                          {source.maskedSourceRef} / {source.sourceType.replace(/_/g, " ")}
                         </p>
                       </div>
                       <Badge tone={source.status === "enabled" ? "amber" : "neutral"}>{source.status}</Badge>

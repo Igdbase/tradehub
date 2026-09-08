@@ -86,14 +86,11 @@ assert(
   "maskedSourceRef",
   "sourceSafeRef",
   "safeReason",
-  "Candidates are quarantined/reviewed only and never publish workspace signals or trigger AutoCopy/live execution."
+  "createTelegramSignalOpaqueIdentity"
 ].forEach((needle) => assertIncludes(repository, needle, "external signal ingestion repository"));
 
 [
   "rawMessage",
-  "rawTelegram",
-  "chatId",
-  "telegramChat",
   "telegramUsername",
   "phoneNumber",
   "botToken",
@@ -109,11 +106,11 @@ assertIncludes(route, "getAdminExternalSignalIngestionOverview", "external signa
 [
   "ExternalSignalIngestionPanel",
   "Stage 24A external signal ingestion",
-  "Master-trader signal intake contract",
+  "Telegram source setup",
   "No AutoCopy execution",
   "maskedSourceRef",
   "No external signal candidates are visible yet",
-  "does not connect to Telegram"
+  "converted server-side into a keyed opaque identity"
 ].forEach((needle) => assertIncludes(panel, needle, "external signal ingestion panel"));
 
 assertIncludes(adminClient, "ExternalSignalIngestionPanel", "admin page client");

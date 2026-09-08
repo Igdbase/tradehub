@@ -64,3 +64,40 @@ export async function signInAs(page, persona, nextPath) {
   );
   await assertTradeHubPageHealthy(page);
 }
+
+export async function signOutIfSignedIn(page) {
+  const signOutButton = page.getByRole("button", { name: /^Sign out$/i }).first();
+
+  if (!(await signOutButton.isVisible().catch(() => false))) {
+    return;
+  }
+
+  await signOutButton.click();
+  await page.waitForURL((url) => url.pathname === "/login", { timeout: 15_000 }).catch(async () => {
+    await page.goto("/login");
+  });
+  await expect(page.getByLabel("Email"), "seeded login form should be visible after sign out").toBeVisible({ timeout: 15_000 });
+}
+
+export async function getDemoAuthToken(page, persona) {
+  const user = demoUsers[persona];
+
+  if (!user) {
+    throw new Error(`Unknown browser QA persona: ${persona}`);
+  }
+
+  const authResponse = await page.request.post(
+    "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=stage15f-local",
+    {
+      data: {
+        email: user.email,
+        password: user.password,
+        returnSecureToken: true
+      }
+    }
+  );
+
+  expect(authResponse.ok(), `${persona} demo token should be available`).toBeTruthy();
+
+  return (await authResponse.json()).idToken;
+}

@@ -6,7 +6,7 @@ import {
   evaluateStaleSignalPolicy,
   mapCrossAssetAutoCopyPreferencesRecord
 } from "@/lib/crypto-execution/auto-copy-preferences";
-import { isCryptoAutoCopyBillingActive } from "@/lib/crypto-execution/crypto-autocopy-subscription-repository";
+import { isTradeCopierBillingActive } from "@/lib/student-copier/student-copier-billing";
 import { loadExchangeCredential } from "@/lib/crypto-execution/credential-vault";
 import {
   mapExchangeConnectionRecord,
@@ -21,6 +21,7 @@ import {
 import { resolveStudentEntitlements } from "@/lib/entitlements/student-entitlements";
 import { getFirebaseAdminClients } from "@/lib/firebase/admin";
 import { AdminApiError } from "@/lib/firebase/admin-errors";
+import { isPublishedRoutableTradeHubSignalForMarket } from "@/lib/signals/tradehub-signal-source-guards";
 import type { VerifiedSuperAdmin } from "@/lib/firebase/admin-auth";
 import type { VerifiedInfluencer } from "@/lib/firebase/influencer-auth";
 import {
@@ -516,7 +517,7 @@ export async function routePublishedCryptoSignalForLiveSandboxExecution({
   let blockedCount = 0;
   let intentCount = 0;
 
-  if (signal.status !== "published" || signal.market !== "crypto") {
+  if (!isPublishedRoutableTradeHubSignalForMarket(signal, "crypto")) {
     return {
       workspaceId: signal.workspaceId,
       signalId: signal.signalId,
@@ -972,7 +973,7 @@ export async function runLiveSandboxExecutionWorker(
       continue;
     }
 
-    const cryptoAutoCopyBilling = await isCryptoAutoCopyBillingActive(workspaceId, intent.studentId);
+    const cryptoAutoCopyBilling = await isTradeCopierBillingActive(workspaceId, intent.studentId);
 
     if (!cryptoAutoCopyBilling.active) {
       await writeAttemptForIntent({

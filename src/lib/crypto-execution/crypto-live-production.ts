@@ -6,7 +6,7 @@ import {
   evaluateStaleSignalPolicy,
   mapCrossAssetAutoCopyPreferencesRecord
 } from "@/lib/crypto-execution/auto-copy-preferences";
-import { isCryptoAutoCopyBillingActive } from "@/lib/crypto-execution/crypto-autocopy-subscription-repository";
+import { isTradeCopierBillingActive } from "@/lib/student-copier/student-copier-billing";
 import {
   getCredentialStorageReadiness,
   loadExchangeCredential
@@ -26,9 +26,16 @@ import {
 import { resolveStudentEntitlements } from "@/lib/entitlements/student-entitlements";
 import { getFirebaseAdminClients } from "@/lib/firebase/admin";
 import { AdminApiError } from "@/lib/firebase/admin-errors";
+import {
+  isPublishedRoutableTradeHubSignalForMarket,
+  isSignalSourceStillAllowedForExecution
+} from "@/lib/signals/tradehub-signal-source-guards";
 import type { VerifiedSuperAdmin } from "@/lib/firebase/admin-auth";
 import type { VerifiedInfluencer } from "@/lib/firebase/influencer-auth";
-import { mapWorkspaceForDashboard } from "@/lib/workspace/dashboard-mappers";
+import {
+  mapSignalRecord,
+  mapWorkspaceForDashboard
+} from "@/lib/workspace/dashboard-mappers";
 import {
   canonicalSignalPair,
   normalizeSignalPairForMarket
@@ -72,6 +79,10 @@ const PRODUCTION_CANARY_DEFAULT_MAX_USDT = 5;
 const CRYPTO_LIVE_COHORT_CANDIDATE_LIMIT = 2;
 const PRODUCTION_PREVIEW_LIMIT = 4;
 const PRODUCTION_READ_LIMIT = PRODUCTION_PREVIEW_LIMIT + 1;
+const LEDGER_PROJECTION_REPAIR_BATCH_LIMIT = 10;
+const LEDGER_PROJECTION_MAX_ATTEMPTS = 3;
+const LEDGER_PROJECTION_RETRY_DELAY_MS = 60_000;
+const LEDGER_PROJECTION_LEASE_MS = 120_000;
 const CONNECTION_STALE_MS = 1000 * 60 * 60 * 12;
 const DEFAULT_MAX_ORDER_USDT = 25;
 const PRODUCTION_RECONCILABLE_STATUSES: CryptoLiveProductionIntentStatus[] = [
@@ -269,6 +280,10 @@ function safeCandidateRef(value: string) {
   return `cohort_${crypto.createHash("sha256").update(value).digest("hex").slice(0, 12)}`;
 }
 
+function safeString(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
 function check(key: string, allowed: boolean, message: string) {
   return {
     key,
@@ -463,7 +478,7 @@ function evaluateProductionGate({
     check("live_consent_confirmations", consent.personalExchangeConfirmed && consent.notFundedOrPropFirmConfirmed && consent.withdrawalsDisabledConfirmed && consent.liveLossRiskConfirmed && consent.tradeHubNoCustodyConfirmed, "Production live consent confirmations must all be accepted."),
     check("execution_mode", autoCopyPreferences.executionMode === "full_auto", autoCopyPreferences.executionMode === "confirm_before_execute" ? "Student requires confirmation before production live execution." : "Student selected alerts-only mode."),
     check("stale_signal", staleDecision.outcome === "route_normally", staleDecision.safeMessage),
-    check("student_pause", !preferences.studentPaused && !autoCopyPreferences.studentPaused && consent.status !== "paused" && autoCopyPreferences.consentStatus !== "paused" && autoCopyPreferences.consentStatus !== "revoked", "Student production live pause or shared revoke state must be off."),
+    check("student_pause", !preferences.studentPaused && !autoCopyPreferences.studentPaused && !autoCopyPreferences.killSwitchEnabled && consent.status !== "paused" && autoCopyPreferences.consentStatus !== "paused" && autoCopyPreferences.consentStatus !== "revoked", "Student production live pause, kill switch, or shared revoke state must be off."),
     check("student_allowlist", allowlists.studentIds.includes(consent.studentId), "Student must be production live beta allowlisted."),
     check("symbol_allowlist", symbol !== "" && allowlists.symbols.includes(symbol), "Symbol must be production live beta allowlisted."),
     check("production_connection", Boolean(connection), "Verified production exchange connection is required."),
@@ -778,6 +793,429 @@ function canaryRuntimeGatesOpen({
   );
 }
 
+function isProviderConfirmedCryptoStatus(status: CryptoLiveProductionIntentStatus) {
+  return status === "filled_live" || status === "partially_filled_live";
+}
+
+type LedgerProjectionRepairSummary = {
+  attemptedCount: number;
+  repairedCount: number;
+  retryScheduledCount: number;
+  finalFailedCount: number;
+  skippedCount: number;
+  notApplicableCount: number;
+};
+
+function emptyLedgerProjectionRepairSummary(): LedgerProjectionRepairSummary {
+  return {
+    attemptedCount: 0,
+    repairedCount: 0,
+    retryScheduledCount: 0,
+    finalFailedCount: 0,
+    skippedCount: 0,
+    notApplicableCount: 0
+  };
+}
+
+function projectionOwnerToken(prefix: string) {
+  return `${prefix}_${crypto.randomBytes(8).toString("hex")}`;
+}
+
+function retryableProjectionStatuses(status: unknown) {
+  return status === "pending" || status === "retry_scheduled" || status === "failed" || status === "in_progress";
+}
+
+type LedgerProjectionClaimResult =
+  | { outcome: "claimed"; attempt: LiveProductionOrderAttemptRecord }
+  | { outcome: "skipped" }
+  | { outcome: "not_applicable" }
+  | { outcome: "final_failed" };
+
+type LedgerProjectionResult =
+  | { outcome: "projected" }
+  | { outcome: "retry_scheduled" }
+  | { outcome: "final_failed" }
+  | { outcome: "not_applicable" }
+  | { outcome: "stale" };
+
+async function finalizeCryptoLedgerProjection({
+  attempt,
+  ownerToken,
+  success,
+  notApplicable = false
+}: {
+  attempt: LiveProductionOrderAttemptRecord;
+  ownerToken: string;
+  success: boolean;
+  notApplicable?: boolean;
+}): Promise<LedgerProjectionResult> {
+  const { db } = getFirebaseAdminClients();
+  const now = new Date().toISOString();
+  const attemptRef = db.doc(`workspaces/${attempt.workspaceId}/live_order_attempts/${attempt.orderAttemptId}`);
+
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(attemptRef);
+
+    if (!snapshot.exists) {
+      return { outcome: "stale" as const };
+    }
+
+    const current = snapshot.data() as LiveProductionOrderAttemptRecord;
+
+    if (current.ledgerProjectionStatus !== "in_progress" || current.ledgerProjectionLeaseOwner !== ownerToken) {
+      return { outcome: "stale" as const };
+    }
+
+    const ledgerProjectionAttempts = (current.ledgerProjectionAttempts ?? 0) + 1;
+
+    if (notApplicable || !isProviderConfirmedCryptoStatus(current.status) || !current.providerExecutionIdentity) {
+      transaction.set(attemptRef, {
+        ledgerProjectionStatus: "not_applicable",
+        ledgerProjectionAttempts,
+        ledgerProjectionLeaseOwner: "",
+        ledgerProjectionLeaseExpiresAt: "",
+        updatedAt: now
+      }, { merge: true });
+      return { outcome: "not_applicable" as const };
+    }
+
+    if (success) {
+      transaction.set(attemptRef, {
+        ledgerProjectionStatus: "projected",
+        ledgerProjectionAttempts,
+        ledgerProjectionLastError: "",
+        ledgerProjectionNextAttemptAt: "",
+        ledgerProjectionLeaseOwner: "",
+        ledgerProjectionLeaseExpiresAt: "",
+        ledgerProjectedAt: now,
+        updatedAt: now
+      }, { merge: true });
+      return { outcome: "projected" as const };
+    }
+
+    const terminal = ledgerProjectionAttempts >= LEDGER_PROJECTION_MAX_ATTEMPTS;
+    const retryAt = new Date(Date.now() + LEDGER_PROJECTION_RETRY_DELAY_MS).toISOString();
+    transaction.set(attemptRef, {
+      ledgerProjectionStatus: terminal ? "final_failed" : "retry_scheduled",
+      ledgerProjectionAttempts,
+      ledgerProjectionLastError: "ledger_projection_failed",
+      ledgerProjectionNextAttemptAt: terminal ? "" : retryAt,
+      ledgerProjectionLeaseOwner: "",
+      ledgerProjectionLeaseExpiresAt: "",
+      updatedAt: now
+    }, { merge: true });
+    return { outcome: terminal ? "final_failed" as const : "retry_scheduled" as const };
+  });
+}
+
+async function projectCryptoProductionAttemptToLedger(attempt: LiveProductionOrderAttemptRecord, ownerToken: string): Promise<LedgerProjectionResult> {
+  if (!isProviderConfirmedCryptoStatus(attempt.status) || !attempt.providerExecutionIdentity) {
+    return finalizeCryptoLedgerProjection({ attempt, ownerToken, success: false, notApplicable: true });
+  }
+
+  try {
+    await writeAccountLinkedLedgerEntry(mapCryptoProductionAttemptToLedgerEntry({
+      ...attempt,
+      workspaceId: attempt.workspaceId,
+      connectionId: attempt.connectionId
+    }));
+    return finalizeCryptoLedgerProjection({ attempt, ownerToken, success: true });
+  } catch {
+    return finalizeCryptoLedgerProjection({ attempt, ownerToken, success: false });
+  }
+}
+
+async function claimCryptoLedgerProjectionAttempt(
+  workspaceId: string,
+  attemptId: string,
+  ownerToken: string,
+  nowMs: number
+): Promise<LedgerProjectionClaimResult> {
+  const { db } = getFirebaseAdminClients();
+  const attemptRef = db.doc(`workspaces/${workspaceId}/live_order_attempts/${attemptId}`);
+  const now = new Date(nowMs).toISOString();
+  const leaseExpiresAt = new Date(nowMs + LEDGER_PROJECTION_LEASE_MS).toISOString();
+
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(attemptRef);
+
+    if (!snapshot.exists) {
+      return { outcome: "skipped" as const };
+    }
+
+    const attempt = snapshot.data() as LiveProductionOrderAttemptRecord;
+    const leaseExpiresMs = Date.parse(attempt.ledgerProjectionLeaseExpiresAt ?? "");
+    const nextAttemptMs = Date.parse(attempt.ledgerProjectionNextAttemptAt ?? now);
+
+    if (!retryableProjectionStatuses(attempt.ledgerProjectionStatus)) {
+      return { outcome: "skipped" as const };
+    }
+
+    if (attempt.ledgerProjectionStatus === "in_progress" && Number.isFinite(leaseExpiresMs) && leaseExpiresMs > nowMs) {
+      return { outcome: "skipped" as const };
+    }
+
+    if (Number.isFinite(nextAttemptMs) && nextAttemptMs > nowMs) {
+      return { outcome: "skipped" as const };
+    }
+
+    if (!isProviderConfirmedCryptoStatus(attempt.status) || !attempt.providerExecutionIdentity) {
+      transaction.set(attemptRef, {
+        ledgerProjectionStatus: "not_applicable",
+        ledgerProjectionLeaseOwner: "",
+        ledgerProjectionLeaseExpiresAt: "",
+        updatedAt: now
+      }, { merge: true });
+      return { outcome: "not_applicable" as const };
+    }
+
+    if ((attempt.ledgerProjectionAttempts ?? 0) >= LEDGER_PROJECTION_MAX_ATTEMPTS) {
+      transaction.set(attemptRef, {
+        ledgerProjectionStatus: "final_failed",
+        ledgerProjectionNextAttemptAt: "",
+        ledgerProjectionLeaseOwner: "",
+        ledgerProjectionLeaseExpiresAt: "",
+        updatedAt: now
+      }, { merge: true });
+      return { outcome: "final_failed" as const };
+    }
+
+    transaction.set(attemptRef, {
+      ledgerProjectionStatus: "in_progress",
+      ledgerProjectionLeaseOwner: ownerToken,
+      ledgerProjectionLeaseExpiresAt: leaseExpiresAt,
+      updatedAt: now
+    }, { merge: true });
+
+    return {
+      outcome: "claimed" as const,
+      attempt: { ...attempt, ledgerProjectionStatus: "in_progress" as const, ledgerProjectionLeaseOwner: ownerToken, ledgerProjectionLeaseExpiresAt: leaseExpiresAt }
+    };
+  });
+}
+
+async function queryCryptoLedgerProjectionWork(workspaceId: string, now: string, limit: number) {
+  const { db } = getFirebaseAdminClients();
+  const collection = db.collection(`workspaces/${workspaceId}/live_order_attempts`);
+  const boundedLimit = Math.max(1, Math.min(limit, LEDGER_PROJECTION_REPAIR_BATCH_LIMIT));
+  const [dueSnapshot, expiredSnapshot] = await Promise.all([
+    collection
+      .where("executionMode", "==", "live")
+      .where("environment", "==", "production")
+      .where("ledgerProjectionStatus", "in", ["pending", "retry_scheduled", "failed"])
+      .where("ledgerProjectionNextAttemptAt", "<=", now)
+      .orderBy("ledgerProjectionNextAttemptAt", "asc")
+      .orderBy("updatedAt", "asc")
+      .limit(boundedLimit)
+      .get(),
+    collection
+      .where("executionMode", "==", "live")
+      .where("environment", "==", "production")
+      .where("ledgerProjectionStatus", "==", "in_progress")
+      .where("ledgerProjectionLeaseExpiresAt", "<=", now)
+      .orderBy("ledgerProjectionLeaseExpiresAt", "asc")
+      .orderBy("updatedAt", "asc")
+      .limit(boundedLimit)
+      .get()
+  ]);
+
+  return [...dueSnapshot.docs, ...expiredSnapshot.docs]
+    .sort((left, right) => {
+      const leftData = left.data();
+      const rightData = right.data();
+      const leftEligibleAt = leftData.ledgerProjectionStatus === "in_progress"
+        ? safeString(leftData.ledgerProjectionLeaseExpiresAt)
+        : safeString(leftData.ledgerProjectionNextAttemptAt);
+      const rightEligibleAt = rightData.ledgerProjectionStatus === "in_progress"
+        ? safeString(rightData.ledgerProjectionLeaseExpiresAt)
+        : safeString(rightData.ledgerProjectionNextAttemptAt);
+      const eligibleCompare = leftEligibleAt.localeCompare(rightEligibleAt);
+      if (eligibleCompare !== 0) return eligibleCompare;
+      const updatedCompare = safeString(leftData.updatedAt).localeCompare(safeString(rightData.updatedAt));
+      if (updatedCompare !== 0) return updatedCompare;
+      return left.id.localeCompare(right.id);
+    })
+    .slice(0, boundedLimit);
+}
+
+export async function repairPendingCryptoLedgerProjections(workspaceId: string, limit = LEDGER_PROJECTION_REPAIR_BATCH_LIMIT): Promise<LedgerProjectionRepairSummary> {
+  const nowMs = Date.now();
+  const now = new Date(nowMs).toISOString();
+  const ownerToken = projectionOwnerToken("crypto_projection");
+  const summary = emptyLedgerProjectionRepairSummary();
+
+  for (const doc of await queryCryptoLedgerProjectionWork(workspaceId, now, limit)) {
+    const claim = await claimCryptoLedgerProjectionAttempt(workspaceId, doc.id, ownerToken, nowMs);
+
+    if (claim.outcome === "skipped") {
+      summary.skippedCount += 1;
+      continue;
+    }
+
+    if (claim.outcome === "not_applicable") {
+      summary.notApplicableCount += 1;
+      continue;
+    }
+
+    if (claim.outcome === "final_failed") {
+      summary.finalFailedCount += 1;
+      continue;
+    }
+
+    summary.attemptedCount += 1;
+    const result = await projectCryptoProductionAttemptToLedger(claim.attempt, ownerToken);
+
+    if (result.outcome === "projected") {
+      summary.repairedCount += 1;
+    } else if (result.outcome === "final_failed") {
+      summary.finalFailedCount += 1;
+    } else if (result.outcome === "retry_scheduled") {
+      summary.retryScheduledCount += 1;
+    } else if (result.outcome === "not_applicable") {
+      summary.notApplicableCount += 1;
+    } else {
+      summary.skippedCount += 1;
+    }
+  }
+
+  return summary;
+}
+
+async function revalidateCryptoIntentBeforeProvider({
+  workspaceId,
+  intent,
+  notional
+}: {
+  workspaceId: string;
+  intent: LiveProductionExecutionIntentRecord;
+  notional: number;
+}) {
+  const { db } = getFirebaseAdminClients();
+  const signalSnapshot = await db.doc(`workspaces/${workspaceId}/signals/${intent.signalId}`).get();
+
+  if (!signalSnapshot.exists) {
+    return { ok: false as const, code: "signal_missing", safeMessage: "Production canary stopped because the signal is no longer available." };
+  }
+
+  const signal = mapSignalRecord(cryptoRecordFromSnapshot(signalSnapshot, "signalId"), workspaceId);
+  const normalizedSymbol = normalizeSignalPairForMarket(signal.pair, "crypto");
+  const signalSourceAllowed = await isSignalSourceStillAllowedForExecution(signal, workspaceId);
+
+  if (
+    signal.workspaceId !== workspaceId ||
+    signal.signalId !== intent.signalId ||
+    !isPublishedRoutableTradeHubSignalForMarket(signal, "crypto") ||
+    !signalSourceAllowed ||
+    normalizedSymbol !== intent.symbol ||
+    signal.direction !== intent.side ||
+    signal.updatedAt !== intent.sourceSignalVersion
+  ) {
+    return { ok: false as const, code: "signal_changed", safeMessage: "Production canary stopped because the signal changed after routing." };
+  }
+
+  const workspaceSnapshot = await db.doc(`workspaces/${workspaceId}`).get();
+
+  if (!workspaceSnapshot.exists) {
+    return { ok: false as const, code: "workspace_missing", safeMessage: "Production canary stopped because the workspace is no longer available." };
+  }
+
+  const workspace = mapWorkspaceForDashboard(workspaceSnapshot, workspaceId);
+  const [
+    { platformControl, workspaceControl },
+    allowlists,
+    studentSnapshot,
+    subscriptionSnapshot,
+    consentSnapshot,
+    preferencesSnapshot,
+    autoCopyPreferenceSnapshot,
+    connectionsSnapshot,
+    billing
+  ] = await Promise.all([
+    getProductionControls(workspaceId),
+    getProductionAllowlists(workspaceId),
+    db.doc(`workspaces/${workspaceId}/students/${intent.studentId}`).get(),
+    db.doc(`workspaces/${workspaceId}/students/${intent.studentId}/subscriptions/current`).get(),
+    db.doc(`workspaces/${workspaceId}/students/${intent.studentId}/live_consents/current`).get(),
+    db.doc(`workspaces/${workspaceId}/students/${intent.studentId}/live_execution_preferences/current`).get(),
+    db.doc(`workspaces/${workspaceId}/students/${intent.studentId}/auto_copy_preferences/crypto`).get(),
+    db.collection(`workspaces/${workspaceId}/students/${intent.studentId}/exchange_connections`)
+      .orderBy("updatedAt", "desc")
+      .limit(10)
+      .get(),
+    isTradeCopierBillingActive(workspaceId, intent.studentId)
+  ]);
+
+  if (!studentSnapshot.exists) {
+    return { ok: false as const, code: "student_missing", safeMessage: "Production canary stopped because the student is no longer available." };
+  }
+
+  if (!billing.active) {
+    return { ok: false as const, code: "trade_copier_billing", safeMessage: billing.reason || "Trade Copier subscription is required before live crypto routing." };
+  }
+
+  const studentRecord = cryptoRecordFromSnapshot(studentSnapshot, "studentId");
+  const subscription = subscriptionSnapshot.exists
+    ? mapSubscriptionRecord(
+        billingRecordFromSnapshot(subscriptionSnapshot, "subscriptionId"),
+        workspaceId,
+        intent.studentId
+      )
+    : null;
+  const entitlements = resolveStudentEntitlements({
+    workspace,
+    studentRecord,
+    subscription,
+    claimedTierId: asString(studentRecord.tierId) || null
+  });
+  const consent = normalizeConsent(
+    consentSnapshot.exists ? cryptoRecordFromSnapshot(consentSnapshot, "consentId") : null,
+    workspaceId,
+    intent.studentId
+  );
+  const preferences = normalizePreferences(
+    preferencesSnapshot.exists ? cryptoRecordFromSnapshot(preferencesSnapshot, "preferenceId") : null,
+    workspaceId,
+    intent.studentId
+  );
+  const autoCopyPreferences = mapCrossAssetAutoCopyPreferencesRecord({
+    record: autoCopyPreferenceSnapshot.exists
+      ? cryptoRecordFromSnapshot(autoCopyPreferenceSnapshot, "preferenceId")
+      : null,
+    workspaceId,
+    studentId: intent.studentId,
+    market: "crypto"
+  });
+  const connections = connectionsSnapshot.docs.map((snapshot) =>
+    toExchangeConnectionSummary(mapExchangeConnectionRecord(
+      cryptoRecordFromSnapshot(snapshot, "connectionId"),
+      { workspaceId, studentId: intent.studentId, connectionId: snapshot.id }
+    ))
+  );
+  const decision = evaluateProductionGate({
+    signal,
+    entitlements,
+    consent,
+    preferences,
+    autoCopyPreferences,
+    connections,
+    platformControl,
+    workspaceControl,
+    allowlists
+  });
+
+  if (
+    !decision.allowed ||
+    !decision.connection ||
+    decision.connection.connectionId !== intent.connectionId ||
+    decision.symbol !== intent.symbol ||
+    Math.min(intent.notionalUsdt, notional) <= 0
+  ) {
+    return { ok: false as const, code: "final_gate_blocked", safeMessage: decision.blockedReason || "Production canary stopped because final execution gates no longer pass." };
+  }
+
+  return { ok: true as const, signal, platformControl, workspaceControl, connection: decision.connection };
+}
+
 async function appendProductionAuditEvent({
   actorType,
   actorId,
@@ -835,7 +1273,24 @@ export async function routePublishedCryptoSignalForLiveProductionExecution({
   let blockedCount = 0;
   let intentCount = 0;
 
-  if (signal.status !== "published" || signal.market !== "crypto") {
+  if (actor.workspaceId !== signal.workspaceId) {
+    return {
+      workspaceId: actor.workspaceId,
+      signalId: signal.signalId,
+      routed: false,
+      candidateLimit: PRODUCTION_LIVE_BETA_CANDIDATE_LIMIT,
+      candidateCount: 0,
+      readyCount,
+      blockedCount,
+      intentCount,
+      dryRunOnly: env.productionDryRun,
+      bounded: false,
+      warnings: ["Production live routing skipped because the actor workspace does not own the signal."],
+      completedAt: now
+    };
+  }
+
+  if (!isPublishedRoutableTradeHubSignalForMarket(signal, "crypto")) {
     return {
       workspaceId: signal.workspaceId,
       signalId: signal.signalId,
@@ -905,8 +1360,9 @@ export async function routePublishedCryptoSignalForLiveProductionExecution({
   for (const studentDoc of studentSnapshot.docs) {
     const studentRecord = cryptoRecordFromSnapshot(studentDoc, "studentId");
     const studentId = asString(studentRecord.studentId) || studentDoc.id;
-    const [subscriptionSnapshot, consentSnapshot, preferencesSnapshot, autoCopyPreferenceSnapshot, connectionsSnapshot] = await Promise.all([
+    const [subscriptionSnapshot, tradeCopierBilling, consentSnapshot, preferencesSnapshot, autoCopyPreferenceSnapshot, connectionsSnapshot] = await Promise.all([
       db.doc(`workspaces/${signal.workspaceId}/students/${studentId}/subscriptions/current`).get(),
+      isTradeCopierBillingActive(signal.workspaceId, studentId),
       db.doc(`workspaces/${signal.workspaceId}/students/${studentId}/live_consents/current`).get(),
       db.doc(`workspaces/${signal.workspaceId}/students/${studentId}/live_execution_preferences/current`).get(),
       db.doc(`workspaces/${signal.workspaceId}/students/${studentId}/auto_copy_preferences/crypto`).get(),
@@ -952,7 +1408,7 @@ export async function routePublishedCryptoSignalForLiveProductionExecution({
         { workspaceId: signal.workspaceId, studentId, connectionId: snapshot.id }
       ))
     );
-    const decision = evaluateProductionGate({
+    const baseDecision = evaluateProductionGate({
       signal,
       entitlements,
       consent,
@@ -963,6 +1419,17 @@ export async function routePublishedCryptoSignalForLiveProductionExecution({
       workspaceControl,
       allowlists
     });
+    const decision = tradeCopierBilling.active
+      ? baseDecision
+      : {
+          ...baseDecision,
+          allowed: false,
+          checks: [
+            ...baseDecision.checks,
+            check("trade_copier_billing", false, tradeCopierBilling.reason || "Trade Copier subscription is required before live crypto routing.")
+          ],
+          blockedReason: tradeCopierBilling.reason || "Trade Copier subscription is required before live crypto routing."
+        };
     const connectionId = decision.connection?.connectionId ?? "none";
     const intentId = deterministicId("live_prod", [
       signal.workspaceId,
@@ -1150,6 +1617,11 @@ async function writeAttemptForIntent({
       providerOrderId: exchangeOrderId,
       clientOrderId: exchangeClientOrderId ?? intent.exchangeClientOrderId
     }),
+    ledgerProjectionStatus: isProviderConfirmedCryptoStatus(status) ? "pending" : "not_applicable",
+    ledgerProjectionAttempts: 0,
+    ledgerProjectionNextAttemptAt: isProviderConfirmedCryptoStatus(status) ? now : "",
+    ledgerProjectionLeaseOwner: "",
+    ledgerProjectionLeaseExpiresAt: "",
     canaryRunId,
     canaryConfirmedBy,
     canaryConfirmedAt: canaryConfirmedBy ? now : undefined,
@@ -1170,13 +1642,6 @@ async function writeAttemptForIntent({
   });
 
   await db.doc(`workspaces/${intent.workspaceId}/live_order_attempts/${attempt.orderAttemptId}`).set(attempt, { merge: true });
-  if ((status === "filled_live" || status === "partially_filled_live") && attempt.providerExecutionIdentity) {
-    await writeAccountLinkedLedgerEntry(mapCryptoProductionAttemptToLedgerEntry({
-      ...attempt,
-      workspaceId: intent.workspaceId,
-      connectionId: intent.connectionId
-    }));
-  }
   return attempt;
 }
 
@@ -1254,7 +1719,7 @@ export async function runLiveProductionExecutionWorker(
         continue;
       }
 
-      const cryptoAutoCopyBilling = await isCryptoAutoCopyBillingActive(workspaceId, intent.studentId);
+      const cryptoAutoCopyBilling = await isTradeCopierBillingActive(workspaceId, intent.studentId);
 
       if (!cryptoAutoCopyBilling.active) {
         await writeAttemptForIntent({
@@ -1550,7 +2015,7 @@ export async function runCryptoLiveCohortRolloutWorker(
           platformControl,
           workspaceControl
         }),
-        isCryptoAutoCopyBillingActive(workspaceId, intent.studentId)
+        isTradeCopierBillingActive(workspaceId, intent.studentId)
       ]);
       const blockedCheck = preflight.preflightChecks.find((entry) => entry.status === "blocked");
 
@@ -1694,6 +2159,15 @@ export async function runLiveProductionCanaryWorker(
   let submittedCount = 0;
   let skippedCount = 0;
   let failedCount = 0;
+  const projectionRepair = await repairPendingCryptoLedgerProjections(workspaceId);
+
+  if (projectionRepair.repairedCount > 0) {
+    warnings.push("Production canary repaired pending provider-confirmed ledger projection work without another provider order.");
+  }
+
+  if (projectionRepair.retryScheduledCount > 0 || projectionRepair.finalFailedCount > 0) {
+    warnings.push("Production canary found provider-confirmed ledger projection work that still needs support-safe retry or review.");
+  }
 
   if (!canaryEnvOpen) {
     warnings.push("Production canary is closed until canary, beta, order-call, dry-run, and vault env gates all pass.");
@@ -1716,6 +2190,7 @@ export async function runLiveProductionCanaryWorker(
       submittedCount,
       skippedCount: snapshot.docs.length,
       failedCount,
+      projectionRepair,
       bounded: snapshot.docs.length === 1,
       warnings,
       updatedAt: new Date().toISOString()
@@ -1743,6 +2218,7 @@ export async function runLiveProductionCanaryWorker(
       submittedCount,
       skippedCount: snapshot.docs.length,
       failedCount,
+      projectionRepair,
       bounded: snapshot.docs.length === 1,
       warnings,
       updatedAt: new Date().toISOString()
@@ -1773,7 +2249,7 @@ export async function runLiveProductionCanaryWorker(
       continue;
     }
 
-    const cryptoAutoCopyBilling = await isCryptoAutoCopyBillingActive(workspaceId, intent.studentId);
+    const cryptoAutoCopyBilling = await isTradeCopierBillingActive(workspaceId, intent.studentId);
 
     if (!cryptoAutoCopyBilling.active) {
       await writeAttemptForIntent({
@@ -1916,6 +2392,42 @@ export async function runLiveProductionCanaryWorker(
       continue;
     }
 
+    const finalValidation = await revalidateCryptoIntentBeforeProvider({ workspaceId, intent, notional });
+
+    if (!finalValidation.ok) {
+      const attempt = await writeAttemptForIntent({
+        intent,
+        status: "failed_live",
+        failureCode: finalValidation.code,
+        failureReason: finalValidation.safeMessage,
+        canaryRunId,
+        canaryConfirmedBy: actor.uid,
+        canaryMaxNotionalUsdt: notional,
+        productionCanaryOnly: true
+      });
+      await intentSnapshot.ref.set({
+        status: "failed_live",
+        sanitizedFailureCode: finalValidation.code,
+        sanitizedFailureReason: finalValidation.safeMessage,
+        gateRecheckedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      await appendProductionAuditEvent({
+        actorType: "super_admin",
+        actorId: actor.uid,
+        workspaceId,
+        studentId: intent.studentId,
+        action: "live_production.canary.final_gate_blocked",
+        targetType: "live_order_attempt",
+        targetId: attempt.orderAttemptId,
+        safeMessage: finalValidation.safeMessage,
+        after: { status: "failed_live", failureCode: finalValidation.code },
+        severity: "warning"
+      });
+      failedCount += 1;
+      continue;
+    }
+
     const credential = await loadExchangeCredential({
       workspaceId,
       studentId: intent.studentId,
@@ -2044,6 +2556,11 @@ export async function runLiveProductionCanaryWorker(
       },
       severity: result.ok ? "critical" : "warning"
     });
+    const projectionOwner = projectionOwnerToken("crypto_projection_initial");
+    const projectionClaim = await claimCryptoLedgerProjectionAttempt(workspaceId, attempt.orderAttemptId, projectionOwner, Date.now());
+    if (projectionClaim.outcome === "claimed") {
+      await projectCryptoProductionAttemptToLedger(projectionClaim.attempt, projectionOwner);
+    }
     processedCount += 1;
     submittedCount += result.ok ? 1 : 0;
     failedCount += result.ok ? 0 : 1;
@@ -2070,6 +2587,7 @@ export async function runLiveProductionCanaryWorker(
     submittedCount,
     skippedCount,
     failedCount,
+    projectionRepair,
     bounded: snapshot.docs.length === 1,
     warnings,
     updatedAt: new Date().toISOString()

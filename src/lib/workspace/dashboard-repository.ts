@@ -844,6 +844,7 @@ export async function createWorkspaceSignal(
   const signal: WorkspaceSignalRecord = stripUndefined({
     signalId,
     workspaceId: actor.workspaceId,
+    source: "in_app",
     status: values.publish ? "published" as const : "draft" as const,
     market: values.market,
     pair: values.pair,

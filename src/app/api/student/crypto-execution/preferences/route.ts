@@ -1,6 +1,7 @@
 import { apiError, apiJson } from "@/lib/admin/admin-api";
 import { updateStudentCryptoExecutionPreferences } from "@/lib/crypto-execution/crypto-execution-repository";
 import { requireStudent } from "@/lib/firebase/student-auth";
+import { mapStudentCopierOverview } from "@/lib/student-copier/student-copier-dto";
 
 export async function POST(request: Request) {
   try {
@@ -8,7 +9,7 @@ export async function POST(request: Request) {
     const payload = await request.json();
     const response = await updateStudentCryptoExecutionPreferences(actor, payload);
 
-    return apiJson(response);
+    return apiJson(mapStudentCopierOverview(actor, response));
   } catch (error) {
     return apiError(error);
   }

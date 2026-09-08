@@ -17,6 +17,7 @@ import {
   getExternalSignalIngestionReadiness,
   parseManualMockExternalSignalCandidate
 } from "@/lib/signals/external-signal-ingestion-contract";
+import { createTelegramSignalOpaqueIdentity } from "@/lib/signals/telegram-signal-ingestion";
 import type {
   ExternalSignalAssetClass,
   ExternalSignalCandidateRecord,
@@ -248,6 +249,9 @@ function mapExternalSignalCandidate(
     parserVersion: sanitizeText(data.parserVersion, 48) || EXTERNAL_SIGNAL_PARSER_VERSION,
     maskedSourceRef: sanitizeText(data.maskedSourceRef, 64),
     sourceSafeRef: sanitizeText(data.sourceSafeRef, 64) || undefined,
+    deliverySafeRef: sanitizeText(data.deliverySafeRef, 80) || undefined,
+    immutableModerationProofRef: sanitizeText(data.immutableModerationProofRef, 80) || undefined,
+    publishedSignalRef: sanitizeText(data.publishedSignalRef, 80) || undefined,
     fingerprint: sanitizeText(data.fingerprint, 80),
     normalized: normalized ? {
       symbol: sanitizeText(normalized.symbol, 24),
@@ -275,6 +279,7 @@ function mapExternalSignalCandidate(
     adminNote: sanitizeText(data.adminNote) || undefined,
     reviewedBy: sanitizeText(data.reviewedBy, 64) || undefined,
     reviewedAt: data.reviewedAt ? safeDate(data.reviewedAt) : undefined,
+    promotedAt: data.promotedAt ? safeDate(data.promotedAt) : undefined,
     receivedAt: safeDate(data.receivedAt),
     createdAt: safeDate(data.createdAt),
     updatedAt: safeDate(data.updatedAt)
@@ -309,6 +314,8 @@ function mapWorkspaceExternalSignalPreview(
     maskedSourceRef: candidate.maskedSourceRef,
     status: "approved_for_workspace_preview",
     reviewStatus: "approved_for_workspace_preview",
+    publishable: candidate.sourceType === "telegram_channel" && !candidate.publishedSignalRef,
+    publishedSignalRef: candidate.publishedSignalRef,
     safeReason: candidate.safeReason || "external_signal_preview_only",
     parseWarnings: candidate.parseWarnings,
     riskFlags: candidate.riskFlags,
@@ -505,6 +512,8 @@ export async function reviewExternalSignalCandidate(
       adminNote,
       reviewedBy: safeAdminRef(actor),
       reviewedAt: now,
+      previewSafeRef: status === "approved_for_workspace_preview" ? createExternalSignalSafeRef(candidateId, "preview") : undefined,
+      moderationSnapshotHash: status === "approved_for_workspace_preview" ? createModerationSnapshotHash(snapshot.data() ?? {}) : undefined,
       safeReason,
       updatedAt: now,
       serverUpdatedAt: FieldValue.serverTimestamp()
@@ -535,6 +544,85 @@ function normalizeAllowedSymbols(value: unknown) {
   return safeStringArray(value, 25).map((entry) => entry.toUpperCase());
 }
 
+function sanitizeTelegramIdentity(value: unknown) {
+  return asString(value).trim().replace(/[<>]/g, "").slice(0, 96);
+}
+
+function deterministicSourceDocId(value: string) {
+  return `extsrc_${crypto.createHash("sha256").update(value).digest("hex").slice(0, 24)}`;
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableJson).join(",")}]`;
+  }
+
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`)
+      .join(",")}}`;
+  }
+
+  return JSON.stringify(value);
+}
+
+function createSourceRecordVersion(value: Record<string, unknown>) {
+  return `srcver_${crypto.createHash("sha256").update(stableJson(value)).digest("hex").slice(0, 24)}`;
+}
+
+function createSourceConfigurationVersion(value: Record<string, unknown>) {
+  return createSourceRecordVersion({
+    sourceId: value.sourceId,
+    sourceType: value.sourceType,
+    workspaceId: value.workspaceId,
+    parserMode: value.parserMode,
+    expectedSourceIdentity: value.expectedSourceIdentity,
+    allowedSymbols: value.allowedSymbols,
+    allowedAssetClasses: value.allowedAssetClasses,
+    riskLimits: value.riskLimits
+  });
+}
+
+function createModerationSnapshotHash(value: Record<string, unknown>) {
+  return `modsnap_${crypto.createHash("sha256").update(stableJson({
+    normalized: value.normalized,
+    parserVersion: value.parserVersion,
+    sourceType: value.sourceType,
+    sourceSafeRef: value.sourceSafeRef,
+    sourceRecordId: value.sourceRecordId,
+    sourceRecordVersion: value.sourceRecordVersion,
+    immutableModerationProofRef: value.immutableModerationProofRef
+  })).digest("hex").slice(0, 24)}`;
+}
+
+function assertTelegramSourceConfiguration(payload: ExternalSignalSourceAllowlistUpsertInput) {
+  const workspaceId = sanitizeText(payload.workspaceId, 96);
+  const parserMode = asParserMode(payload.parserMode);
+  const rawTelegramIdentity = sanitizeTelegramIdentity(payload.telegramChatIdentity);
+  const existingOpaqueIdentity = sanitizeText((payload as { expectedSourceIdentity?: unknown }).expectedSourceIdentity, 96);
+
+  if (!workspaceId) {
+    throw new AdminApiError(400, "telegram_source_workspace_required", "Choose one workspace before enabling a Telegram source.");
+  }
+
+  if (parserMode !== "telegram_like_mock") {
+    throw new AdminApiError(400, "telegram_source_parser_required", "Choose the Telegram signal parser before enabling this source.");
+  }
+
+  if (!rawTelegramIdentity && !existingOpaqueIdentity.startsWith("tgsrc_")) {
+    throw new AdminApiError(400, "telegram_source_identity_required", "Add the expected Telegram chat or channel identity.");
+  }
+
+  return {
+    workspaceId,
+    parserMode,
+    expectedSourceIdentity: rawTelegramIdentity
+      ? createTelegramSignalOpaqueIdentity(rawTelegramIdentity, "tgsrc")
+      : existingOpaqueIdentity
+  };
+}
+
 export async function upsertExternalSignalSourceAllowlistRecord(
   actor: VerifiedSuperAdmin,
   payload: ExternalSignalSourceAllowlistUpsertInput
@@ -544,22 +632,36 @@ export async function upsertExternalSignalSourceAllowlistRecord(
   const { db } = getFirebaseAdminClients();
   const now = new Date().toISOString();
   const action = payload.action ?? "upsert";
+  const sourceType = asSourceType(payload.sourceType);
+  const telegramConfig = sourceType === "telegram_channel" && action !== "disable"
+    ? assertTelegramSourceConfiguration(payload)
+    : null;
   const sourceId = sanitizeText(payload.sourceId, 64);
   const sourceRef = sanitizeText(payload.sourceRef, 96);
-  const safeSourceId = sourceId || (sourceRef ? createExternalSignalSafeRef(sourceRef, "source") : "");
+  const safeSourceId = sourceId ||
+    (telegramConfig?.expectedSourceIdentity
+      ? createExternalSignalSafeRef(telegramConfig.expectedSourceIdentity, "source")
+      : sourceRef
+        ? createExternalSignalSafeRef(sourceRef, "source")
+        : "");
 
   if (!safeSourceId) {
     throw new AdminApiError(400, "external_signal_source_required", "Add a source reference before updating the allowlist.");
   }
 
-  const current = await findSourceDocBySafeSourceId(safeSourceId);
+  const current = telegramConfig ? null : await findSourceDocBySafeSourceId(safeSourceId);
+  const telegramDocRef = telegramConfig
+    ? db.doc(`${EXTERNAL_SIGNAL_SOURCE_COLLECTION_ID}/${deterministicSourceDocId(telegramConfig.expectedSourceIdentity)}`)
+    : null;
 
   if (action === "disable") {
-    if (!current) {
+    const disableCurrent = current ?? (telegramDocRef ? await telegramDocRef.get() : null);
+
+    if (!disableCurrent?.exists) {
       throw new AdminApiError(404, "external_signal_source_not_found", "That external signal source was not found.");
     }
 
-    await current.ref.set(
+    await disableCurrent.ref.set(
       {
         status: "disabled",
         updatedAt: now,
@@ -568,7 +670,7 @@ export async function upsertExternalSignalSourceAllowlistRecord(
       { merge: true }
     );
 
-    const nextSnapshot = await current.ref.get();
+    const nextSnapshot = await disableCurrent.ref.get();
 
     return {
       ok: true,
@@ -576,16 +678,16 @@ export async function upsertExternalSignalSourceAllowlistRecord(
     };
   }
 
-  const sourceType = asSourceType(payload.sourceType);
-  const parserMode = asParserMode(payload.parserMode);
+  const parserMode = telegramConfig?.parserMode ?? asParserMode(payload.parserMode);
   const allowedAssetClasses = safeAssetClassArray(payload.allowedAssetClasses);
-  const docRef = current?.ref ?? db.doc(`${EXTERNAL_SIGNAL_SOURCE_COLLECTION_ID}/extsrc_${crypto.randomUUID().replace(/-/g, "").slice(0, 18)}`);
-  const sourceRecord = stripUndefined({
+  const docRef = telegramDocRef ?? current?.ref ?? db.doc(`${EXTERNAL_SIGNAL_SOURCE_COLLECTION_ID}/extsrc_${crypto.randomUUID().replace(/-/g, "").slice(0, 18)}`);
+  const sourceCore = stripUndefined({
     sourceId: safeSourceId,
     sourceType,
-    workspaceId: sanitizeText(payload.workspaceId, 96) || undefined,
+    workspaceId: telegramConfig?.workspaceId ?? (sanitizeText(payload.workspaceId, 96) || undefined),
     status: asSourceStatus(payload.status),
     parserMode,
+    expectedSourceIdentity: telegramConfig?.expectedSourceIdentity,
     allowedSymbols: normalizeAllowedSymbols(payload.allowedSymbols),
     allowedAssetClasses,
     riskLimits: {
@@ -601,13 +703,42 @@ export async function upsertExternalSignalSourceAllowlistRecord(
     },
     maskedSourceRef: safeSourceId,
     safeLabel: sanitizeText(payload.safeLabel, 96) || `${sourceType} source`,
+  });
+  const sourceRecord = stripUndefined({
+    ...sourceCore,
+    sourceRecordVersion: createSourceConfigurationVersion(sourceCore),
     createdAt: current ? undefined : now,
     updatedAt: now,
     serverCreatedAt: current ? undefined : FieldValue.serverTimestamp(),
     serverUpdatedAt: FieldValue.serverTimestamp()
   });
 
-  await docRef.set(sourceRecord, { merge: true });
+  if (telegramConfig) {
+    await db.runTransaction(async (transaction) => {
+      const existing = await transaction.get(docRef);
+      const existingData = existing.data() ?? {};
+
+      if (
+        existing.exists &&
+        existingData.workspaceId &&
+        existingData.workspaceId !== telegramConfig.workspaceId
+      ) {
+        throw new AdminApiError(
+          409,
+          "telegram_source_identity_workspace_conflict",
+          "That Telegram source is already bound to another workspace."
+        );
+      }
+
+      transaction.set(docRef, {
+        ...sourceRecord,
+        createdAt: existing.exists ? existingData.createdAt : now,
+        serverCreatedAt: existing.exists ? existingData.serverCreatedAt : FieldValue.serverTimestamp()
+      }, { merge: true });
+    });
+  } else {
+    await docRef.set(sourceRecord, { merge: true });
+  }
 
   const nextSnapshot = await docRef.get();
 
@@ -624,8 +755,8 @@ export async function getAdminExternalSignalIngestionOverview(
 
   const readiness = getExternalSignalIngestionReadiness();
   const warnings = [
-    "Stage 24A is contract-only. External Telegram, webhook, and master-trader feed ingestion is disabled.",
-    "Candidates are quarantined/reviewed only and never publish workspace signals or trigger AutoCopy/live execution."
+    "Telegram source setup is Admin-controlled and webhook ingestion is disabled unless the server is explicitly configured.",
+    "Candidates remain quarantined/reviewed until approved and published through the controlled workspace bridge. Existing Copier gates still apply."
   ];
   let latestSources: ExternalSignalSourceAllowlistRecord[] = [];
   let latestCandidates: ExternalSignalCandidateRecord[] = [];

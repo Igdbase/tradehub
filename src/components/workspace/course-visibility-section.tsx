@@ -75,7 +75,7 @@ export function CourseVisibilitySection({
           </h2>
           <p className="break-safe mt-2 text-sm leading-6 text-[color:var(--label2)]">
             Manage what students can actually see. Drafts remain internal; published courses still
-            respect tier and subscription access from the Stage 16 entitlement layer.
+            respect each student&apos;s current access.
           </p>
         </div>
         <div className="flex max-w-full flex-wrap justify-end gap-2">
@@ -85,7 +85,7 @@ export function CourseVisibilitySection({
           <Button href="/workspace/onboarding" variant="ghost" size="sm">
             Edit setup draft
           </Button>
-          <Button href="/workspace/courses" variant="primary" size="sm">
+          <Button href="/workspace/courses/hub" variant="primary" size="sm">
             Open Course Hub
           </Button>
         </div>
@@ -166,7 +166,7 @@ export function CourseVisibilitySection({
           <p className="mt-2 text-sm leading-6 text-[color:var(--label2)]">
             Create the first safe draft from onboarding or open the Course Hub to start from scratch.
           </p>
-          <Button href="/workspace/courses" variant="primary" size="sm" className="mt-4">
+          <Button href="/workspace/courses/hub" variant="primary" size="sm" className="mt-4">
             Open Course Hub
           </Button>
         </div>

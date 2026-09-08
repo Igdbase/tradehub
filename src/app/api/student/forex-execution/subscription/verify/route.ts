@@ -1,9 +1,9 @@
 import { apiError, apiJson } from "@/lib/admin/admin-api";
-import { getStudentCryptoExecutionOverview } from "@/lib/crypto-execution/crypto-execution-repository";
-import { verifyStudentForexAutoCopyCheckout } from "@/lib/crypto-execution/forex-autocopy-subscription-repository";
 import { AdminApiError } from "@/lib/firebase/admin-errors";
 import { requireStudent } from "@/lib/firebase/student-auth";
-import type { StudentForexAutoCopyVerifyResponse } from "@/types/crypto-execution";
+import { verifyLegacyTradeCopierCheckout } from "@/lib/student-copier/student-copier-billing";
+import { getStudentCopierOverview } from "@/lib/student-copier/student-copier-dto";
+import type { StudentCopierMutationResponse } from "@/types/student-copier";
 
 function parseReference(request: Request) {
   const reference = new URL(request.url).searchParams.get("reference")?.trim() ?? "";
@@ -19,17 +19,15 @@ export async function GET(request: Request) {
   try {
     const actor = await requireStudent(request);
     const reference = parseReference(request);
-    const result = await verifyStudentForexAutoCopyCheckout(actor, reference);
-    const overview = await getStudentCryptoExecutionOverview(actor);
-    const response: StudentForexAutoCopyVerifyResponse = {
-      source: overview.source,
-      sourceLabel: overview.sourceLabel,
-      sourceMessage: overview.sourceMessage,
-      warnings: overview.warnings,
+    const result = await verifyLegacyTradeCopierCheckout(actor, reference, "forex_autocopy");
+    const response: StudentCopierMutationResponse = {
       ok: true,
-      status: result.status,
-      message: result.message,
-      overview
+      message: result.message || (result.status === "verified"
+        ? "Trade Copier payment verified. Crypto Setup and Forex Setup are now available."
+        : result.status === "pending"
+          ? "Trade Copier payment is still pending."
+          : "Trade Copier payment could not be verified."),
+      overview: await getStudentCopierOverview(actor)
     };
 
     return apiJson(response);

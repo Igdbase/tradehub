@@ -48,6 +48,17 @@ export type PaystackVerificationResult = {
   };
 };
 
+export type PaystackDisableSubscriptionPayload = {
+  code: string;
+  token: string;
+};
+
+export type PaystackDisableSubscriptionResult = {
+  status?: string;
+  subscription_code?: string;
+  email_token?: string;
+};
+
 function getSecretKey() {
   return process.env.PAYSTACK_SECRET_KEY?.trim() ?? "";
 }
@@ -99,6 +110,15 @@ function requireSecretKey() {
   return key;
 }
 
+function isLocalPaystackFakeEnabled() {
+  return process.env.PAYSTACK_LOCAL_FAKE === "true" &&
+    Boolean(
+      process.env.FIRESTORE_EMULATOR_HOST?.trim() ||
+        process.env.FIREBASE_AUTH_EMULATOR_HOST?.trim() ||
+        process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST?.trim()
+    );
+}
+
 async function requestPaystack<T>(path: string, init?: RequestInit): Promise<T> {
   const secretKey = requireSecretKey();
   const response = await fetch(`${PAYSTACK_BASE_URL}${path}`, {
@@ -119,6 +139,14 @@ async function requestPaystack<T>(path: string, init?: RequestInit): Promise<T> 
 }
 
 export async function initializePaystackTransaction(payload: PaystackInitializePayload) {
+  if (isLocalPaystackFakeEnabled()) {
+    return {
+      authorization_url: payload.callback_url,
+      access_code: `local_access_${payload.reference.slice(0, 16)}`,
+      reference: payload.reference
+    };
+  }
+
   return requestPaystack<PaystackInitializeResult>("/transaction/initialize", {
     method: "POST",
     body: JSON.stringify(payload)
@@ -126,8 +154,50 @@ export async function initializePaystackTransaction(payload: PaystackInitializeP
 }
 
 export async function verifyPaystackTransaction(reference: string) {
+  if (isLocalPaystackFakeEnabled()) {
+    return {
+      status: reference.includes("pending") ? "pending" : "success",
+      reference,
+      amount: Number(process.env.TRADE_COPIER_PRICE_NGN ?? "25000") * 100,
+      currency: "NGN",
+      paid_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      customer: {
+        customer_code: "CUS_local_trade_copier"
+      },
+      metadata: {
+        product: "trade_copier"
+      },
+      subscription: {
+        subscription_code: "SUB_local_trade_copier",
+        email_token: "EMAIL_local_trade_copier",
+        next_payment_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        status: "active"
+      }
+    };
+  }
+
   const safeReference = encodeURIComponent(reference);
   return requestPaystack<PaystackVerificationResult>(`/transaction/verify/${safeReference}`);
+}
+
+export async function disablePaystackSubscription(payload: PaystackDisableSubscriptionPayload) {
+  if (isLocalPaystackFakeEnabled()) {
+    if (payload.code.includes("fail") || payload.token.includes("fail")) {
+      throw new PaystackApiError("Local Paystack subscription disable failed.");
+    }
+
+    return {
+      status: "disabled",
+      subscription_code: payload.code,
+      email_token: payload.token
+    };
+  }
+
+  return requestPaystack<PaystackDisableSubscriptionResult>("/subscription/disable", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
 }
 
 export function getPaystackWebhookSecret() {

@@ -134,16 +134,39 @@ export type WorkspaceCourseListItem = {
   updatedAt: IsoDateString;
 };
 
-export type WorkspaceSignalStatus = "draft" | "published" | "cancelled";
+export type WorkspaceSignalStatus = "draft" | "published" | "cancelled" | "unknown";
+export type WorkspaceSignalLifecycle = "open" | "closed";
 export type WorkspaceSignalMarket = "forex" | "crypto";
+export type WorkspaceSignalSource =
+  | "in_app"
+  | "legacy_in_app"
+  | "external_preview"
+  | "telegram_channel"
+  | "webhook_source"
+  | "master_trader_feed"
+  | "unknown";
 export type WorkspaceSignalDirection = "buy" | "sell";
 export type WorkspaceSignalRiskLabel = "low" | "medium" | "high";
 export type WorkspaceSignalDeliveryMode = "manual_review" | "alerts_only";
 
+export type WorkspaceSignalExternalProof = {
+  sourceType: "telegram_channel";
+  proofStatus: "moderated_published";
+  sourceLabel: string;
+  sourceSafeRef: string;
+  candidateSafeRef: string;
+  bridgeAttestationRef?: string;
+  moderationVersion: string;
+  approvedAt: IsoDateString;
+  publishedAt: IsoDateString;
+};
+
 export type WorkspaceSignalRecord = {
   signalId: string;
   workspaceId: string;
+  source: WorkspaceSignalSource;
   status: WorkspaceSignalStatus;
+  lifecycle?: WorkspaceSignalLifecycle;
   market: WorkspaceSignalMarket;
   pair: string;
   direction: WorkspaceSignalDirection;
@@ -153,6 +176,7 @@ export type WorkspaceSignalRecord = {
   riskLabel: WorkspaceSignalRiskLabel;
   notes?: string;
   deliveryMode: WorkspaceSignalDeliveryMode;
+  externalSignalProof?: WorkspaceSignalExternalProof;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
   publishedAt?: IsoDateString;

@@ -305,6 +305,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /workspaces/{workspaceId}/trade_copier_payment_intents/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/trade_copier_audit_events/{documentId} {
+      allow read, write: if false;
+    }
+
     match /workspaces/{workspaceId}/payment_intents/{documentId} {
       allow read, write: if false;
     }
@@ -365,6 +373,26 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /external_signal_delivery_markers/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /external_signal_fingerprint_markers/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /external_signal_ingress_rate/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /external_signal_bridge_attestations/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /external_signal_routing_outbox/{documentId} {
+      allow read, write: if false;
+    }
+
     match /external_signal_ingestion_audit_events/{documentId} {
       allow read, write: if false;
     }
@@ -410,6 +438,14 @@ service cloud.firestore {
     }
 
     match /workspaces/{workspaceId}/students/{studentId}/crypto_autocopy_subscriptions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/trade_copier_subscriptions/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /workspaces/{workspaceId}/students/{studentId}/trade_copier_cleanup_tasks/{documentId} {
       allow read, write: if false;
     }
 

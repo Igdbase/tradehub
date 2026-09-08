@@ -26,7 +26,7 @@ export function SiteFooter() {
           <p className="mt-1 text-xs text-[color:var(--label3)]">
             {isHome
               ? "Paystack/local checkout is the default rail, Solana Pay / USDC stays optional for approved workspaces, and funded-account students are not pushed into automatic execution."
-              : "Use `/`, `/design-system`, `/admin`, `/workspace`, `/workspace/onboarding`, `/app`, and `/join/apexfx` together to verify the shared typed mock layer."}
+              : "Use the student app, workspace tools, and admin review screens together to verify role-scoped demo flows."}
           </p>
         </div>
 

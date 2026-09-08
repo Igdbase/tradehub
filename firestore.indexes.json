@@ -1,6 +1,90 @@
 {
   "indexes": [
     {
+      "collectionGroup": "external_signal_sources",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sourceType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expectedSourceIdentity",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "external_signal_candidates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "deliverySafeRef",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "external_signal_candidates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "external_signal_candidates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "previewSafeRef",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "external_signal_routing_outbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nextAttemptAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "external_signal_routing_outbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "leaseExpiresAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "workspace_applications",
       "queryScope": "COLLECTION",
       "fields": [
@@ -265,6 +349,58 @@
         {
           "fieldPath": "updatedAt",
           "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "live_order_attempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "executionMode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "environment",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ledgerProjectionStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ledgerProjectionNextAttemptAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "live_order_attempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "executionMode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "environment",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ledgerProjectionStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ledgerProjectionLeaseExpiresAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
         }
       ]
     },
@@ -539,6 +675,58 @@
       ]
     },
     {
+      "collectionGroup": "forex_live_canary_order_attempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "executionMode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "environment",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ledgerProjectionStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ledgerProjectionNextAttemptAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "forex_live_canary_order_attempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "executionMode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "environment",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ledgerProjectionStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ledgerProjectionLeaseExpiresAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "forex_live_canary_gate_decisions",
       "queryScope": "COLLECTION",
       "fields": [
@@ -609,6 +797,20 @@
       ]
     },
     {
+      "collectionGroup": "trade_copier_payment_intents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "studentId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "forex_provisioning_audit_events",
       "queryScope": "COLLECTION",
       "fields": [
@@ -632,6 +834,42 @@
         },
         {
           "fieldPath": "nextAttemptAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "trade_copier_cleanup_tasks",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "action",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nextAttemptAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "trade_copier_cleanup_tasks",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "action",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "leaseExpiresAt",
           "order": "ASCENDING"
         }
       ]

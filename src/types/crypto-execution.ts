@@ -30,6 +30,9 @@ export type ForexAutoCopyBillingStatus =
   | "active_paid"
   | "past_due"
   | "cancelled"
+  | "non_renewing"
+  | "cancellation_pending"
+  | "needs_attention"
   | "expired"
   | "unknown";
 export type CryptoAutoCopyBillingStatus =
@@ -39,6 +42,9 @@ export type CryptoAutoCopyBillingStatus =
   | "active_paid"
   | "past_due"
   | "cancelled"
+  | "non_renewing"
+  | "cancellation_pending"
+  | "needs_attention"
   | "expired"
   | "unknown";
 export type ForexProvisioningProvider = "mock" | "metaapi";
@@ -716,6 +722,13 @@ export interface LiveProductionOrderAttemptRecord {
   exchangeOrderId?: string;
   exchangeOrderRef?: string;
   providerExecutionIdentity?: string;
+  ledgerProjectionStatus?: AccountLinkedLedgerProjectionStatus;
+  ledgerProjectionAttempts?: number;
+  ledgerProjectionLastError?: string;
+  ledgerProjectionNextAttemptAt?: IsoDateString;
+  ledgerProjectionLeaseOwner?: string;
+  ledgerProjectionLeaseExpiresAt?: IsoDateString;
+  ledgerProjectedAt?: IsoDateString;
   requestedQuantity?: string;
   requestedQuoteOrderQty?: string;
   requestedPrice?: string;
@@ -865,6 +878,26 @@ export type AccountLinkedLedgerStatus =
   | "dry_run"
   | "zero_safe";
 
+export type AccountLinkedAuthoritativePnlKind = "floating" | "realized";
+
+export interface AccountLinkedAuthoritativePnl {
+  kind: AccountLinkedAuthoritativePnlKind;
+  value: number;
+  currency: string;
+  authoritative: true;
+  source: "provider_valuation" | "provider_closure";
+  valuedAt?: IsoDateString;
+}
+
+export type AccountLinkedLedgerProjectionStatus =
+  | "not_applicable"
+  | "pending"
+  | "in_progress"
+  | "projected"
+  | "retry_scheduled"
+  | "failed"
+  | "final_failed";
+
 export interface AccountLinkedTradeLedgerRecord {
   ledgerEntryId: string;
   workspaceId: string;
@@ -875,6 +908,7 @@ export interface AccountLinkedTradeLedgerRecord {
   sourceRecordId: string;
   providerExecutionIdentity?: string;
   providerExecutionIdentities?: string[];
+  tradeHubSignalId?: string;
   journalExecutionFingerprint?: string;
   journalConnectionRef?: string;
   importGeneration?: string;
@@ -893,6 +927,7 @@ export interface AccountLinkedTradeLedgerRecord {
   status: AccountLinkedLedgerStatus;
   notional?: number;
   volume?: number;
+  authoritativePnl?: AccountLinkedAuthoritativePnl;
   pnl?: number;
   rMultiple?: number;
   riskAmount?: number;
@@ -1422,6 +1457,7 @@ export interface ForexDemoOrderAttemptRecord {
   providerClientOrderId: string;
   providerOrderId?: string;
   providerOrderRef?: string;
+  providerExecutionIdentity?: string;
   providerHttpStatus?: number;
   canonicalSymbol?: string;
   providerSymbol?: string;
@@ -1543,6 +1579,7 @@ export interface ForexDemoOrderAttemptSummary {
   volume: number;
   requestedNotionalUsd: number;
   providerOrderRef?: string;
+  providerExecutionIdentity?: string;
   providerHttpStatus?: number;
   canonicalSymbol?: string;
   providerSymbol?: string;
@@ -1712,6 +1749,14 @@ export interface ForexLiveCanaryOrderAttemptRecord {
   providerClientOrderId: string;
   providerOrderId?: string;
   providerOrderRef?: string;
+  providerExecutionIdentity?: string;
+  ledgerProjectionStatus?: AccountLinkedLedgerProjectionStatus;
+  ledgerProjectionAttempts?: number;
+  ledgerProjectionLastError?: string;
+  ledgerProjectionNextAttemptAt?: IsoDateString;
+  ledgerProjectionLeaseOwner?: string;
+  ledgerProjectionLeaseExpiresAt?: IsoDateString;
+  ledgerProjectedAt?: IsoDateString;
   providerHttpStatus?: number;
   canonicalSymbol?: string;
   providerSymbol?: string;
@@ -1893,6 +1938,14 @@ export interface ForexLiveCanaryWorkerRunResponse extends AdminSourceMeta {
   submittedCount: number;
   skippedCount: number;
   failedCount: number;
+  projectionRepair?: {
+    attemptedCount: number;
+    repairedCount: number;
+    retryScheduledCount: number;
+    finalFailedCount: number;
+    skippedCount?: number;
+    notApplicableCount?: number;
+  };
   bounded: boolean;
   warnings: string[];
   updatedAt: IsoDateString;
@@ -2545,6 +2598,14 @@ export interface LiveSandboxWorkerRunResponse extends AdminSourceMeta {
   submittedCount: number;
   skippedCount: number;
   failedCount: number;
+  projectionRepair?: {
+    attemptedCount: number;
+    repairedCount: number;
+    retryScheduledCount: number;
+    finalFailedCount: number;
+    skippedCount?: number;
+    notApplicableCount?: number;
+  };
   bounded: boolean;
   warnings: string[];
   updatedAt: IsoDateString;
@@ -2583,6 +2644,14 @@ export interface LiveProductionWorkerRunResponse extends AdminSourceMeta {
   submittedCount: number;
   skippedCount: number;
   failedCount: number;
+  projectionRepair?: {
+    attemptedCount: number;
+    repairedCount: number;
+    retryScheduledCount: number;
+    finalFailedCount: number;
+    skippedCount?: number;
+    notApplicableCount?: number;
+  };
   bounded: boolean;
   warnings: string[];
   updatedAt: IsoDateString;

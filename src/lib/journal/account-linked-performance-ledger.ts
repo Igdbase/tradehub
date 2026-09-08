@@ -73,6 +73,32 @@ function safeStatus(value: unknown): AccountLinkedLedgerStatus {
     : "zero_safe";
 }
 
+function safeAuthoritativePnl(value: unknown): AccountLinkedTradeLedgerRecord["authoritativePnl"] | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const kind = record.kind === "floating" || record.kind === "realized" ? record.kind : undefined;
+  const source = record.source === "provider_valuation" || record.source === "provider_closure" ? record.source : undefined;
+  const currency = safeString(record.currency).replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 8);
+  const amount = safeNumber(record.value);
+  const valuedAt = safeString(record.valuedAt);
+
+  if (!kind || !source || record.authoritative !== true || amount === undefined || !currency) {
+    return undefined;
+  }
+
+  return stripUndefined({
+    kind,
+    value: amount,
+    currency,
+    authoritative: true,
+    source,
+    valuedAt: valuedAt && Number.isFinite(Date.parse(valuedAt)) ? normalizeIsoDate(valuedAt) : undefined
+  });
+}
+
 function mapLedgerPracticeInstrument(value: unknown, symbol: string, assetClass: AccountLinkedLedgerAssetClass) {
   if (assetClass !== "crypto" && assetClass !== "forex_cfd") {
     return undefined;
@@ -334,6 +360,7 @@ function mapLedgerRecord(record: Record<string, unknown>, ids: {
     status: safeStatus(record.status),
     notional: safeNumber(record.notional),
     volume: safeNumber(record.volume),
+    authoritativePnl: safeAuthoritativePnl(record.authoritativePnl),
     pnl: safeNumber(record.pnl),
     rMultiple: safeNumber(record.rMultiple),
     riskAmount: safeNumber(record.riskAmount),
@@ -361,6 +388,7 @@ function baseMappedLedgerEntry(input: {
   sourceRecordId: string;
   providerExecutionIdentity?: string;
   providerExecutionIdentities?: string[];
+  tradeHubSignalId?: string;
   providerStatus?: string;
   journalLifecycle?: "open" | "partial" | "closed" | "execution_only";
   tradeOrigin?: "copied" | "provider_manual";
@@ -374,6 +402,7 @@ function baseMappedLedgerEntry(input: {
   status?: string;
   notional?: number;
   volume?: number;
+  authoritativePnl?: AccountLinkedTradeLedgerRecord["authoritativePnl"];
   pnl?: number;
   rMultiple?: number;
   riskAmount?: number;
@@ -400,6 +429,7 @@ function baseMappedLedgerEntry(input: {
     providerExecutionIdentities: Array.isArray(input.providerExecutionIdentities)
       ? input.providerExecutionIdentities.map((entry) => safeString(entry).slice(0, 80)).filter(Boolean).slice(0, 8)
       : undefined,
+    tradeHubSignalId: safeString(input.tradeHubSignalId).slice(0, 120) || undefined,
     providerStatus: safeString(input.providerStatus).slice(0, 32) || undefined,
     journalLifecycle: input.journalLifecycle,
     tradeOrigin: input.tradeOrigin,
@@ -415,6 +445,7 @@ function baseMappedLedgerEntry(input: {
     status: safeStatus(input.status),
     notional: input.notional,
     volume: input.volume,
+    authoritativePnl: safeAuthoritativePnl(input.authoritativePnl),
     pnl: input.pnl,
     rMultiple: input.rMultiple,
     riskAmount: input.riskAmount,
@@ -440,6 +471,7 @@ export function mapCryptoPaperAttemptToLedgerEntry(
     assetClass: "crypto",
     executionMode: "paper",
     sourceRecordId: attempt.orderAttemptId,
+    tradeHubSignalId: attempt.signalId,
     symbol: attempt.symbol,
     side: attempt.side,
     status: attempt.status,
@@ -462,6 +494,7 @@ export function mapCryptoTestnetAttemptToLedgerEntry(
     assetClass: "crypto",
     executionMode: "testnet",
     sourceRecordId: attempt.orderAttemptId,
+    tradeHubSignalId: attempt.signalId,
     symbol: attempt.symbol,
     side: attempt.side,
     status: attempt.status,
@@ -472,7 +505,12 @@ export function mapCryptoTestnetAttemptToLedgerEntry(
 }
 
 export function mapCryptoProductionAttemptToLedgerEntry(
-  attempt: LiveProductionOrderAttemptSummary & { workspaceId?: string; connectionId?: string; providerExecutionIdentity?: string }
+  attempt: LiveProductionOrderAttemptSummary & {
+    workspaceId?: string;
+    connectionId?: string;
+    providerExecutionIdentity?: string;
+    authoritativePnl?: AccountLinkedTradeLedgerRecord["authoritativePnl"];
+  }
 ): AccountLinkedTradeLedgerRecord {
   const providerConfirmed = attempt.status === "filled_live" || attempt.status === "partially_filled_live";
   const journalLifecycle = attempt.status === "partially_filled_live" ? "partial" : "open";
@@ -486,6 +524,7 @@ export function mapCryptoProductionAttemptToLedgerEntry(
     sourceRecordId: attempt.orderAttemptId,
     providerExecutionIdentity: safeString(attempt.providerExecutionIdentity) || undefined,
     providerExecutionIdentities: safeString(attempt.providerExecutionIdentity) ? [safeString(attempt.providerExecutionIdentity)] : undefined,
+    tradeHubSignalId: attempt.signalId,
     providerStatus: providerConfirmed ? "filled" : attempt.status,
     journalLifecycle: providerConfirmed ? journalLifecycle : undefined,
     tradeOrigin: "copied",
@@ -497,6 +536,7 @@ export function mapCryptoProductionAttemptToLedgerEntry(
     symbol: attempt.symbol,
     side: attempt.side,
     status: providerConfirmed ? "filled" : attempt.status,
+    authoritativePnl: attempt.authoritativePnl,
     safeBrokerOrExchangeLabel: "Crypto Production-gated AutoCopy",
     maskedConnectionRef: attempt.connectionId,
     sanitizedFailureCode: attempt.sanitizedFailureCode,
@@ -516,6 +556,7 @@ export function mapForexPaperAttemptToLedgerEntry(
     assetClass: "forex",
     executionMode: "paper",
     sourceRecordId: attempt.attemptId,
+    tradeHubSignalId: attempt.signalId,
     symbol: attempt.pair,
     side: attempt.side,
     status: attempt.status,
@@ -536,6 +577,7 @@ export function mapForexDemoAttemptToLedgerEntry(
     assetClass: attempt.providerSymbol?.includes("XAU") || attempt.providerSymbol?.includes("BTC") ? "forex_cfd" : "forex",
     executionMode: "demo",
     sourceRecordId: attempt.attemptId,
+    tradeHubSignalId: attempt.signalId,
     symbol: attempt.pair,
     side: attempt.side,
     status: attempt.status,
@@ -549,8 +591,17 @@ export function mapForexDemoAttemptToLedgerEntry(
 }
 
 export function mapForexLiveCanaryAttemptToLedgerEntry(
-  attempt: ForexLiveCanaryOrderAttemptSummary & { workspaceId?: string; connectionId?: string }
+  attempt: ForexLiveCanaryOrderAttemptSummary & {
+    workspaceId?: string;
+    connectionId?: string;
+    providerExecutionIdentity?: string;
+    authoritativePnl?: AccountLinkedTradeLedgerRecord["authoritativePnl"];
+  }
 ): AccountLinkedTradeLedgerRecord {
+  const providerConfirmed = attempt.status === "filled_live_forex_canary" ||
+    attempt.status === "partially_filled_live_forex_canary";
+  const journalLifecycle = attempt.status === "partially_filled_live_forex_canary" ? "partial" : "open";
+
   return baseMappedLedgerEntry({
     workspaceId: safeString(attempt.workspaceId) || "unknown_workspace",
     studentId: attempt.studentId,
@@ -559,10 +610,26 @@ export function mapForexLiveCanaryAttemptToLedgerEntry(
     assetClass: attempt.providerSymbol?.includes("XAU") || attempt.providerSymbol?.includes("BTC") ? "forex_cfd" : "forex",
     executionMode: "live_canary",
     sourceRecordId: attempt.attemptId,
+    providerExecutionIdentity: safeString(attempt.providerExecutionIdentity) || undefined,
+    providerExecutionIdentities: safeString(attempt.providerExecutionIdentity) ? [safeString(attempt.providerExecutionIdentity)] : undefined,
+    tradeHubSignalId: attempt.signalId,
+    providerStatus: providerConfirmed
+      ? attempt.status === "partially_filled_live_forex_canary" ? "partially_filled" : "filled"
+      : attempt.status,
+    journalLifecycle: providerConfirmed ? journalLifecycle : undefined,
+    tradeOrigin: "copied",
+    providerConfirmed: providerConfirmed || undefined,
+    confirmationState: providerConfirmed ? "provider_confirmed" : undefined,
+    providerClosureConfirmed: false,
+    performanceEligible: false,
+    ineligibilityReason: providerConfirmed ? "open_position" : undefined,
     symbol: attempt.pair,
     side: attempt.side,
-    status: attempt.status,
+    status: providerConfirmed
+      ? attempt.status === "partially_filled_live_forex_canary" ? "partial" : "filled"
+      : attempt.status,
     volume: attempt.volume,
+    authoritativePnl: attempt.authoritativePnl,
     safeBrokerOrExchangeLabel: "Tiny live Forex canary",
     maskedConnectionRef: attempt.connectionId,
     sanitizedFailureCode: attempt.sanitizedFailureCode,

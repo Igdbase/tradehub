@@ -1,6 +1,7 @@
 import { apiError, apiJson } from "@/lib/admin/admin-api";
 import { createStudentCryptoExecutionConnection } from "@/lib/crypto-execution/crypto-execution-repository";
 import { requireStudent } from "@/lib/firebase/student-auth";
+import { mapStudentCopierOverview } from "@/lib/student-copier/student-copier-dto";
 
 export async function POST(request: Request) {
   try {
@@ -8,7 +9,7 @@ export async function POST(request: Request) {
     const payload = await request.json();
     const response = await createStudentCryptoExecutionConnection(actor, payload);
 
-    return apiJson(response, { status: 201 });
+    return apiJson(mapStudentCopierOverview(actor, response), { status: 201 });
   } catch (error) {
     return apiError(error);
   }

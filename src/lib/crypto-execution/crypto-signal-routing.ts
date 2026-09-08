@@ -6,7 +6,7 @@ import {
   evaluateStaleSignalPolicy,
   mapCrossAssetAutoCopyPreferencesRecord
 } from "@/lib/crypto-execution/auto-copy-preferences";
-import { isCryptoAutoCopyBillingActive } from "@/lib/crypto-execution/crypto-autocopy-subscription-repository";
+import { isTradeCopierBillingActive } from "@/lib/student-copier/student-copier-billing";
 import {
   evaluateCryptoSignalRiskCandidate,
   normalizeCryptoSignalSymbol,
@@ -26,6 +26,7 @@ import {
 } from "@/lib/crypto-execution/crypto-execution-validation";
 import { resolveStudentEntitlements } from "@/lib/entitlements/student-entitlements";
 import { getFirebaseAdminClients } from "@/lib/firebase/admin";
+import { isPublishedRoutableTradeHubSignalForMarket } from "@/lib/signals/tradehub-signal-source-guards";
 import type { VerifiedInfluencer } from "@/lib/firebase/influencer-auth";
 import {
   mapWorkspaceForDashboard,
@@ -307,7 +308,7 @@ export async function routePublishedCryptoSignalForPaperExecution({
   let requiresReviewCount = 0;
   let intentCount = 0;
 
-  if (signal.status !== "published" || signal.market !== "crypto") {
+  if (!isPublishedRoutableTradeHubSignalForMarket(signal, "crypto")) {
     return {
       workspaceId: signal.workspaceId,
       signalId: signal.signalId,
@@ -320,7 +321,7 @@ export async function routePublishedCryptoSignalForPaperExecution({
       requiresReviewCount,
       intentCount,
       bounded: false,
-      warnings: ["Crypto paper routing only runs for newly published crypto signals."],
+      warnings: ["Crypto paper routing only runs for newly published in-app crypto signals."],
       completedAt: now
     };
   }
@@ -417,7 +418,7 @@ export async function routePublishedCryptoSignalForPaperExecution({
     : [];
   const cryptoAutoCopyBillingStates = await Promise.all(
     studentRecords.map((record) =>
-      isCryptoAutoCopyBillingActive(actor.workspaceId, String(record.studentId ?? ""))
+      isTradeCopierBillingActive(actor.workspaceId, String(record.studentId ?? ""))
     )
   );
   const connectionSnapshots = await Promise.all(

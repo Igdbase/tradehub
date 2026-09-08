@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { demoUsers, signInAs } from "./helpers/auth.mjs";
+import { assertSafeRoleBoundary } from "./helpers/assertions.mjs";
 import {
   archiveStandalonePracticeSession,
   assertStudentCourseCopySimplified,
   assertStudentPageSafe,
   assertWrongRoleBlocked,
+  clearCopierBrowserFixtures,
   clearConnectedJournalFixtures,
   clearCryptoJournalSyncFixtures,
   clearPracticeAnalyticsLossFixture,
@@ -15,20 +17,61 @@ import {
   demoStudentIds,
   dragPracticeChartCapture,
   fillQuickPracticeSession,
+  installCopierBrowserEligibility,
+  installCopierBrowserIneligibleState,
+  installCryptoCopierBrowserEntitlement,
+  installCryptoCopierBrowserConnection,
+  installForexCopierBrowserEntitlement,
+  installPendingTradeCopierBrowserPayment,
+  installOperationalForexCopierBrowserState,
   installConnectedJournalFixtures,
   installPracticeAnalyticsLossFixture,
   installPracticeAnalyticsUnmatchedFixture,
+  installStudentSignalFixtures,
   movePracticeChartPointer,
   observeNextPracticeSessionCreation,
   openStudentPage,
   openQuickPracticeSession,
-  openPracticeSessions
+  openPracticeSessions,
+  clearStudentSignalFixtures
 } from "./helpers/student-flows.mjs";
 
 test.describe("TradeHub seeded student browser E2E", () => {
   test.beforeEach(async ({ page }) => {
     await signInAs(page, "student", "/app");
   });
+
+  function expectStudentCopierResponseSafe(payload) {
+    const serialized = JSON.stringify(payload);
+
+    expect(serialized).not.toMatch(
+      /studentId|workspaceId|tierId|connectionId|fingerprint|credential|idempotency|killSwitch|providerPayload|provisioningInternals|vault|audit|canary|worker|paymentIntentId|accessCode|amountNgn|currency|referenceRef|latestReference|credentialMetadata|credentialVersion/i
+    );
+    expect(serialized).not.toMatch(/MetaAPI|dry-run|mock|provider diagnostics|raw id|broker_keys|stage29i_hidden/i);
+  }
+
+  async function getDemoAuthToken(page, persona) {
+    const authResponse = await page.request.post(
+      "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=stage15f-local",
+      {
+        data: {
+          email: demoUsers[persona].email,
+          password: demoUsers[persona].password,
+          returnSecureToken: true
+        }
+      }
+    );
+    expect(authResponse.ok(), `${persona} demo token should be available`).toBeTruthy();
+    return (await authResponse.json()).idToken;
+  }
+
+  function expectStudentSignalsResponseSafe(payload) {
+    const serialized = JSON.stringify(payload);
+
+    expect(serialized).not.toMatch(
+      /workspaceId|studentId|tierId|connectionId|intentId|providerId|credential|fingerprint|providerPayload|diagnostic|riskDecision|executionIntent|idempotency|vault|providerExecutionIdentity|tradeHubSignalId|sourceRecordId|telegram|chatId|webhookSecret/i
+    );
+  }
 
   test("Crypto Journal Sync is independent and displays provider-confirmed history safely", async ({ page }) => {
     const requestedUrls = [];
@@ -136,6 +179,455 @@ test.describe("TradeHub seeded student browser E2E", () => {
     await expect(page.locator("body")).toContainText(/Courses|Signals|Copier|Journal|Practice|Billing/i);
     await expect(page.locator("body")).not.toContainText(/Reminder preferences/i);
     await expect(page.locator("body")).not.toContainText(/email|SMS|WhatsApp|messaging provider|dry-run|suppression|contact verification|reminder delivery/i);
+  });
+
+  test("Signals feed shows direct TradeHub signals without execution or external-preview leakage", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    const requestedUrls = [];
+    page.on("request", (request) => requestedUrls.push(request.url()));
+
+    try {
+      await clearStudentSignalFixtures(page);
+      await installStudentSignalFixtures(page);
+
+      const responsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/signals") &&
+        response.request().method() === "GET" &&
+        response.status() === 200
+      );
+      await openStudentPage(page, "/app/signals", /TradeHub signals/i);
+      const initialPayload = await (await responsePromise).json();
+
+      expectStudentSignalsResponseSafe(initialPayload);
+      expect(initialPayload.filter).toBe("all");
+      expect(initialPayload.signals.map((signal) => signal.symbol)).toEqual(
+        expect.arrayContaining(["BTCUSDT", "XAUUSD", "EURUSD", "ETHUSDT", "ADAUSDT", "BNBUSDT"])
+      );
+      expect(initialPayload.signals.map((signal) => signal.symbol)).not.toContain("DOGEUSDT");
+      expect(initialPayload.signals.map((signal) => signal.symbol)).not.toContain("XRPUSDT");
+      expect(initialPayload.signals.map((signal) => signal.symbol)).not.toContain("USDCHF");
+      expect(initialPayload.signals.find((signal) => signal.symbol === "BTCUSDT")).toMatchObject({
+        market: "crypto",
+        side: "buy",
+        lifecycle: "open",
+        copied: { copiedState: "executed" }
+      });
+      expect(initialPayload.signals.find((signal) => signal.symbol === "EURUSD")).toMatchObject({
+        market: "forex",
+        side: "sell",
+        lifecycle: "closed",
+        copied: { copiedState: "executed" }
+      });
+      expect(initialPayload.signals.find((signal) => signal.symbol === "ETHUSDT")).toMatchObject({
+        lifecycle: "cancelled",
+        copied: { copiedState: "not_copied" }
+      });
+      expect(initialPayload.pageInfo).toMatchObject({
+        scannedCount: expect.any(Number),
+        matchedCount: expect.any(Number),
+        visibleCount: 25,
+        hasMore: true,
+        truncated: true
+      });
+      expect(initialPayload.pageInfo.matchedCount).toBeGreaterThan(25);
+      expect(initialPayload.pageInfo.nextCursor).toEqual(expect.any(String));
+      expect(initialPayload.pageInfo.nextCursor).not.toMatch(/stage29j|BTCUSDT|XAUUSD|student_demo|ws_demo/i);
+
+      await expect(page.getByTestId("student-signals-workspace")).toBeVisible();
+      await expect(page.getByTestId("student-signals-filters")).toContainText(/All|Forex|Crypto|Open/);
+      await expect(page.getByTestId("student-signals-truncation-notice")).toContainText(/Older records may be omitted/i);
+      await expect(page.getByTestId("student-signal-card").filter({ hasText: "BTCUSDT" })).toContainText(/BTCUSDT|BUY|Entry|SL|TP/);
+      await expect(page.locator("body")).toContainText(/XAUUSD|EURUSD|ETHUSDT|Executed|\+240 USD|\+94 USD/i);
+      await expect(page.locator("body")).not.toContainText(/DOGEUSDT|XRPUSDT|USDCHF|Telegram|external preview|provider payload|vault|worker|canary|stage 29|source-QA|P&L unavailable/i);
+      expect(requestedUrls.some((url) => url.includes("/api/student/signals"))).toBe(true);
+
+      const loadMoreResponsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/signals") && response.url().includes("cursor=")
+      );
+      await page.getByTestId("student-signals-load-more").click();
+      const loadMorePayload = await (await loadMoreResponsePromise).json();
+      expectStudentSignalsResponseSafe(loadMorePayload);
+      expect(loadMorePayload.pageInfo.visibleCount).toBeGreaterThan(0);
+      await expect(page.getByTestId("student-signal-card")).toHaveCount(initialPayload.signals.length + loadMorePayload.signals.length);
+
+      const forexResponsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/signals") && response.url().includes("filter=forex")
+      );
+      await page.getByRole("button", { name: /Forex/ }).click();
+      const forexPayload = await (await forexResponsePromise).json();
+      expectStudentSignalsResponseSafe(forexPayload);
+      expect(forexPayload.signals.every((signal) => signal.market === "forex")).toBe(true);
+      expect(forexPayload.signals.length).toBeGreaterThan(0);
+      await expect(page.locator("body")).toContainText(/XAUUSD|EURUSD/i);
+      await expect(page.locator("body")).not.toContainText(/BTCUSDT|ETHUSDT|DOGEUSDT|XRPUSDT/i);
+
+      const cryptoResponsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/signals") && response.url().includes("filter=crypto")
+      );
+      await page.getByRole("button", { name: /Crypto/ }).click();
+      const cryptoPayload = await (await cryptoResponsePromise).json();
+      expectStudentSignalsResponseSafe(cryptoPayload);
+      expect(cryptoPayload.signals.every((signal) => signal.market === "crypto")).toBe(true);
+      expect(cryptoPayload.pageInfo.matchedCount).toBeGreaterThan(10);
+      await expect(page.locator("body")).toContainText(/BTCUSDT|ETHUSDT|ADAUSDT|BNBUSDT/i);
+      await expect(page.locator("body")).not.toContainText(/XAUUSD|EURUSD|DOGEUSDT|XRPUSDT/i);
+
+      const openResponsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/signals") && response.url().includes("filter=open")
+      );
+      await page.getByRole("button", { name: /Open/ }).click();
+      const openPayload = await (await openResponsePromise).json();
+      expectStudentSignalsResponseSafe(openPayload);
+      expect(openPayload.signals.every((signal) => signal.lifecycle === "open")).toBe(true);
+      expect(openPayload.pageInfo.matchedCount).toBeGreaterThan(10);
+      await expect(page.locator("body")).toContainText(/BTCUSDT|XAUUSD|ADAUSDT|BNBUSDT/i);
+      await expect(page.locator("body")).not.toContainText(/ETHUSDT|EURUSD|DOGEUSDT|XRPUSDT/i);
+
+      for (const width of [1280, 834, 390]) {
+        await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+        await expect(page.getByTestId("student-signals-workspace")).toBeVisible();
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+        expect(overflow, `Signals page should not overflow at ${width}px`).toBe(false);
+      }
+
+      const origin = new URL(page.url()).origin;
+      const studentToken = await getDemoAuthToken(page, "student");
+      const directApiResponse = await page.request.get(`${origin}/api/student/signals?filter=all&limit=25`, {
+        headers: { Authorization: `Bearer ${studentToken}` }
+      });
+      expect(directApiResponse.status()).toBe(200);
+      expectStudentSignalsResponseSafe(await directApiResponse.json());
+
+      const workspaceToken = await getDemoAuthToken(page, "workspace");
+      const wrongRoleApiResponse = await page.request.get(`${origin}/api/student/signals`, {
+        headers: { Authorization: `Bearer ${workspaceToken}` }
+      });
+      expect(wrongRoleApiResponse.status()).toBe(403);
+      expectStudentSignalsResponseSafe(await wrongRoleApiResponse.json());
+    } finally {
+      await clearStudentSignalFixtures(page);
+    }
+  });
+
+  test("workspace role cannot open student Signals feed", async ({ browser, page }) => {
+    const origin = new URL(page.url()).origin;
+    const context = await browser.newContext({ baseURL: origin });
+    const rolePage = await context.newPage();
+
+    try {
+      await signInAs(rolePage, "workspace", "/workspace");
+      await rolePage.goto("/app/signals");
+      await assertSafeRoleBoundary(rolePage, { allowedRedirectPaths: ["/workspace"] });
+
+      const workspaceToken = await getDemoAuthToken(page, "workspace");
+      const wrongRoleApiResponse = await page.request.get(`${origin}/api/student/signals`, {
+        headers: { Authorization: `Bearer ${workspaceToken}` }
+      });
+      expect(wrongRoleApiResponse.status()).toBe(403);
+      expectStudentSignalsResponseSafe(await wrongRoleApiResponse.json());
+    } finally {
+      await context.close();
+    }
+  });
+
+  test("Copier purchase and setup stays student-focused and separate from Journal Sync", async ({ page }) => {
+    test.setTimeout(120_000);
+
+    const requestedUrls = [];
+    const copierPayloads = [];
+    page.on("request", (request) => requestedUrls.push(request.url()));
+    page.on("response", async (response) => {
+      const url = response.url();
+      if (!url.includes("/api/student/copier")) return;
+      if (!response.headers()["content-type"]?.includes("application/json")) return;
+      try {
+        copierPayloads.push(await response.json());
+      } catch {
+        // Ignore non-JSON browser redirects in this focused response privacy probe.
+      }
+    });
+    const forbiddenCopierTerms =
+      /vault|canary|worker|credential version|fingerprint|preflight|provider payload|raw id|stage 2|source-QA|metadata|dry-run|MetaAPI|mock|provider diagnostics/i;
+
+    try {
+      await clearCopierBrowserFixtures(page);
+      await clearCryptoJournalSyncFixtures(page);
+      await openStudentPage(page, "/app/copier", /Trade Copier|Purchase and account setup/i);
+      await expect(page.getByTestId("copier-purchase-panel")).toBeVisible();
+      await expect(page.getByTestId("copier-unpaid-empty-state")).toBeVisible();
+      await expect(page.locator("body")).toContainText(/Trade Copier|single student add-on|not included in workspace Launch, Pro, or Enterprise packages/i);
+      await expect(page.locator("body")).not.toContainText(new RegExp(`separate\\s+${"products"}|Purchase (?:Crypto|Forex) Copier`, "i"));
+      await expect(page.getByRole("button", { name: "Purchase Trade Copier" })).toBeEnabled();
+      await expect(page.getByTestId("copier-crypto-setup-panel")).toHaveCount(0);
+      await expect(page.getByTestId("copier-forex-setup-panel")).toHaveCount(0);
+      await expect(page.locator("body")).not.toContainText(forbiddenCopierTerms);
+      await expect(page.locator("body")).not.toContainText(/₦|NGN|Launch price|Pro price|Enterprise price/i);
+      expect(requestedUrls.some((url) => url.includes("/api/student/journal/crypto-sync"))).toBe(false);
+      expect(requestedUrls.some((url) => url.includes("/api/student/journal/connected-trades"))).toBe(false);
+
+      await installCopierBrowserIneligibleState(page);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Trade Copier|Purchase and account setup/i);
+      await expect(page.getByRole("button", { name: "Purchase Trade Copier" })).toBeDisabled();
+      await expect(page.getByTestId("copier-crypto-setup-panel")).toHaveCount(0);
+      await expect(page.getByTestId("copier-forex-setup-panel")).toHaveCount(0);
+
+      await installCopierBrowserEligibility(page);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Trade Copier|Purchase and account setup/i);
+      await expect(page.getByRole("button", { name: "Purchase Trade Copier" })).toBeEnabled();
+
+      await installPendingTradeCopierBrowserPayment(page);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Trade Copier|Payment pending/i);
+      await expect(page.getByTestId("copier-unpaid-empty-state")).toBeVisible();
+      await expect(page.getByTestId("copier-crypto-setup-panel")).toHaveCount(0);
+      await expect(page.getByTestId("copier-forex-setup-panel")).toHaveCount(0);
+
+      await clearCopierBrowserFixtures(page);
+      await installCopierBrowserEligibility(page);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Trade Copier|Purchase and account setup/i);
+      const checkoutProbeAuthResponse = await page.request.post(
+        "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=stage15f-local",
+        {
+          data: {
+            email: demoUsers.student.email,
+            password: demoUsers.student.password,
+            returnSecureToken: true
+          }
+        }
+      );
+      expect(checkoutProbeAuthResponse.ok(), "demo student token should be available for checkout response probe").toBeTruthy();
+      const checkoutProbeToken = (await checkoutProbeAuthResponse.json()).idToken;
+      const checkoutProbeOrigin = new URL(page.url()).origin;
+      const checkoutProbeResponse = await page.request.post(`${checkoutProbeOrigin}/api/student/copier/checkout`, {
+        headers: { Authorization: `Bearer ${checkoutProbeToken}` }
+      });
+      expect(checkoutProbeResponse.status()).toBe(201);
+      const checkoutProbePayload = await checkoutProbeResponse.json();
+      expect(checkoutProbePayload).toEqual({
+        ok: true,
+        authorizationUrl: expect.stringMatching(/\/app\/copier\?copierReference=thtc_/)
+      });
+      expectStudentCopierResponseSafe(checkoutProbePayload);
+
+      await clearCopierBrowserFixtures(page);
+      await installCopierBrowserEligibility(page);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Trade Copier|Purchase and account setup/i);
+      const checkoutResponsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/copier/checkout") &&
+        response.request().method() === "POST"
+      );
+      await Promise.all([
+        page.waitForURL(/copierReference=thtc_/),
+        page.getByRole("button", { name: "Purchase Trade Copier" }).click()
+      ]);
+      expect((await checkoutResponsePromise).status()).toBe(201);
+      await expect(page.locator("body")).toContainText(/Trade Copier payment verified/i);
+      await expect(page.getByRole("button", { name: "Crypto Setup" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Forex Setup" })).toBeVisible();
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Crypto Setup|Forex Setup/i);
+      await expect(page.getByRole("button", { name: "Crypto Setup" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Forex Setup" })).toBeVisible();
+
+      await installCryptoCopierBrowserEntitlement(page);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Crypto Setup|Binance and Bybit connection/i);
+      await expect(page.getByTestId("copier-crypto-setup-panel")).toBeVisible();
+      await expect(page.getByTestId("copier-crypto-connection-card")).toBeVisible();
+      await expect(page.getByTestId("copier-crypto-risk-card")).toBeVisible();
+      await expect(page.getByTestId("copier-crypto-controls-card")).toBeVisible();
+      await expect(page.locator("body")).toContainText(/Verify connection|Save risk limits|Pause Crypto Copier|Exchange|Binance|Bybit/i);
+      await expect(page.locator("body")).not.toContainText(/Journal Sync|Read-only crypto history/i);
+      await expect(page.locator("body")).not.toContainText(forbiddenCopierTerms);
+
+      const cryptoRiskCard = page.getByTestId("copier-crypto-risk-card");
+      await cryptoRiskCard.getByLabel("Max risk per trade").fill("1.5");
+      await cryptoRiskCard.getByLabel("Max daily loss").fill("4");
+      await cryptoRiskCard.getByLabel("Max open trades").fill("4");
+      await cryptoRiskCard.getByLabel("Allowed symbols").fill("BTCUSDT, LINKUSDT");
+      const riskResponsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/copier/crypto/preferences") &&
+        response.request().method() === "POST"
+      );
+      await page.getByRole("button", { name: "Save risk limits" }).click();
+      expect((await riskResponsePromise).ok()).toBeTruthy();
+      await expect(page.locator("body")).toContainText(/Crypto risk limits saved/i);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Crypto Setup|Binance and Bybit connection/i);
+      const reloadedCryptoRiskCard = page.getByTestId("copier-crypto-risk-card");
+      await expect(reloadedCryptoRiskCard.getByLabel("Max risk per trade")).toHaveValue("1.5");
+      await expect(reloadedCryptoRiskCard.getByLabel("Max daily loss")).toHaveValue("4");
+      await expect(reloadedCryptoRiskCard.getByLabel("Max open trades")).toHaveValue("4");
+      await expect(reloadedCryptoRiskCard.getByLabel("Allowed symbols")).toHaveValue(/BTCUSDT, LINKUSDT/);
+
+      const controlsResponsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/copier/preferences") &&
+        response.request().method() === "POST"
+      );
+      await page.getByLabel("I understand copied fills and timing may differ.").check();
+      await page.getByLabel("I understand TradeHub does not guarantee profit.").check();
+      await page.getByRole("button", { name: "Save Crypto controls" }).click();
+      expect((await controlsResponsePromise).ok()).toBeTruthy();
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Crypto Setup|Binance and Bybit connection/i);
+      await expect(page.getByLabel("I understand copied fills and timing may differ.")).toBeChecked();
+      await expect(page.getByLabel("I understand TradeHub does not guarantee profit.")).toBeChecked();
+
+      const pauseResponsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/copier/crypto/preferences") &&
+        response.request().method() === "POST"
+      );
+      await page.getByRole("button", { name: "Pause Crypto Copier" }).click();
+      expect((await pauseResponsePromise).ok()).toBeTruthy();
+      await expect(page.locator("body")).toContainText(/Crypto Copier is paused/i);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Crypto Setup|Binance and Bybit connection/i);
+      await expect(page.getByRole("button", { name: "Resume Crypto Copier" })).toBeVisible();
+
+      const resumeResponsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/copier/crypto/preferences") &&
+        response.request().method() === "POST"
+      );
+      await page.getByRole("button", { name: "Resume Crypto Copier" }).click();
+      expect((await resumeResponsePromise).ok()).toBeTruthy();
+      await expect(page.locator("body")).toContainText(/Crypto Copier is resumed/i);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Crypto Setup|Binance and Bybit connection/i);
+      await expect(page.getByRole("button", { name: "Pause Crypto Copier" })).toBeVisible();
+
+      await installCryptoCopierBrowserConnection(page);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Crypto Setup|Binance personal account/i);
+      const studentAuthResponse = await page.request.post(
+        "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=stage15f-local",
+        {
+          data: {
+            email: demoUsers.student.email,
+            password: demoUsers.student.password,
+            returnSecureToken: true
+          }
+        }
+      );
+      expect(studentAuthResponse.ok(), "demo student token should be available for legacy Copier API probes").toBeTruthy();
+      const studentToken = (await studentAuthResponse.json()).idToken;
+      const origin = new URL(page.url()).origin;
+      const legacyOverviewResponse = await page.request.get(`${origin}/api/student/crypto-execution/overview`, {
+        headers: { Authorization: `Bearer ${studentToken}` }
+      });
+      expect(legacyOverviewResponse.ok(), "legacy crypto overview route should remain compatibility-safe").toBeTruthy();
+      const legacyOverviewPayload = await legacyOverviewResponse.json();
+      expect(legacyOverviewPayload.products.crypto).toBeDefined();
+      expectStudentCopierResponseSafe(legacyOverviewPayload);
+      const legacyRawConnectionResponse = await page.request.post(
+        `${origin}/api/student/crypto-execution/connections/stage29i_browser_binance/disable`,
+        { headers: { Authorization: `Bearer ${studentToken}` } }
+      );
+      expect(legacyRawConnectionResponse.status()).toBe(410);
+      expectStudentCopierResponseSafe(await legacyRawConnectionResponse.json());
+
+      const disableConnectionResponsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/copier/crypto/connections/") &&
+        response.url().includes("/disable") &&
+        response.request().method() === "POST"
+      );
+      await page.getByRole("button", { name: "Disable connection" }).click();
+      const disableConnectionPayload = await (await disableConnectionResponsePromise).json();
+      expectStudentCopierResponseSafe(disableConnectionPayload);
+      await expect(page.locator("body")).toContainText(/Connection disabled/i);
+
+      await page.getByRole("button", { name: "Forex Setup" }).click();
+      await expect(page.getByTestId("copier-forex-setup-panel")).toBeVisible();
+      await expect(page.getByTestId("copier-forex-broker-card")).toBeVisible();
+      await expect(page.locator("body")).not.toContainText(/Purchase (?:Forex|Trade) Copier before submitting MT4\/MT5 setup/i);
+
+      await clearCopierBrowserFixtures(page);
+      await installForexCopierBrowserEntitlement(page);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Crypto Setup|Forex Setup/i);
+      await expect(page.getByRole("button", { name: "Cancel Trade Copier" })).toHaveCount(1);
+      await expect(page.getByTestId("copier-crypto-setup-panel")).toBeVisible();
+      await expect(page.getByTestId("copier-crypto-connection-card")).toBeVisible();
+      await page.getByRole("button", { name: "Forex Setup" }).click();
+      await expect(page.getByTestId("copier-forex-setup-panel")).toBeVisible();
+      await expect(page.getByTestId("copier-forex-broker-card")).toBeVisible();
+      await expect(page.getByTestId("copier-forex-controls-card")).toBeVisible();
+      await expect(page.locator("body")).toContainText(/MT4|MT5|Submit broker setup|Disable Forex setup|Save Forex controls/i);
+      await expect(page.locator("body")).not.toContainText(forbiddenCopierTerms);
+
+      await installOperationalForexCopierBrowserState(page);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Crypto Setup|Forex Setup/i);
+      await page.getByRole("button", { name: "Forex Setup" }).click();
+      await expect(page.getByTestId("copier-forex-status-card")).toContainText(/Ready for review|MT5/i);
+      await expect(page.getByTestId("copier-forex-status-card")).not.toContainText(forbiddenCopierTerms);
+      const disableForexResponsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/copier/forex/provisioning/disable") &&
+        response.request().method() === "POST"
+      );
+      await page.getByRole("button", { name: "Disable Forex setup" }).click();
+      expectStudentCopierResponseSafe(await (await disableForexResponsePromise).json());
+      await expect(page.locator("body")).toContainText(/Forex Copier setup disabled/i);
+
+      await page.getByRole("button", { name: "Crypto Setup" }).click();
+      await expect(page.getByTestId("copier-crypto-setup-panel")).toBeVisible();
+      await expect(page.getByTestId("copier-forex-setup-panel")).toHaveCount(0);
+
+      await installCryptoCopierBrowserEntitlement(page);
+      await installForexCopierBrowserEntitlement(page);
+      await page.reload();
+      await openStudentPage(page, "/app/copier", /Crypto Setup|Forex Setup/i);
+      await expect(page.getByRole("button", { name: "Cancel Trade Copier" })).toHaveCount(1);
+      await expect(page.getByRole("button", { name: /Purchase .* Copier/i })).toHaveCount(0);
+
+      const cancelResponsePromise = page.waitForResponse((response) =>
+        response.url().includes("/api/student/copier/cancel") &&
+        response.request().method() === "POST"
+      );
+      await page.getByRole("button", { name: "Cancel Trade Copier" }).click();
+      expectStudentCopierResponseSafe(await (await cancelResponsePromise).json());
+      await expect(page.locator("body")).toContainText(/Trade Copier subscription cancelled/i);
+      await expect(page.getByTestId("copier-crypto-setup-panel")).toHaveCount(0);
+      await expect(page.getByTestId("copier-forex-setup-panel")).toHaveCount(0);
+
+      await openStudentPage(page, "/app/journal", /Journal|My Trades/i);
+      await expect(page.getByTestId("journal-crypto-sync-panel")).toBeVisible();
+      await expect(page.getByTestId("journal-sync-readiness-state")).toContainText(/not configured/i);
+      await expect(page.locator("body")).toContainText(/Read-only crypto history|Copier setup and practice results stay separate/i);
+
+      for (const viewport of [
+        { width: 1180, height: 820 },
+        { width: 820, height: 1080 },
+        { width: 390, height: 844 }
+      ]) {
+        await page.setViewportSize(viewport);
+        await openStudentPage(page, "/app/copier", /Trade Copier|Purchase and account setup/i);
+        await expect(page.getByTestId("student-copier-workspace")).toBeVisible();
+        const horizontalOverflow = await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+        );
+        expect(horizontalOverflow).toBeLessThanOrEqual(1);
+        await expect(page.locator("body")).not.toContainText(forbiddenCopierTerms);
+        await expect(page.locator("body")).not.toContainText(/₦|NGN|Launch price|Pro price|Enterprise price/i);
+      }
+
+      for (const payload of copierPayloads) {
+        expectStudentCopierResponseSafe(payload);
+      }
+
+      await clearCopierBrowserFixtures(page);
+      await openStudentPage(page, "/app/copier", /Trade Copier|Purchase and account setup/i);
+      await expect(page.getByRole("button", { name: "Purchase Trade Copier" })).toBeEnabled();
+      await expect(page.getByTestId("copier-crypto-setup-panel")).toHaveCount(0);
+      await expect(page.getByTestId("copier-forex-setup-panel")).toHaveCount(0);
+    } finally {
+      await clearCopierBrowserFixtures(page);
+      await clearCryptoJournalSyncFixtures(page);
+    }
   });
 
   test("practice hub, sessions drawer, seeded terminal, and report load safely", async ({ page }) => {
@@ -1666,5 +2158,43 @@ test.describe("TradeHub seeded student browser E2E", () => {
   test("Wrong role student is safely blocked from workspace and Super Admin routes", async ({ page }) => {
     await assertWrongRoleBlocked(page, "/workspace");
     await assertWrongRoleBlocked(page, "/admin");
+  });
+
+  test("wrong-role users cannot open or call student Copier surfaces", async ({ browser, page }) => {
+    const wrongRolePage = await browser.newPage();
+
+    try {
+      await signInAs(wrongRolePage, "workspace", "/workspace");
+      await wrongRolePage.goto("/app/copier");
+      await wrongRolePage.waitForLoadState("domcontentloaded");
+      await wrongRolePage.waitForLoadState("networkidle");
+      await expect(
+        wrongRolePage.locator("body"),
+        "workspace persona must receive the shared wrong-role denial instead of the student Copier surface"
+      ).toContainText(/different account type|wrong role/i);
+      await expect(wrongRolePage.locator("body")).not.toContainText(/Purchase Trade Copier|Binance and Bybit connection|Forex Setup/i);
+      const authResponse = await page.request.post(
+        "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=stage15f-local",
+        {
+          data: {
+            email: demoUsers.workspace.email,
+            password: demoUsers.workspace.password,
+            returnSecureToken: true
+          }
+        }
+      );
+      expect(authResponse.ok(), "demo workspace token should be available for wrong-role API probe").toBeTruthy();
+      const workspaceToken = (await authResponse.json()).idToken;
+      const origin = new URL(page.url()).origin;
+      const response = await page.request.get(`${origin}/api/student/copier`, {
+        headers: { Authorization: `Bearer ${workspaceToken}` }
+      });
+      expect([401, 403]).toContain(response.status());
+      const payload = await response.json();
+      expectStudentCopierResponseSafe(payload);
+      expect(JSON.stringify(payload)).not.toMatch(/products|authorizationUrl|actionRef/i);
+    } finally {
+      await wrongRolePage.close();
+    }
   });
 });

@@ -17,6 +17,7 @@ function assert(condition, message) {
 const packageJson = JSON.parse(read("package.json"));
 const types = read("src/types/crypto-execution.ts");
 const subscriptionRepo = read("src/lib/crypto-execution/forex-autocopy-subscription-repository.ts");
+const tradeCopierBilling = read("src/lib/student-copier/student-copier-billing.ts");
 const provisioningRepo = read("src/lib/crypto-execution/forex-provisioning-repository.ts");
 const forexDemo = read("src/lib/crypto-execution/forex-demo-execution.ts");
 const studentUi = read("src/components/student-app/student-copier-client.tsx");
@@ -81,35 +82,52 @@ assert(
 );
 
 assert(
-  provisioningRepo.includes("rawStatus === \"payment_pending\"") &&
-    provisioningRepo.includes("rawStatus === \"payment_failed\"") &&
+  provisioningRepo.includes("resolveTradeCopierBillingAccess") &&
+    provisioningRepo.includes("billing.status as ForexAutoCopyBillingStatus") &&
+    provisioningRepo.includes("entitled: billing.active") &&
+    provisioningRepo.includes("billing.source === \"legacy_grandfathered\" ? \"manual\" : \"paystack\"") &&
     provisioningRepo.includes("billing.entitled && status !== \"disabled\"") &&
     provisioningRepo.includes("cleanupForexProvisioningForSubscriptionLifecycle") &&
     provisioningRepo.includes("providerMode: \"dry_run\""),
-  "Broker provisioning must unlock only for active paid billing and keep mock cleanup dry-run only."
+  "Broker provisioning must unlock only from unified Trade Copier active billing and keep mock cleanup dry-run only."
 );
 
 assert(
   checkoutRoute.includes("requireStudent") &&
-    checkoutRoute.includes("createStudentForexAutoCopyCheckout") &&
+    checkoutRoute.includes("createStudentTradeCopierCheckout") &&
     verifyRoute.includes("requireStudent") &&
-    verifyRoute.includes("verifyStudentForexAutoCopyCheckout") &&
+    verifyRoute.includes("verifyLegacyTradeCopierCheckout") &&
+    verifyRoute.includes("\"forex_autocopy\"") &&
     cancelRoute.includes("requireStudent") &&
-    cancelRoute.includes("cancelStudentForexAutoCopySubscription"),
-  "Forex AutoCopy subscription mutations must go through authenticated student API routes."
+    cancelRoute.includes("cancelStudentTradeCopierSubscription"),
+  "Forex AutoCopy compatibility subscription mutations must go through authenticated student API routes and the unified Trade Copier lifecycle."
 );
 
 assert(
-  studentUi.includes("Purchase Forex AutoCopy") &&
-    studentUi.includes("Renew Forex AutoCopy") &&
+  tradeCopierBilling.includes("TRADE_COPIER_PRODUCT_ID = \"trade_copier\"") &&
+    tradeCopierBilling.includes("PAYSTACK_TRADE_COPIER_PLAN_CODE") &&
+    tradeCopierBilling.includes("verifyLegacyTradeCopierCheckout") &&
+    tradeCopierBilling.includes("forex_autocopy_payment_intents") &&
+    tradeCopierBilling.includes("forex_autocopy_subscriptions/current") &&
+    tradeCopierBilling.includes("product: TRADE_COPIER_PRODUCT_ID"),
+  "Stage 29I unified Trade Copier lifecycle preserves Forex legacy callback compatibility while using canonical trade_copier billing for new access."
+);
+
+assert(
+  studentUi.includes("Purchase Trade Copier") &&
+    studentUi.includes("Cancel Trade Copier") &&
+    studentUi.includes("copierReference") &&
     studentUi.includes("forexReference") &&
-    studentUi.includes("/api/student/forex-execution/subscription/checkout") &&
-    studentUi.includes("/api/student/forex-execution/subscription/verify") &&
-    studentUi.includes("/api/student/forex-execution/subscription/cancel") &&
-    studentUi.includes("Cancel Forex AutoCopy billing") &&
+    studentUi.includes("/api/student/copier/checkout") &&
+    studentUi.includes("/api/student/copier/forex/verify") &&
+    studentUi.includes("/api/student/copier/cancel") &&
+    studentUi.includes("Disable Forex setup") &&
+    studentUi.includes("StudentCopierOverviewResponse") &&
+    !studentUi.includes("Purchase Forex Copier") &&
+    !studentUi.includes("Cancel Forex Copier") &&
     !studentUi.includes("metaApiToken") &&
     !studentUi.includes("metaApiAccountId"),
-  "Student UI must show checkout/renew/cancel controls and must not ask normal students for MetaAPI token/account ID fields."
+  "Accepted Stage 29I Student UI must show unified Trade Copier checkout/cancel with Forex setup controls through the allowlisted Copier DTO and must not ask normal students for MetaAPI token/account ID fields."
 );
 
 assert(
@@ -158,8 +176,10 @@ assert(
   envExample.includes("APP_URL=http://localhost:3000") &&
     envExample.includes("PAYSTACK_FOREX_AUTOCOPY_PLAN_CODE") &&
     envExample.includes("PAYSTACK_FOREX_AUTOCOPY_CHECKOUT_EMAIL") &&
-    envExample.includes("FOREX_AUTOCOPY_PRICE_NGN"),
-  ".env.example must document Forex AutoCopy Paystack checkout settings and server callback URL."
+    envExample.includes("FOREX_AUTOCOPY_PRICE_NGN") &&
+    envExample.includes("PAYSTACK_TRADE_COPIER_PLAN_CODE") &&
+    envExample.includes("TRADE_COPIER_PRICE_NGN"),
+  ".env.example must document historical Forex AutoCopy settings, canonical Trade Copier checkout settings, and server callback URL."
 );
 
 console.log("Stage 15S Forex AutoCopy checkout lifecycle QA passed.");

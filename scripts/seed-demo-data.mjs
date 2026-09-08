@@ -158,10 +158,10 @@ function workspaceDoc({ workspaceId, ownerId, tier, name, handle, activeCount })
       {
         tierId: "demo_core",
         name: "Demo Core Access",
-        description: "Courses, practice, journal, assignments, and safe support visibility.",
+        description: "Courses, practice, journal, assignments, Copier add-on eligibility, and safe support visibility.",
         priceNgn: 0,
         billingPeriod: "monthly",
-        features: ["course", "signalAlerts", "journal", "calculators"],
+        features: tier === "pro" ? ["course", "signalAlerts", "autoCopy", "journal", "calculators"] : ["course", "signalAlerts", "journal", "calculators"],
         featured: true
       }
     ],
@@ -259,8 +259,8 @@ function studentDoc({ workspaceId, studentId, status, displayName, subscriptionS
           : "payment_access_issue",
     subscriptionStatus,
     paymentRail: "paystack",
-    accountMode: "signal_alerts",
-    autoCopyEligible: false,
+    accountMode: status === "active" ? "auto_copy" : "signal_alerts",
+    autoCopyEligible: status === "active",
     courseCompletionPercent: status === "active" ? 66 : 0,
     supportFollowUpNeeded: status !== "active",
     supportNoteSummary: status === "active"
