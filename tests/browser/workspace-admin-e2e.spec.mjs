@@ -37,12 +37,43 @@ const focusedWorkspaceRoutes = [
   { path: "/workspace/enterprise", nav: "enterprise", expected: /Enterprise readiness|Enterprise integration requests/i }
 ];
 
+const focusedAdminRoutes = [
+  { path: "/admin", nav: "overview", expected: /Control room overview|Safe operator issue summary/i },
+  { path: "/admin/workspaces", nav: "workspaces", expected: /Workspaces|Application pipeline/i },
+  { path: "/admin/licences", nav: "licences", expected: /Package licences|Workspace package/i },
+  { path: "/admin/payments", nav: "payments", expected: /Payments|Payment operations/i },
+  { path: "/admin/integrations", nav: "integrations", expected: /Integrations|External signal ingestion/i },
+  { path: "/admin/execution-safety", nav: "execution-safety", expected: /Execution safety|Broad live AutoCopy readiness/i },
+  { path: "/admin/audit", nav: "audit", expected: /Audit|Trust and safety/i }
+];
+
 function workspaceApiCollector(page) {
   const paths = [];
   const handler = (request) => {
     try {
       const url = new URL(request.url());
       if (url.pathname.startsWith("/api/workspace/")) {
+        paths.push(`${request.method()} ${url.pathname}`);
+      }
+    } catch {
+      // Ignore non-standard URLs emitted by the browser.
+    }
+  };
+
+  page.on("request", handler);
+
+  return {
+    paths,
+    stop: () => page.off("request", handler)
+  };
+}
+
+function adminApiCollector(page) {
+  const paths = [];
+  const handler = (request) => {
+    try {
+      const url = new URL(request.url());
+      if (url.pathname.startsWith("/api/admin/")) {
         paths.push(`${request.method()} ${url.pathname}`);
       }
     } catch {
@@ -77,6 +108,60 @@ async function expectNoDocumentHorizontalOverflow(page) {
     scrollWidth: document.documentElement.scrollWidth
   }));
   expect(metrics.scrollWidth, `Document should not overflow horizontally: ${JSON.stringify(metrics)}`).toBeLessThanOrEqual(metrics.clientWidth + 2);
+}
+
+async function expectActiveAdminNavVisible(page, nav) {
+  const navLocator = page.getByTestId("admin-focused-nav-scroll");
+  const activeLocator = page.getByTestId(`admin-nav-${nav}`);
+
+  await expect(activeLocator).toHaveAttribute("aria-current", "page");
+  await expect
+    .poll(async () =>
+      page.evaluate((activeTestId) => {
+        const navElement = document.querySelector("[data-testid='admin-focused-nav-scroll']");
+        const activeElement = document.querySelector(`[data-testid='${activeTestId}']`);
+
+        if (!navElement || !activeElement) {
+          return { visible: false, reason: "missing" };
+        }
+
+        const navRect = navElement.getBoundingClientRect();
+        const activeRect = activeElement.getBoundingClientRect();
+        const centerX = activeRect.left + activeRect.width / 2;
+        const centerY = activeRect.top + activeRect.height / 2;
+        const hit = document.elementFromPoint(centerX, centerY);
+
+        return {
+          visible:
+            activeRect.left >= navRect.left - 1 &&
+            activeRect.right <= navRect.right + 1 &&
+            activeRect.top >= navRect.top - 1 &&
+            activeRect.bottom <= navRect.bottom + 1 &&
+            Boolean(hit && activeElement.contains(hit)),
+          navLeft: navRect.left,
+          navRight: navRect.right,
+          activeLeft: activeRect.left,
+          activeRight: activeRect.right,
+          hitText: hit?.textContent ?? ""
+        };
+      }, `admin-nav-${nav}`)
+    )
+    .toMatchObject({ visible: true });
+
+  const navBox = await navLocator.boundingBox();
+  const activeBox = await activeLocator.boundingBox();
+  const viewport = page.viewportSize();
+
+  expect(navBox, "Admin focused nav should have a bounding box").toBeTruthy();
+  expect(activeBox, "Active Admin nav item should have a bounding box").toBeTruthy();
+  expect(viewport, "Viewport should be known").toBeTruthy();
+
+  if (navBox && activeBox && viewport) {
+    expect(navBox.x).toBeGreaterThanOrEqual(0);
+    expect(navBox.x + navBox.width).toBeLessThanOrEqual(viewport.width + 1);
+    expect(activeBox.x).toBeGreaterThanOrEqual(navBox.x - 1);
+    expect(activeBox.x + activeBox.width).toBeLessThanOrEqual(navBox.x + navBox.width + 1);
+  }
 }
 
 async function expectActiveWorkspaceNavVisible(page, nav) {
@@ -477,29 +562,209 @@ test.describe("TradeHub seeded Super Admin browser E2E", () => {
     await signInAs(page, "admin", "/admin");
   });
 
-  test("admin shell and package ops panels load safely", async ({ page }) => {
-    await assertOpsPageSafe(page, /Super Admin|Package licences|Workspace package/i);
+  test("admin focused navigation supports direct URLs, active state, and browser history", async ({ page }) => {
+    for (const route of focusedAdminRoutes) {
+      await page.goto(route.path);
+      await assertOpsPageSafe(page, route.expected);
+      await expect(page).toHaveURL(new RegExp(`${route.path.replace(/\//g, "\\/")}$`));
+      await expect(page.getByTestId(`admin-nav-${route.nav}`)).toHaveAttribute("aria-current", "page");
+    }
+
+    await page.goto("/admin");
+    await page.getByTestId("admin-nav-workspaces").click();
+    await expect(page).toHaveURL(/\/admin\/workspaces$/);
+    await page.getByTestId("admin-nav-execution-safety").click();
+    await expect(page).toHaveURL(/\/admin\/execution-safety$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/admin\/workspaces$/);
+    await page.goForward();
+    await expect(page).toHaveURL(/\/admin\/execution-safety$/);
+  });
+
+  test("admin focused navigation is visible across desktop tablet and mobile deep links", async ({ page }) => {
+    test.setTimeout(150_000);
+
+    const viewports = [
+      { name: "desktop", width: 1440, height: 980 },
+      { name: "tablet", width: 900, height: 1100 },
+      { name: "mobile", width: 390, height: 860 }
+    ];
+
+    for (const viewport of viewports) {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+
+      for (const route of focusedAdminRoutes) {
+        await page.goto(route.path);
+        await assertOpsPageSafe(page, route.expected);
+        await expectActiveAdminNavVisible(page, route.nav);
+        await expectNoDocumentHorizontalOverflow(page);
+      }
+    }
+  });
+
+  test("admin focused routes fetch only active-view data", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    const routeExpectations = [
+      {
+        path: "/admin",
+        expected: ["GET /api/admin/overview"],
+        forbidden: [
+          "GET /api/admin/applications",
+          "GET /api/admin/payments/overview",
+          "GET /api/admin/audit-log",
+          "GET /api/admin/messaging/overview",
+          "GET /api/admin/signals/external-ingestion/overview",
+          "GET /api/admin/crypto-execution/overview"
+        ]
+      },
+      {
+        path: "/admin/workspaces",
+        expected: ["GET /api/admin/applications"],
+        forbidden: [
+          "GET /api/admin/overview",
+          "GET /api/admin/payments/overview",
+          "GET /api/admin/audit-log",
+          "GET /api/admin/messaging/overview",
+          "GET /api/admin/signals/external-ingestion/overview",
+          "GET /api/admin/crypto-execution/overview"
+        ]
+      },
+      {
+        path: "/admin/licences",
+        expected: ["GET /api/admin/overview"],
+        forbidden: [
+          "GET /api/admin/applications",
+          "GET /api/admin/payments/overview",
+          "GET /api/admin/audit-log",
+          "GET /api/admin/messaging/overview",
+          "GET /api/admin/signals/external-ingestion/overview",
+          "GET /api/admin/crypto-execution/overview"
+        ]
+      },
+      {
+        path: "/admin/payments",
+        expected: ["GET /api/admin/overview", "GET /api/admin/payments/overview"],
+        forbidden: [
+          "GET /api/admin/applications",
+          "GET /api/admin/audit-log",
+          "GET /api/admin/messaging/overview",
+          "GET /api/admin/signals/external-ingestion/overview",
+          "GET /api/admin/crypto-execution/overview"
+        ]
+      },
+      {
+        path: "/admin/integrations",
+        expected: [
+          "GET /api/admin/overview",
+          "GET /api/admin/messaging/overview",
+          "GET /api/admin/signals/external-ingestion/overview"
+        ],
+        forbidden: [
+          "GET /api/admin/applications",
+          "GET /api/admin/payments/overview",
+          "GET /api/admin/audit-log",
+          "GET /api/admin/crypto-execution/overview"
+        ]
+      },
+      {
+        path: "/admin/execution-safety",
+        expected: ["GET /api/admin/crypto-execution/overview"],
+        forbidden: [
+          "GET /api/admin/overview",
+          "GET /api/admin/applications",
+          "GET /api/admin/payments/overview",
+          "GET /api/admin/audit-log",
+          "GET /api/admin/messaging/overview",
+          "GET /api/admin/signals/external-ingestion/overview"
+        ]
+      },
+      {
+        path: "/admin/audit",
+        expected: ["GET /api/admin/overview", "GET /api/admin/audit-log"],
+        forbidden: [
+          "GET /api/admin/applications",
+          "GET /api/admin/payments/overview",
+          "GET /api/admin/messaging/overview",
+          "GET /api/admin/signals/external-ingestion/overview",
+          "GET /api/admin/crypto-execution/overview"
+        ]
+      }
+    ];
+
+    for (const route of routeExpectations) {
+      const collector = adminApiCollector(page);
+
+      try {
+        await page.goto(route.path);
+        await assertOpsPageSafe(page, focusedAdminRoutes.find((entry) => entry.path === route.path)?.expected ?? /Super Admin/i);
+
+        for (const expectedPath of route.expected) {
+          await expectCollectedRequest(collector, expectedPath);
+        }
+
+        await page.waitForTimeout(300);
+        for (const forbiddenPath of route.forbidden) {
+          expect(collector.paths, `${route.path} should not request ${forbiddenPath}`).not.toContain(forbiddenPath);
+        }
+      } finally {
+        collector.stop();
+      }
+    }
+  });
+
+  test("admin overview stays concise and does not render every operations panel", async ({ page }) => {
+    const collector = adminApiCollector(page);
+    try {
+      await page.goto("/admin");
+      await assertOpsPageSafe(page, /Control room overview|Safe operator issue summary/i);
+      await expect(page.getByTestId("admin-view-overview")).toBeVisible();
+      await expect(page.locator("body")).not.toContainText(/Application pipeline|Payment operations|External signal ingestion|Broad live AutoCopy readiness/i);
+      await expectCollectedRequest(collector, "GET /api/admin/overview");
+      await page.waitForTimeout(300);
+      expect(collector.paths).not.toContain("GET /api/admin/applications");
+      expect(collector.paths).not.toContain("GET /api/admin/payments/overview");
+      expect(collector.paths).not.toContain("GET /api/admin/crypto-execution/overview");
+    } finally {
+      collector.stop();
+    }
+  });
+
+  test("admin workspaces and licences views keep their responsibilities focused", async ({ page }) => {
+    await page.goto("/admin/workspaces");
+    await assertOpsPageSafe(page, /Workspaces|Application pipeline/i);
+    await expect(page.locator("body")).toContainText(/Create workspace shell|Applications/i);
+    await expect(page.locator("body")).not.toContainText(/Payment operations|Broad live AutoCopy readiness/i);
+
+    await page.goto("/admin/licences");
+    await assertOpsPageSafe(page, /Package licences|Workspace package/i);
     await expect(page.locator("body")).toContainText(/Launch supports 50 active students/i);
     await expect(page.locator("body")).toContainText(/Pro supports 500/i);
     await expect(page.locator("body")).toContainText(/Enterprise is custom-reviewed/i);
     await expect(page.locator("body")).toContainText(/Trade Copier remains a separate optional add-on/i);
-    await expect(page.locator("body")).toContainText(/masked|support status only|do not collect payment|trigger money movement/i);
+    await expect(page.locator("body")).not.toContainText(/Payment operations|External signal ingestion/i);
   });
 
-  test("admin branding, enterprise, and integration panels render masked metadata", async ({ page }) => {
-    await assertOpsPageSafe(page, /Branding and domains|Enterprise deployment and SLA|Enterprise integration queue/i);
+  test("admin payments integrations execution and audit views render safely", async ({ page }) => {
+    await page.goto("/admin/payments");
+    await assertOpsPageSafe(page, /Payments|Payment operations/i);
+    await expect(page.locator("body")).toContainText(/Payment rails|Paystack|Solana/i);
+
+    await page.goto("/admin/integrations");
+    await assertOpsPageSafe(page, /Integrations|External signal ingestion/i);
+    await expect(page.locator("body")).toContainText(/Branding and domains|Enterprise deployment and SLA|Enterprise integration queue/i);
     await expect(page.locator("body")).toContainText(/does not upload logos, change DNS, provision SSL, or call hosting providers/i);
-    await expect(page.locator("body")).toContainText(/metadata only|does not provision cloud infrastructure/i);
-    await expect(page.locator("body")).toContainText(/No CRM, payment, analytics, broker/i);
-    await expect(page.locator("body")).toContainText(/raw source IDs|credentials|private URLs|provider payloads/i);
-  });
-
-  test("admin support, payments, messaging, signals, and AutoCopy readiness load safely", async ({ page }) => {
-    await assertOpsPageSafe(page, /Support overview|Payment operations|External reminders contract/i);
     await expect(page.locator("body")).toContainText(/Messaging readiness|External sending remains disabled|dry-run/i);
-    await expect(page.locator("body")).toContainText(/External signal ingestion|No AutoCopy execution|Telegram source setup/i);
-    await expect(page.locator("body")).toContainText(/Broad live AutoCopy readiness|Live AutoCopy support, incident, and rollback posture/i);
+    await expect(page.locator("body")).toContainText(/Telegram source setup/i);
+
+    await page.goto("/admin/execution-safety");
+    await assertOpsPageSafe(page, /Execution safety|Broad live AutoCopy readiness/i);
+    await expect(page.locator("body")).toContainText(/Live AutoCopy support, incident, and rollback posture/i);
     await expect(page.locator("body")).toContainText(/does not enable broad live order execution|dry-run|kill-switch/i);
+
+    await page.goto("/admin/audit");
+    await assertOpsPageSafe(page, /Audit|Trust and safety/i);
+    await expect(page.locator("body")).toContainText(/Audit trail|masked/i);
   });
 
   test("admin approves Telegram candidate, workspace publishes it, and student sees safe source label", async ({ page }) => {
@@ -507,7 +772,7 @@ test.describe("TradeHub seeded Super Admin browser E2E", () => {
     await clearStage29KBrowserFixtures(page);
 
     try {
-      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.goto("/admin/integrations");
       await assertOpsPageSafe(page, /External signal ingestion|Telegram source setup/i);
 
       await page.getByLabel("Source reference").fill("stage29k_visible_source");
@@ -608,5 +873,44 @@ test.describe("TradeHub seeded Super Admin browser E2E", () => {
 
   test("Wrong role admin does not get student private route context by accident", async ({ page }) => {
     await assertAdminBlockedFromStudentPrivatePage(page, "/app/journal");
+  });
+});
+
+test.describe("TradeHub seeded persona coverage", () => {
+  test("all seven seeded personas sign in and land on their truthful surfaces", async ({ page }) => {
+    test.setTimeout(300_000);
+
+    // Super Admin -> /admin
+    await signInAs(page, "admin", "/admin");
+    await assertOpsPageSafe(page, /Control room overview|Safe operator issue summary/i);
+    await expect(page.getByTestId("admin-view-overview")).toBeVisible();
+    await signOutIfSignedIn(page);
+
+    // All three workspace personas -> /workspace, and each is blocked from /admin
+    for (const persona of ["workspaceLaunch", "workspacePro", "workspaceEnterprise"]) {
+      await signInAs(page, persona, "/workspace");
+      await assertOpsPageSafe(page, /Workspace home|Workspace snapshot/i);
+      await assertWorkspaceBlockedFromAdmin(page);
+      await signOutIfSignedIn(page);
+    }
+
+    // Students -> /app with the truthful subscription status for their seed.
+    // The pending seed (payment_pending) is not an active subscription, so /app
+    // truthfully renders "Unknown" workspace access with locked surfaces.
+    await signInAs(page, "studentActive", "/app");
+    await expect(page.locator("body")).toContainText("Workspace access");
+    await expect(page.getByText("Active", { exact: true }).first()).toBeVisible();
+    await expect(page.locator("body")).not.toContainText(/Payment Pending|Past Due/i);
+    await signOutIfSignedIn(page);
+
+    await signInAs(page, "studentPending", "/app");
+    await expect(page.locator("body")).toContainText("Workspace access");
+    await expect(page.locator("body")).toContainText(/subscription is not active for access/i);
+    await signOutIfSignedIn(page);
+
+    await signInAs(page, "studentPayment", "/app");
+    await expect(page.locator("body")).toContainText("Workspace access");
+    await expect(page.locator("body")).toContainText(/Past Due/i);
+    await signOutIfSignedIn(page);
   });
 });

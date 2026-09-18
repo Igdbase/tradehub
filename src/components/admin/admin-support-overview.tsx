@@ -7,83 +7,103 @@ import type { AdminCryptoExecutionOverviewResponse } from "@/types/crypto-execut
 import type { AdminOverviewResponse } from "@/types/admin-api";
 import type { AdminPaymentsOverviewResponse } from "@/types/payments";
 
+const NOT_MEASURED_VALUE = "—";
+
 function issueTone(count: number) {
   return count > 0 ? "amber" as const : "green" as const;
 }
 
 export function AdminSupportOverview({
   overview,
-  payments,
-  cryptoExecution
+  payments = null,
+  cryptoExecution = null
 }: {
   overview: AdminOverviewResponse | null;
-  payments: AdminPaymentsOverviewResponse | null;
-  cryptoExecution: AdminCryptoExecutionOverviewResponse | null;
+  payments?: AdminPaymentsOverviewResponse | null;
+  cryptoExecution?: AdminCryptoExecutionOverviewResponse | null;
 }) {
   const pendingApplications = overview?.summary.pendingApplicationCount ?? 0;
-  const paymentIssues =
-    payments?.opsSummary.paymentSupportQueueCount ??
-    ((payments?.latestPaymentIntents ?? []).filter((intent) =>
-        intent.status === "failed" ||
-        intent.status === "expired" ||
-        intent.status === "cancelled" ||
-        intent.status === "abandoned"
-      ).length + (payments?.opsSummary.pendingSolanaPayoutCount ?? 0));
   const workspaceReadinessIssues =
     (overview?.summary.openDisputeCount ?? 0) +
     (overview?.summary.riskFlagCount ?? 0) +
     (overview?.warnings?.length ?? 0);
-  const autoCopyGateBlocks =
-    (cryptoExecution?.summary.workspaceKillSwitchCount ?? 0) +
-    (cryptoExecution?.summary.riskyWorkspaceCount ?? 0) +
-    (cryptoExecution?.summary.recentFailureCount ?? 0);
-  const deferredMvpQa = 2;
+  const measuredPaymentIssues = payments
+    ? (payments.latestPaymentIntents ?? []).filter((intent) =>
+        intent.status === "failed" ||
+        intent.status === "expired" ||
+        intent.status === "cancelled" ||
+        intent.status === "abandoned"
+      ).length + (payments.opsSummary.pendingSolanaPayoutCount ?? 0)
+    : null;
+  const measuredAutoCopyGateBlocks = cryptoExecution
+    ? (cryptoExecution.summary.workspaceKillSwitchCount ?? 0) +
+      (cryptoExecution.summary.riskyWorkspaceCount ?? 0) +
+      (cryptoExecution.summary.recentFailureCount ?? 0)
+    : null;
 
   return (
     <GlassCard className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 max-w-3xl">
-          <p className="eyebrow !text-[color:var(--label3)]">Stage 20A support audit</p>
+          <p className="eyebrow !text-[color:var(--label3)]">Support audit</p>
           <h2 className="mt-2 text-xl font-semibold text-[color:var(--label)]">
             Safe operator issue summary
           </h2>
           <p className="break-safe mt-2 text-sm leading-6 text-[color:var(--label2)]">
             This overview is aggregate-only. It does not show raw payment payloads, private journal
             entries, private course notes, practice trades, provider payloads, vault references, account
-            IDs, credentials, broker passwords, or answer keys.
+            IDs, credentials, broker passwords, or answer keys. Chips marked not measured load only on
+            their focused admin views.
           </p>
         </div>
-        <Badge tone={pendingApplications + paymentIssues + autoCopyGateBlocks > 0 ? "amber" : "green"}>
+        <Badge tone={pendingApplications + workspaceReadinessIssues > 0 ? "amber" : "green"}>
           View only
         </Badge>
       </div>
 
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
         <StatChip label="Pending apps" value={String(pendingApplications)} tone={issueTone(pendingApplications)} />
-        <StatChip label="Payment issues" value={String(paymentIssues)} tone={issueTone(paymentIssues)} />
+        {payments ? (
+          <StatChip
+            label="Payment issues"
+            value={String(measuredPaymentIssues)}
+            tone={issueTone(measuredPaymentIssues ?? 0)}
+            detail="measured on the Payments view"
+          />
+        ) : (
+          <StatChip
+            label="Payment issues"
+            value={NOT_MEASURED_VALUE}
+            detail="not measured on this view — open Payments"
+            tone="neutral"
+          />
+        )}
         <StatChip
           label="Workspace readiness"
           value={String(workspaceReadinessIssues)}
           detail="disputes, flags, warnings"
           tone={issueTone(workspaceReadinessIssues)}
         />
-        <StatChip
-          label="AutoCopy blocks"
-          value={String(autoCopyGateBlocks)}
-          detail="gates and failures"
-          tone={issueTone(autoCopyGateBlocks)}
-        />
-        <StatChip
-          label="MVP browser QA"
-          value={String(deferredMvpQa)}
-          detail="practice + courses deferred"
-          tone="amber"
-        />
+        {cryptoExecution ? (
+          <StatChip
+            label="AutoCopy blocks"
+            value={String(measuredAutoCopyGateBlocks)}
+            tone={issueTone(measuredAutoCopyGateBlocks ?? 0)}
+            detail="measured on the Execution Safety view"
+          />
+        ) : (
+          <StatChip
+            label="AutoCopy blocks"
+            value={NOT_MEASURED_VALUE}
+            detail="not measured on this view — open Execution Safety"
+            tone="neutral"
+          />
+        )}
       </div>
 
       <p className="break-safe text-sm leading-6 text-[color:var(--label2)]">
         Use the existing application, payment support queue, reconciliation, execution, audit-log,
-        and trust/safety panels for follow-up. Stage 20C adds no refunds, payouts, messaging,
+        and trust/safety panels for follow-up. This summary adds no refunds, payouts, messaging,
         credential flows, entitlement shortcuts, or live execution actions.
       </p>
     </GlassCard>

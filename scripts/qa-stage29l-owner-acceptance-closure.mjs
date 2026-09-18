@@ -67,7 +67,8 @@ const closureRequired = [
   "browser history",
   "scoped loading",
   "responsive navigation",
-  "Stage 29M remains unstarted and next",
+  "Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready",
+  "Stage 29N remains unstarted and next",
   "Stage 29K is owner-accepted, closed, and frozen",
   "Stage 29J remains owner-accepted, closed, and frozen",
   "Stage 29I remains closed and frozen",
@@ -108,7 +109,6 @@ includesAll(
 excludesAll(
   combinedDocs,
   [
-    "Stage 29M is implemented",
     "Stage 29M is owner-accepted",
     "Stage 29M is closed and frozen",
     "Real Telegram/provider acceptance is complete",

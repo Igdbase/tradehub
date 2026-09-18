@@ -1,13 +1,39 @@
 import { expect } from "@playwright/test";
 import { assertTradeHubPageHealthy } from "./assertions.mjs";
 
+// One entry per seeded persona (see scripts/seed-demo-data.mjs). The legacy
+// "student"/"workspace"/"admin" aliases are kept so existing tests keep working.
 export const demoUsers = {
   student: {
     email: "demo.student.active@example.test",
     password: "TradeHubDemo!123"
   },
+  studentActive: {
+    email: "demo.student.active@example.test",
+    password: "TradeHubDemo!123"
+  },
+  studentPending: {
+    email: "demo.student.pending@example.test",
+    password: "TradeHubDemo!123"
+  },
+  studentPayment: {
+    email: "demo.student.payment@example.test",
+    password: "TradeHubDemo!123"
+  },
   workspace: {
     email: "demo.pro.influencer@example.test",
+    password: "TradeHubDemo!123"
+  },
+  workspaceLaunch: {
+    email: "demo.launch.influencer@example.test",
+    password: "TradeHubDemo!123"
+  },
+  workspacePro: {
+    email: "demo.pro.influencer@example.test",
+    password: "TradeHubDemo!123"
+  },
+  workspaceEnterprise: {
+    email: "demo.enterprise.influencer@example.test",
     password: "TradeHubDemo!123"
   },
   admin: {

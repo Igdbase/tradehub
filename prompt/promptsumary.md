@@ -5,13 +5,13 @@ This file is a living handoff summary for TradeHub. It is not the full prompt ar
 Current reference:
 
 ```text
-TH-2026-09-08-STAGE29L-WORKSPACE-NAVIGATION-OWNER-ACCEPTANCE-CLOSURE-HANDOFF
+TH-2026-09-08-STAGE29M-SUPER-ADMIN-NAVIGATION-DEMO-RELIABILITY-HANDOFF
 ```
 
 Current implementation stop:
 
 ```text
-Stage 29L - Workspace Navigation And Focused Views
+Stage 29M - Super Admin Navigation And Demo Account Reliability
 ```
 
 Selected launch-expansion status:
@@ -215,7 +215,7 @@ Use this order for future builder prompts unless a production bug interrupts it.
 18. Stage 28E: Browser QA Bug-Fix And UX Polish Pass. Completed/source-QA ready.
 19. Stage 28F: Final Demo Readiness Freeze. Completed/source-QA frozen.
 
-Current next: Stage 29M Super Admin Navigation And Demo Account Reliability. Stage 29L Workspace Navigation And Focused Views is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29K Telegram Signal Ingestion And Controlled Bridge is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Real Telegram/provider acceptance remains deferred and is not claimed. Stage 29J Signals Feed And TradeHub Signal Routing is owner-accepted, closed, and frozen after successful local owner testing on 7 September 2026. Stage 29I is owner-accepted, closed, and frozen after successful local owner testing on 6 September 2026. Stage 29F remains owner-accepted, closed, and frozen. Real Paystack sandbox/production acceptance remains deferred. Stage 29G external Binance/Bybit acceptance remains deferred because no Google Cloud Secret Manager project and no approved provider accounts are currently available. Stage 29H remains deferred/unstarted.
+Current next: Stage 29N Responsive, Browser, Security, And Product Freeze. Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready. Owner acceptance is not claimed. Stage 29L Workspace Navigation And Focused Views is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29K Telegram Signal Ingestion And Controlled Bridge is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Real Telegram/provider acceptance remains deferred and is not claimed. Stage 29J Signals Feed And TradeHub Signal Routing is owner-accepted, closed, and frozen after successful local owner testing on 7 September 2026. Stage 29I is owner-accepted, closed, and frozen after successful local owner testing on 6 September 2026. Stage 29F remains owner-accepted, closed, and frozen. Real Paystack sandbox/production acceptance remains deferred. Stage 29G external Binance/Bybit acceptance remains deferred because no Google Cloud Secret Manager project and no approved provider accounts are currently available. Stage 29H remains deferred/unstarted.
 
 Do not resume the removed tracks unless the owner explicitly reverses this decision: uploads/file or video hosting, refunds/payouts/withdrawals automation, and AI features are out of the remaining plan.
 
@@ -1406,7 +1406,7 @@ Summary:
 Preserved:
 
 - Stage 29D and Stage 29F remain frozen.
-- Stage 29I is closed and frozen; Stage 29J is owner-accepted, closed, and frozen after successful local owner testing on 7 September 2026. Stage 29K is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29L is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026, and Stage 29M remains unstarted and next.
+- Stage 29I is closed and frozen; Stage 29J is owner-accepted, closed, and frozen after successful local owner testing on 7 September 2026. Stage 29K is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29L is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready, and Stage 29N remains unstarted and next.
 - Real Paystack sandbox/production acceptance remains deferred and is not claimed complete.
 - No provider calls, credentials, new payment products, entitlement shortcuts, live orders, live execution, AutoCopy gate changes, Journal Sync behavior changes, raw ids, vault refs, provider payloads, diagnostics, or secrets were added or exposed.
 
@@ -1452,7 +1452,7 @@ Reference: `TH-2026-09-08-STAGE29K-TELEGRAM-SIGNAL-BRIDGE-OWNER-ACCEPTANCE-CLOSU
 - Owner acceptance closure: visible Super Admin Telegram source setup, server-only conversion of raw Telegram identity, quarantined candidate creation, explicit Super Admin approval, explicit workspace publication, safe student Signals display, absence of raw Telegram identifiers/messages, and preserved routing and execution gates were owner-accepted locally on 8 September 2026. Stage 29K is closed and frozen unless a new reproducible defect is reported.
 - Added `npm run stage29k:qa`, `npm run stage29k:ingestion:qa`, and `npm run stage29k:closure:qa`.
 - Real Telegram bot ownership, HTTPS webhook hosting, production secrets, source ownership, and real provider behavior remain deferred. Do not claim real Telegram/provider acceptance. Do not claim live execution acceptance.
-- Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29L is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29M remains unstarted and next.
+- Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29L is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready, and Stage 29N remains unstarted and next.
 
 Current handoff:
 
@@ -1473,4 +1473,25 @@ Reference: `TH-2026-09-08-STAGE29L-WORKSPACE-NAVIGATION-OWNER-ACCEPTANCE-CLOSURE
 - Stage 29K Telegram preview publication remains available from `/workspace/signals`; Stage 29J routing and Stage 29I billing gates remain authoritative.
 - Owner acceptance closure: focused Workspace navigation, concise Home, all nine responsibility views, direct routes, browser history, scoped loading, and responsive navigation were owner-accepted locally on 8 September 2026. Stage 29L is closed and frozen unless a new reproducible defect is reported.
 - Added `npm run stage29l:qa` and `npm run stage29l:closure:qa`, and updated workspace/admin browser coverage for all nine routes, active nav geometry, direct URLs, browser history, scoped endpoint loading, Student and Signal post-mutation request isolation, Stage 29K publication, wrong-role blocking, privacy, and responsive safety.
-- Stage 29F remains owner-accepted, closed, and frozen. Stage 29K is owner-accepted, closed, and frozen. Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29M remains unstarted and next.
+- Stage 29F remains owner-accepted, closed, and frozen. Stage 29K is owner-accepted, closed, and frozen. Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready, and Stage 29N remains unstarted and next.
+
+Current handoff:
+
+`TH-2026-09-08-STAGE29M-SUPER-ADMIN-NAVIGATION-DEMO-RELIABILITY-HANDOFF`
+
+## Stage 29M: Super Admin Navigation And Demo Account Reliability
+
+Status: implemented/source-QA ready. Owner acceptance is not claimed.
+
+Reference: `TH-2026-09-08-STAGE29M-SUPER-ADMIN-NAVIGATION-DEMO-RELIABILITY-HANDOFF`
+
+- Replaced the long `/admin` page with route-addressable focused Super Admin views for Overview, Workspaces, Licences, Payments, Integrations, Execution Safety, and Audit.
+- Default Overview is high-level and action-oriented with safe source/status summary, KPI summary, and aggregate operator issue posture instead of every operations panel.
+- Added a shared Super Admin navigation shell with active route state, direct URLs, refresh/deep-link support, browser Back/Forward behavior, and bounded horizontal navigation that keeps active items visible at desktop, tablet, and mobile widths.
+- Scoped Admin loading now fetches only what the active view needs. Workspaces owns applications/workspace shells, Licences owns package licence posture, Payments owns payment/support/settlement posture, Integrations owns branding/Enterprise/external-signal/dormant messaging readiness, Execution Safety owns AutoCopy/canary/reconciliation/runbook posture, and Audit owns trust/safety/audit history.
+- Dangerous execution/canary/reconciliation controls are isolated under `/admin/execution-safety`.
+- Messaging is no longer a normal top-level Admin navigation item; dormant no-send readiness remains available only inside Integrations.
+- Demo account reliability remains deterministic through `scripts/seed-demo-data.mjs` and browser auth helpers for `demo.superadmin@example.test`, workspace/influencer personas, and student personas.
+- Added `npm run stage29m:qa` plus browser coverage for all focused Admin routes, active nav geometry, direct URLs, browser history, scoped endpoint loading, concise Overview behavior, wrong-role blocking, response privacy, document overflow, and Stage 29K visible Telegram source setup from `/admin/integrations`.
+- Stage 29M adviser correction (done and verified; status remains implemented/source-QA ready, owner acceptance is not claimed): the default Overview renders truthful "—" "not measured on this view — open Payments" / "not measured on this view — open Execution Safety" states for chips whose backing data was not loaded, with the hardcoded MVP browser QA chip removed; `/admin/workspaces` no longer fetches `/api/admin/overview`, and the dedicated applications effect with a refresh nonce is the single owner of initial/filter application loading; a bounded browser test signs in all seven seeded personas through the real `/login` form and asserts their truthful landings; `npm run stage29m:qa` asserts all of this.
+- Stage 29L is owner-accepted, closed, and frozen. Stage 29K is owner-accepted, closed, and frozen. Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29F remains owner-accepted, closed, and frozen. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29N remains unstarted and next.

@@ -169,6 +169,7 @@
     "stage29k:closure:qa": "node scripts/qa-stage29k-owner-acceptance-closure.mjs",
     "stage29l:qa": "node scripts/qa-stage29l-workspace-navigation-focused-views.mjs",
     "stage29l:closure:qa": "node scripts/qa-stage29l-owner-acceptance-closure.mjs",
+    "stage29m:qa": "node scripts/qa-stage29m-super-admin-navigation-demo-reliability.mjs",
     "firebase:rules:test": "XDG_CONFIG_HOME=/tmp firebase emulators:exec --project trade-hub-4d8df --only firestore \"node scripts/firestore-rules-stage15f.test.mjs\""
   },
   "dependencies": {

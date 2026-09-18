@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RoleGate } from "@/components/auth/role-gate";
 import { AdminSourceBanner } from "@/components/admin/admin-source-banner";
 import { AdminStatGrid } from "@/components/admin/admin-stat-grid";
@@ -20,7 +22,6 @@ import { WorkspaceBrandingDomainPanel } from "@/components/admin/workspace-brand
 import { WorkspaceEnterpriseIntegrationsPanel } from "@/components/admin/workspace-enterprise-integrations-panel";
 import { WorkspaceEnterpriseReadinessPanel } from "@/components/admin/workspace-enterprise-readiness-panel";
 import { WorkspacePackageOverviewPanel } from "@/components/admin/workspace-package-overview-panel";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { requestAdminApi } from "@/lib/admin/admin-api-client";
@@ -57,6 +58,64 @@ import type { AdminMessagingOverviewResponse, MessagingDeliveryWorkerRunResponse
 import type { ExternalSignalIngestionOverviewResponse } from "@/types/external-signal-ingestion";
 import type { ApplicationSource, ApplicationStatus, WorkspaceApplication } from "@/types/tradehub";
 import { getWorkspaceHandleSuggestion, getWorkspaceIdSuggestion } from "@/lib/admin/admin-labels";
+import { cn } from "@/lib/utils";
+
+export type AdminView =
+  | "overview"
+  | "workspaces"
+  | "licences"
+  | "payments"
+  | "integrations"
+  | "execution-safety"
+  | "audit";
+
+const adminNavItems: Array<{ label: string; href: string; view: AdminView; description: string }> = [
+  { label: "Overview", href: "/admin", view: "overview", description: "Attention summary and next actions" },
+  { label: "Workspaces", href: "/admin/workspaces", view: "workspaces", description: "Applications and workspace shells" },
+  { label: "Licences", href: "/admin/licences", view: "licences", description: "Packages and licence operations" },
+  { label: "Payments", href: "/admin/payments", view: "payments", description: "Payment support and settlement review" },
+  { label: "Integrations", href: "/admin/integrations", view: "integrations", description: "Branding, Enterprise, and signal intake" },
+  { label: "Execution Safety", href: "/admin/execution-safety", view: "execution-safety", description: "AutoCopy gates and runbooks" },
+  { label: "Audit", href: "/admin/audit", view: "audit", description: "Trust, safety, and audit trail" }
+];
+
+const adminViewCopy: Record<AdminView, { eyebrow: string; title: string; description: string }> = {
+  overview: {
+    eyebrow: "Super Admin",
+    title: "Control room overview",
+    description: "High-level platform attention items, demo-source status, and safe next actions."
+  },
+  workspaces: {
+    eyebrow: "Super Admin",
+    title: "Workspaces",
+    description: "Review applications and create workspace shells without loading unrelated operations panels."
+  },
+  licences: {
+    eyebrow: "Super Admin",
+    title: "Package licences",
+    description: "Review package, support, and maintenance posture with private quote and metadata-only boundaries."
+  },
+  payments: {
+    eyebrow: "Super Admin",
+    title: "Payments",
+    description: "Review payment rails, support queues, and settlement posture without automating money movement."
+  },
+  integrations: {
+    eyebrow: "Super Admin",
+    title: "Integrations",
+    description: "Review branding, Enterprise readiness, and approved signal-ingestion setup without exposing raw provider data."
+  },
+  "execution-safety": {
+    eyebrow: "Super Admin",
+    title: "Execution safety",
+    description: "Isolated AutoCopy readiness, canary, reconciliation, incident, and rollback controls."
+  },
+  audit: {
+    eyebrow: "Super Admin",
+    title: "Audit",
+    description: "Masked audit, trust, safety, and risk summaries for operator review."
+  }
+};
 
 function buildApplicationsPath(filters: {
   status: ApplicationStatus | "all";
@@ -80,7 +139,104 @@ function buildApplicationsPath(filters: {
   return `/api/admin/applications?${params.toString()}`;
 }
 
-function AdminDashboard() {
+function AdminNavigation({ activeView }: { activeView: AdminView }) {
+  const navRef = useRef<HTMLElement | null>(null);
+  const activeLinkRef = useRef<HTMLAnchorElement | null>(null);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    const activeLink = activeLinkRef.current;
+
+    if (!nav || !activeLink) {
+      return;
+    }
+
+    const navRect = nav.getBoundingClientRect();
+    const linkRect = activeLink.getBoundingClientRect();
+    const leftOverflow = linkRect.left - navRect.left;
+    const rightOverflow = linkRect.right - navRect.right;
+
+    if (leftOverflow < 0) {
+      nav.scrollLeft += leftOverflow - 8;
+      return;
+    }
+
+    if (rightOverflow > 0) {
+      nav.scrollLeft += rightOverflow + 8;
+    }
+  }, [activeView]);
+
+  return (
+    <nav
+      ref={navRef}
+      aria-label="Super Admin sections"
+      data-testid="admin-focused-nav-scroll"
+      className="no-scrollbar flex max-w-full gap-2 overflow-x-auto overscroll-x-contain rounded-[22px] border border-[color:var(--line)] bg-[color:color-mix(in_srgb,var(--glass)_62%,transparent)] p-2"
+    >
+      {adminNavItems.map((item) => {
+        const isActive = item.view === activeView;
+
+        return (
+          <Link
+            key={item.view}
+            ref={isActive ? activeLinkRef : undefined}
+            href={item.href}
+            aria-current={isActive ? "page" : undefined}
+            data-testid={`admin-nav-${item.view}`}
+            className={cn(
+              "focus-ring min-w-fit rounded-[16px] border px-4 py-3 text-sm font-semibold transition",
+              isActive
+                ? "border-[color:var(--accent)] bg-[color:color-mix(in_srgb,var(--accent-bg)_72%,transparent)] text-[color:var(--label)]"
+                : "border-transparent text-[color:var(--label2)] hover:border-[color:var(--line)] hover:text-[color:var(--label)]"
+            )}
+            title={item.description}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function AdminViewFrame({
+  activeView,
+  isLoading,
+  onRefresh,
+  children
+}: {
+  activeView: AdminView;
+  isLoading: boolean;
+  onRefresh: () => void;
+  children: ReactNode;
+}) {
+  const copy = adminViewCopy[activeView];
+
+  return (
+    <div className="space-y-6" data-testid="admin-focused-shell">
+      <section className="space-y-5 rounded-[24px] border border-[color:var(--line)] bg-[color:color-mix(in_srgb,var(--glass)_58%,transparent)] px-5 py-5 sm:px-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 max-w-4xl">
+            <p className="eyebrow">{copy.eyebrow}</p>
+            <h1 className="mt-3 break-safe text-3xl font-semibold text-[color:var(--label)] sm:text-4xl">
+              {copy.title}
+            </h1>
+            <p className="mt-3 break-safe text-sm leading-6 text-[color:var(--label2)]">
+              {copy.description}
+            </p>
+          </div>
+          <Button onClick={onRefresh} variant="secondary" size="sm" disabled={isLoading}>
+            {isLoading ? "Refreshing..." : "Refresh view"}
+          </Button>
+        </div>
+        <AdminNavigation activeView={activeView} />
+      </section>
+      {children}
+    </div>
+  );
+}
+
+function AdminDashboard({ activeView }: { activeView: AdminView }) {
   const [overview, setOverview] = useState<AdminOverviewResponse | null>(null);
   const [applications, setApplications] = useState<AdminApplicationListResponse | null>(null);
   const [auditLog, setAuditLog] = useState<AdminAuditLogResponse | null>(null);
@@ -145,6 +301,7 @@ function AdminDashboard() {
   const [externalSignalIngestionErrorMessage, setExternalSignalIngestionErrorMessage] = useState<string | null>(null);
   const [cryptoExecutionErrorMessage, setCryptoExecutionErrorMessage] = useState<string | null>(null);
   const [cryptoWorkspaceErrorMessage, setCryptoWorkspaceErrorMessage] = useState<string | null>(null);
+  const [applicationsRefreshNonce, setApplicationsRefreshNonce] = useState(0);
 
   const selectedApplication = useMemo(
     () =>
@@ -202,6 +359,28 @@ function AdminDashboard() {
     }
   }
 
+  async function loadAuditLog() {
+    try {
+      const nextAuditLog = await requestAdminApi<AdminAuditLogResponse>("/api/admin/audit-log?limit=25");
+      setAuditLog(nextAuditLog);
+      setAuditErrorMessage(null);
+    } catch (error) {
+      setAuditLog(null);
+      setAuditErrorMessage(error instanceof Error ? error.message : "TradeHub could not load audit history.");
+    }
+  }
+
+  async function loadPaymentsOverview() {
+    try {
+      const nextPayments = await requestAdminApi<AdminPaymentsOverviewResponse>("/api/admin/payments/overview");
+      setPayments(nextPayments);
+      setPaymentsErrorMessage(null);
+    } catch (error) {
+      setPayments(null);
+      setPaymentsErrorMessage(error instanceof Error ? error.message : "TradeHub could not load payment operations.");
+    }
+  }
+
   async function loadCryptoWorkspaceExecution(workspaceIdValue = cryptoWorkerWorkspaceId.trim()) {
     const workspaceId = workspaceIdValue.trim();
 
@@ -228,112 +407,45 @@ function AdminDashboard() {
     }
   }
 
-  async function loadCorePanels() {
-    const [
-      overviewResult,
-      auditResult,
-      paymentsResult,
-      cryptoExecutionResult,
-      messagingResult,
-      externalSignalIngestionResult
-    ] = await Promise.allSettled([
-      requestAdminApi<AdminOverviewResponse>("/api/admin/overview"),
-      requestAdminApi<AdminAuditLogResponse>("/api/admin/audit-log?limit=25"),
-      requestAdminApi<AdminPaymentsOverviewResponse>("/api/admin/payments/overview"),
-      requestAdminApi<AdminCryptoExecutionOverviewResponse>("/api/admin/crypto-execution/overview"),
-      requestAdminApi<AdminMessagingOverviewResponse>("/api/admin/messaging/overview"),
-      requestAdminApi<ExternalSignalIngestionOverviewResponse>("/api/admin/signals/external-ingestion/overview")
-    ]);
-
-    if (overviewResult.status === "fulfilled") {
-      setOverview(overviewResult.value);
-      setOverviewErrorMessage(null);
-    } else {
-      setOverview(null);
-      setOverviewErrorMessage(
-        overviewResult.reason instanceof Error
-          ? overviewResult.reason.message
-          : "TradeHub could not load platform summary."
-      );
-    }
-
-    if (auditResult.status === "fulfilled") {
-      setAuditLog(auditResult.value);
-      setAuditErrorMessage(null);
-    } else {
-      setAuditLog(null);
-      setAuditErrorMessage(
-        auditResult.reason instanceof Error
-          ? auditResult.reason.message
-          : "TradeHub could not load audit history."
-      );
-    }
-
-    if (paymentsResult.status === "fulfilled") {
-      setPayments(paymentsResult.value);
-      setPaymentsErrorMessage(null);
-    } else {
-      setPayments(null);
-      setPaymentsErrorMessage(
-        paymentsResult.reason instanceof Error
-          ? paymentsResult.reason.message
-          : "TradeHub could not load payment operations."
-      );
-    }
-
-    if (cryptoExecutionResult.status === "fulfilled") {
-      setCryptoExecution(cryptoExecutionResult.value);
-      setCryptoExecutionErrorMessage(null);
-    } else {
-      setCryptoExecution(null);
-      setCryptoExecutionErrorMessage(
-        cryptoExecutionResult.reason instanceof Error
-          ? cryptoExecutionResult.reason.message
-        : "TradeHub could not load crypto paper execution."
-      );
-    }
-
-    if (messagingResult.status === "fulfilled") {
-      setMessaging(messagingResult.value);
-      setMessagingErrorMessage(null);
-    } else {
-      setMessaging(null);
-      setMessagingErrorMessage(
-        messagingResult.reason instanceof Error
-          ? messagingResult.reason.message
-          : "TradeHub could not load messaging readiness."
-      );
-    }
-
-    if (externalSignalIngestionResult.status === "fulfilled") {
-      setExternalSignalIngestion(externalSignalIngestionResult.value);
-      setExternalSignalIngestionErrorMessage(null);
-    } else {
-      setExternalSignalIngestion(null);
-      setExternalSignalIngestionErrorMessage(
-        externalSignalIngestionResult.reason instanceof Error
-          ? externalSignalIngestionResult.reason.message
-          : "TradeHub could not load external signal ingestion readiness."
-      );
-    }
+  function refreshApplications() {
+    // The dedicated applications effect owns the fetch; bumping this nonce re-runs it.
+    setApplicationsRefreshNonce((nonce) => nonce + 1);
   }
 
-  async function loadApplications() {
-    setIsListLoading(true);
-    try {
-      const path = buildApplicationsPath({ status, source, market, solana, query });
-      const nextApplications = await requestAdminApi<AdminApplicationListResponse>(path);
+  async function loadActiveView(view = activeView) {
+    const loaders: Array<() => Promise<void>> = [];
 
-      setApplications(nextApplications);
-      setSelectedId((current) => {
-        if (current && nextApplications.applications.some((application) => application.applicationId === current)) {
-          return current;
-        }
+    if (
+      view === "overview" ||
+      view === "licences" ||
+      view === "payments" ||
+      view === "integrations" ||
+      view === "audit"
+    ) {
+      loaders.push(loadOverview);
+    }
 
-        return nextApplications.applications[0]?.applicationId ?? null;
-      });
-    } finally {
-      setIsListLoading(false);
+    if (view === "payments") {
+      loaders.push(loadPaymentsOverview);
+    }
+
+    if (view === "integrations") {
+      loaders.push(loadMessagingOverview, loadExternalSignalIngestionOverview);
+    }
+
+    if (view === "execution-safety") {
+      loaders.push(loadCryptoExecution);
+    }
+
+    if (view === "audit") {
+      loaders.push(loadAuditLog);
+    }
+
+    const results = await Promise.allSettled(loaders.map((loader) => loader()));
+    const rejected = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+
+    if (rejected) {
+      throw rejected.reason;
     }
   }
 
@@ -350,26 +462,14 @@ function AdminDashboard() {
     setIsLoading(true);
 
     try {
-      const [coreResult, applicationsResult] = await Promise.allSettled([
-        loadCorePanels(),
-        loadApplications()
-      ]);
-
-      if (coreResult.status === "rejected") {
-        setErrorMessage(
-          coreResult.reason instanceof Error
-            ? coreResult.reason.message
-            : "TradeHub could not load admin data."
-        );
+      if (activeView === "workspaces") {
+        refreshApplications();
       }
 
-      if (applicationsResult.status === "rejected") {
-        setErrorMessage(
-          applicationsResult.reason instanceof Error
-            ? applicationsResult.reason.message
-            : "TradeHub could not load applications."
-        );
-      }
+      await loadActiveView(activeView);
+      setMessage("Admin view refreshed.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "TradeHub could not refresh this admin view.");
     } finally {
       setIsLoading(false);
     }
@@ -416,7 +516,7 @@ function AdminDashboard() {
           return;
         }
 
-        await loadCorePanels();
+        await loadActiveView(activeView);
       } catch (error) {
         if (active) {
           setErrorMessage(error instanceof Error ? error.message : "TradeHub could not load admin data.");
@@ -433,12 +533,17 @@ function AdminDashboard() {
     return () => {
       active = false;
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeView]);
 
   useEffect(() => {
     let active = true;
 
     async function run() {
+      if (activeView !== "workspaces") {
+        return;
+      }
+
       setErrorMessage(null);
       setIsListLoading(true);
 
@@ -474,7 +579,7 @@ function AdminDashboard() {
     return () => {
       active = false;
     };
-  }, [market, query, solana, source, status]);
+  }, [activeView, applicationsRefreshNonce, market, query, solana, source, status]);
 
   async function updateApplication(applicationId: string, patch: AdminApplicationPatch) {
     setIsSaving(true);
@@ -523,7 +628,7 @@ function AdminDashboard() {
           ? "Application updated and audit event written."
           : "Mock update returned for UI proof. Configure Admin SDK credentials to persist it."
       );
-      await loadOverview();
+      refreshApplications();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "TradeHub could not update that application.");
     } finally {
@@ -580,7 +685,7 @@ function AdminDashboard() {
       setMessage(
         `Workspace shell ${response.workspace.workspaceId} created. Create the influencer Auth user, set INFLUENCER_EMAIL and INFLUENCER_WORKSPACE_ID, then run npm run firebase:bootstrap-influencer.`
       );
-      await loadOverview();
+      refreshApplications();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "TradeHub could not create that workspace shell.");
     } finally {
@@ -600,7 +705,7 @@ function AdminDashboard() {
       );
 
       setMessage(response.message);
-      await loadCorePanels();
+      await Promise.all([loadOverview(), loadPaymentsOverview()]);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "TradeHub could not reconcile that Paystack intent.");
     } finally {
@@ -635,7 +740,7 @@ function AdminDashboard() {
           : current
       );
       setMessage(response.message);
-      await loadCorePanels();
+      await Promise.all([loadOverview(), loadPaymentsOverview()]);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "TradeHub could not update that settlement record.");
     } finally {
@@ -1070,29 +1175,16 @@ function AdminDashboard() {
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <section className="hero-panel px-6 py-7 sm:px-8 sm:py-9">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div>
-            <p className="eyebrow">Owner control room</p>
-            <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-[-0.04em] text-[color:var(--label)] sm:text-5xl">
-              Onboarding, vetting, payment rails, risk, and audit visibility.
-            </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-[color:var(--label2)]">
-              Super Admin data loads through API routes that verify Firebase ID tokens server-side.
-              Mock data is labeled when Admin SDK credentials are not configured.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge tone="accent">Stage 20A ops audit</Badge>
-            <Button onClick={refreshAll} variant="secondary" size="sm" disabled={isLoading}>
-              {isLoading ? "Refreshing..." : "Refresh"}
-            </Button>
-          </div>
-        </div>
-      </section>
+  const overviewFallback = (
+    <GlassCard>
+      <p className="text-sm text-[color:var(--label2)]">
+        {overviewErrorMessage ?? "Loading platform summary..."}
+      </p>
+    </GlassCard>
+  );
 
+  return (
+    <AdminViewFrame activeView={activeView} isLoading={isLoading} onRefresh={refreshAll}>
       {errorMessage ? (
         <GlassCard className="border-[color:color-mix(in_srgb,var(--red)_34%,transparent)]">
           <p className="eyebrow !text-[color:var(--red)]">Admin API</p>
@@ -1106,111 +1198,80 @@ function AdminDashboard() {
         </GlassCard>
       ) : null}
 
-      {overview ? (
-        <>
-          <AdminSourceBanner
-            source={overview.source}
-            sourceLabel={overview.sourceLabel}
-            sourceMessage={overview.sourceMessage}
-            warnings={overview.warnings}
-          />
-          <AdminStatGrid summary={overview.summary} />
-          <WorkspacePackageOverviewPanel
-            overview={overview.workspacePackages}
-            onUpdated={loadOverview}
-            onMessage={setMessage}
-            onError={(nextMessage) => {
-              if (nextMessage) {
-                setErrorMessage(nextMessage);
-              }
-            }}
-          />
-          <WorkspaceBrandingDomainPanel
-            overview={overview.workspaceBranding}
-            onUpdated={loadOverview}
-            onMessage={setMessage}
-            onError={(nextMessage) => {
-              if (nextMessage) {
-                setErrorMessage(nextMessage);
-              }
-            }}
-          />
-          <WorkspaceEnterpriseReadinessPanel
-            overview={overview.workspaceEnterpriseDeployment}
-            onUpdated={loadOverview}
-            onMessage={setMessage}
-            onError={(nextMessage) => {
-              if (nextMessage) {
-                setErrorMessage(nextMessage);
-              }
-            }}
-          />
-          <WorkspaceEnterpriseIntegrationsPanel
-            overview={overview.workspaceEnterpriseIntegrations}
-            onUpdated={loadOverview}
-            onMessage={setMessage}
-            onError={(nextMessage) => {
-              if (nextMessage) {
-                setErrorMessage(nextMessage);
-              }
-            }}
-          />
-          <AdminSupportOverview
-            overview={overview}
-            payments={payments}
-            cryptoExecution={cryptoExecution}
-          />
-          <MessagingReadinessPanel
-            overview={messaging}
-            errorMessage={messagingErrorMessage}
-            workerResult={messagingWorkerResult}
-            runningWorker={isRunningMessagingWorker}
-            onRunWorker={runMessagingWorker}
-          />
-          <ExternalSignalIngestionPanel
-            overview={externalSignalIngestion}
-            errorMessage={externalSignalIngestionErrorMessage}
-            onRefresh={loadExternalSignalIngestionOverview}
-          />
-        </>
-      ) : (
-        <GlassCard>
-          <p className="text-sm text-[color:var(--label2)]">
-            {overviewErrorMessage ?? "Loading platform summary..."}
-          </p>
-        </GlassCard>
-      )}
+      {activeView === "overview" ? (
+        overview ? (
+          <div className="space-y-6" data-testid="admin-view-overview">
+            <AdminSourceBanner
+              source={overview.source}
+              sourceLabel={overview.sourceLabel}
+              sourceMessage={overview.sourceMessage}
+              warnings={overview.warnings}
+            />
+            <AdminStatGrid summary={overview.summary} />
+            <AdminSupportOverview overview={overview} />
+          </div>
+        ) : (
+          overviewFallback
+        )
+      ) : null}
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,0.96fr)_minmax(420px,1.04fr)]">
-        <ApplicationPipeline
-          response={applications}
-          selectedId={selectedApplication?.applicationId ?? selectedId}
-          status={status}
-          source={source}
-          market={market}
-          solana={solana}
-          query={query}
-          loading={isListLoading}
-          onSelect={setSelectedId}
-          onStatusChange={setStatus}
-          onSourceChange={setSource}
-          onMarketChange={setMarket}
-          onSolanaChange={setSolana}
-          onQueryChange={setQuery}
-          onRefresh={loadApplications}
-        />
-        <ApplicationDetailPanel
-          application={selectedApplication}
-          saving={isSaving}
-          onPatch={updateApplication}
-          onCreateWorkspaceShell={createWorkspaceShell}
-        />
-      </section>
+      {activeView === "workspaces" ? (
+        <section
+          className="grid gap-6 xl:grid-cols-[minmax(0,0.96fr)_minmax(420px,1.04fr)]"
+          data-testid="admin-view-workspaces"
+        >
+          <ApplicationPipeline
+            response={applications}
+            selectedId={selectedApplication?.applicationId ?? selectedId}
+            status={status}
+            source={source}
+            market={market}
+            solana={solana}
+            query={query}
+            loading={isListLoading}
+            onSelect={setSelectedId}
+            onStatusChange={setStatus}
+            onSourceChange={setSource}
+            onMarketChange={setMarket}
+            onSolanaChange={setSolana}
+            onQueryChange={setQuery}
+            onRefresh={refreshApplications}
+          />
+          <ApplicationDetailPanel
+            application={selectedApplication}
+            saving={isSaving}
+            onPatch={updateApplication}
+            onCreateWorkspaceShell={createWorkspaceShell}
+          />
+        </section>
+      ) : null}
 
-      {overview || payments ? (
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]">
+      {activeView === "licences" ? (
+        overview ? (
+          <div className="space-y-6" data-testid="admin-view-licences">
+            <WorkspacePackageOverviewPanel
+              overview={overview.workspacePackages}
+              onUpdated={loadOverview}
+              onMessage={setMessage}
+              onError={(nextMessage) => {
+                if (nextMessage) {
+                  setErrorMessage(nextMessage);
+                }
+              }}
+            />
+          </div>
+        ) : (
+          overviewFallback
+        )
+      ) : null}
+
+      {activeView === "payments" ? (
+        <section
+          className="grid gap-6 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]"
+          data-testid="admin-view-payments"
+        >
           <div className="space-y-6">
-            {overview ? <PaymentRailOverview paymentRails={overview.paymentRails} /> : null}
+            {overview ? <PaymentRailOverview paymentRails={overview.paymentRails} /> : overviewFallback}
             {payments ? (
               <>
                 <PaymentSupportQueue payments={payments} />
@@ -1228,12 +1289,6 @@ function AdminDashboard() {
                 </p>
               </GlassCard>
             )}
-            {auditErrorMessage ? (
-              <GlassCard className="space-y-3 border-[color:color-mix(in_srgb,var(--amber)_24%,transparent)]">
-                <p className="eyebrow !text-[color:var(--amber)]">Audit history</p>
-                <p className="break-words text-sm leading-6 text-[color:var(--label2)]">{auditErrorMessage}</p>
-              </GlassCard>
-            ) : null}
           </div>
           {payments ? (
             <SolanaSettlementLedger
@@ -1252,72 +1307,135 @@ function AdminDashboard() {
         </section>
       ) : null}
 
-      <CryptoExecutionOpsPanel
-        overview={cryptoExecution}
-        workspaceOverview={cryptoWorkspaceExecution}
-        loading={isLoading}
-        loadingWorkspace={isLoadingCryptoWorkspace}
-        errorMessage={cryptoExecutionErrorMessage}
-        workspaceErrorMessage={cryptoWorkspaceErrorMessage}
-        workspaceId={cryptoWorkerWorkspaceId}
-        running={isRunningCryptoWorker}
-        runningForexPaper={isRunningForexPaperWorker}
-        runningForexDemo={isRunningForexDemoWorker}
-        runningForexLiveCanary={isRunningForexLiveCanary}
-        runningLiveSandbox={isRunningLiveSandboxWorker}
-        runningLiveProduction={isRunningLiveProductionWorker}
-        runningLiveProductionCanary={isRunningLiveProductionCanary}
-        runningCryptoLiveCohort={isRunningCryptoLiveCohort}
-        reconcilingLiveSandbox={isReconcilingLiveSandbox}
-        reconcilingForexDemo={isReconcilingForexDemo}
-        reconcilingLiveProduction={isReconcilingLiveProduction}
-        workerResult={cryptoWorkerResult}
-        forexPaperWorkerResult={forexPaperWorkerResult}
-        forexDemoWorkerResult={forexDemoWorkerResult}
-        forexDemoReconciliationResult={forexDemoReconciliationResult}
-        forexDemoCancelResult={forexDemoCancelResult}
-        forexLiveCanaryResult={forexLiveCanaryResult}
-        liveSandboxWorkerResult={liveSandboxWorkerResult}
-        liveSandboxReconciliationResult={liveSandboxReconciliationResult}
-        liveProductionWorkerResult={liveProductionWorkerResult}
-        liveProductionCanaryResult={liveProductionCanaryResult}
-        cryptoLiveCohortResult={cryptoLiveCohortResult}
-        liveProductionReconciliationResult={liveProductionReconciliationResult}
-        onWorkspaceIdChange={setCryptoWorkerWorkspaceId}
-        onRefresh={loadCryptoExecution}
-        onLoadWorkspace={() => loadCryptoWorkspaceExecution()}
-        onRunWorker={runCryptoPaperWorker}
-        onRunForexPaperWorker={runForexPaperWorker}
-        onRunForexDemoWorker={runForexDemoWorker}
-        onRunForexLiveCanary={runForexLiveCanary}
-        onRunForexDemoReconciliation={runForexDemoReconciliation}
-        onCancelForexDemoAttempt={cancelForexDemoAttempt}
-        onRunLiveSandboxWorker={runLiveSandboxWorker}
-        onRunLiveSandboxReconciliation={runLiveSandboxReconciliation}
-        onRunLiveProductionWorker={runLiveProductionWorker}
-        onRunLiveProductionCanary={runLiveProductionCanary}
-        onRunCryptoLiveCohortDryRun={runCryptoLiveCohortDryRun}
-        onRunLiveProductionReconciliation={runLiveProductionReconciliation}
-      />
-
-      {overview || auditLog ? (
-        <section className="grid gap-6 xl:grid-cols-2">
-          {overview ? <TrustSafetyPanel disputes={overview.disputes} riskFlags={overview.riskFlags} /> : <GlassCard>
-            <p className="text-sm text-[color:var(--label2)]">
-              {overviewErrorMessage ?? "Platform trust and safety summary is not available yet."}
-            </p>
-          </GlassCard>}
-          <AuditLogPreview events={auditLog?.events ?? []} />
-        </section>
+      {activeView === "integrations" ? (
+        overview ? (
+          <div className="space-y-6" data-testid="admin-view-integrations">
+            <WorkspaceBrandingDomainPanel
+              overview={overview.workspaceBranding}
+              onUpdated={loadOverview}
+              onMessage={setMessage}
+              onError={(nextMessage) => {
+                if (nextMessage) {
+                  setErrorMessage(nextMessage);
+                }
+              }}
+            />
+            <WorkspaceEnterpriseReadinessPanel
+              overview={overview.workspaceEnterpriseDeployment}
+              onUpdated={loadOverview}
+              onMessage={setMessage}
+              onError={(nextMessage) => {
+                if (nextMessage) {
+                  setErrorMessage(nextMessage);
+                }
+              }}
+            />
+            <WorkspaceEnterpriseIntegrationsPanel
+              overview={overview.workspaceEnterpriseIntegrations}
+              onUpdated={loadOverview}
+              onMessage={setMessage}
+              onError={(nextMessage) => {
+                if (nextMessage) {
+                  setErrorMessage(nextMessage);
+                }
+              }}
+            />
+            <ExternalSignalIngestionPanel
+              overview={externalSignalIngestion}
+              errorMessage={externalSignalIngestionErrorMessage}
+              onRefresh={loadExternalSignalIngestionOverview}
+            />
+            <MessagingReadinessPanel
+              overview={messaging}
+              errorMessage={messagingErrorMessage}
+              workerResult={messagingWorkerResult}
+              runningWorker={isRunningMessagingWorker}
+              onRunWorker={runMessagingWorker}
+            />
+          </div>
+        ) : (
+          overviewFallback
+        )
       ) : null}
-    </div>
+
+      {activeView === "execution-safety" ? (
+        <div data-testid="admin-view-execution-safety">
+          <CryptoExecutionOpsPanel
+            overview={cryptoExecution}
+            workspaceOverview={cryptoWorkspaceExecution}
+            loading={isLoading}
+            loadingWorkspace={isLoadingCryptoWorkspace}
+            errorMessage={cryptoExecutionErrorMessage}
+            workspaceErrorMessage={cryptoWorkspaceErrorMessage}
+            workspaceId={cryptoWorkerWorkspaceId}
+            running={isRunningCryptoWorker}
+            runningForexPaper={isRunningForexPaperWorker}
+            runningForexDemo={isRunningForexDemoWorker}
+            runningForexLiveCanary={isRunningForexLiveCanary}
+            runningLiveSandbox={isRunningLiveSandboxWorker}
+            runningLiveProduction={isRunningLiveProductionWorker}
+            runningLiveProductionCanary={isRunningLiveProductionCanary}
+            runningCryptoLiveCohort={isRunningCryptoLiveCohort}
+            reconcilingLiveSandbox={isReconcilingLiveSandbox}
+            reconcilingForexDemo={isReconcilingForexDemo}
+            reconcilingLiveProduction={isReconcilingLiveProduction}
+            workerResult={cryptoWorkerResult}
+            forexPaperWorkerResult={forexPaperWorkerResult}
+            forexDemoWorkerResult={forexDemoWorkerResult}
+            forexDemoReconciliationResult={forexDemoReconciliationResult}
+            forexDemoCancelResult={forexDemoCancelResult}
+            forexLiveCanaryResult={forexLiveCanaryResult}
+            liveSandboxWorkerResult={liveSandboxWorkerResult}
+            liveSandboxReconciliationResult={liveSandboxReconciliationResult}
+            liveProductionWorkerResult={liveProductionWorkerResult}
+            liveProductionCanaryResult={liveProductionCanaryResult}
+            cryptoLiveCohortResult={cryptoLiveCohortResult}
+            liveProductionReconciliationResult={liveProductionReconciliationResult}
+            onWorkspaceIdChange={setCryptoWorkerWorkspaceId}
+            onRefresh={loadCryptoExecution}
+            onLoadWorkspace={() => loadCryptoWorkspaceExecution()}
+            onRunWorker={runCryptoPaperWorker}
+            onRunForexPaperWorker={runForexPaperWorker}
+            onRunForexDemoWorker={runForexDemoWorker}
+            onRunForexLiveCanary={runForexLiveCanary}
+            onRunForexDemoReconciliation={runForexDemoReconciliation}
+            onCancelForexDemoAttempt={cancelForexDemoAttempt}
+            onRunLiveSandboxWorker={runLiveSandboxWorker}
+            onRunLiveSandboxReconciliation={runLiveSandboxReconciliation}
+            onRunLiveProductionWorker={runLiveProductionWorker}
+            onRunLiveProductionCanary={runLiveProductionCanary}
+            onRunCryptoLiveCohortDryRun={runCryptoLiveCohortDryRun}
+            onRunLiveProductionReconciliation={runLiveProductionReconciliation}
+          />
+        </div>
+      ) : null}
+
+      {activeView === "audit" ? (
+        overview || auditLog ? (
+          <section className="grid gap-6 xl:grid-cols-2" data-testid="admin-view-audit">
+            {overview ? (
+              <TrustSafetyPanel disputes={overview.disputes} riskFlags={overview.riskFlags} />
+            ) : (
+              overviewFallback
+            )}
+            <AuditLogPreview events={auditLog?.events ?? []} />
+          </section>
+        ) : (
+          <GlassCard>
+            <p className="text-sm text-[color:var(--label2)]">
+              {auditErrorMessage ?? "Loading audit and trust/safety summary..."}
+            </p>
+          </GlassCard>
+        )
+      ) : null}
+    </AdminViewFrame>
   );
 }
 
-export function AdminPageClient() {
+export function AdminPageClient({ activeView = "overview" }: { activeView?: AdminView }) {
   return (
     <RoleGate allowedRole="super_admin" nextPath="/admin">
-      <AdminDashboard />
+      <AdminDashboard activeView={activeView} />
     </RoleGate>
   );
 }

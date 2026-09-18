@@ -3,7 +3,7 @@ import { buildMetadata } from "@/config/app";
 
 export const metadata = buildMetadata({
   title: "Super Admin",
-  description: "Stage 06 Super Admin CRM for applications, vetting, summaries, disputes, and audit visibility.",
+  description: "Focused Super Admin overview for platform attention, demo posture, and safe next actions.",
   pathname: "/admin"
 });
 
