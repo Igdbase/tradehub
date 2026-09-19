@@ -153,6 +153,7 @@
     "stage29d15:qa": "node scripts/qa-stage29d15-practice-terminal-responsive-workstation.mjs",
     "stage29d16:qa": "node scripts/qa-stage29d16-practice-terminal-drawing-tools.mjs",
     "stage29d17:qa": "node scripts/qa-stage29d17-practice-terminal-owner-acceptance-closure.mjs",
+    "stage30:qa": "node scripts/qa-stage30a-practice-terminal-chart-tools-expansion.mjs",
     "stage29e:qa": "node scripts/qa-stage29e-app-wide-layout-stability.mjs",
     "stage29f:qa": "node scripts/qa-stage29f-journal-redesign-data-separation.mjs",
     "stage29f:closure:qa": "node scripts/qa-stage29f-owner-acceptance-closure.mjs",

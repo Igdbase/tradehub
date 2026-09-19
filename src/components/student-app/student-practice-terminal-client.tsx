@@ -54,13 +54,16 @@ import {
   roundPracticePrice
 } from "@/lib/practice/practice-instrument-specs";
 import {
+  PRACTICE_BRUSH_MAX_POINTS,
   PRACTICE_KLINE_ATR_INDICATOR,
   PRACTICE_KLINE_ATR_PANE,
+  PRACTICE_KLINE_BRUSH_OVERLAY,
   PRACTICE_KLINE_DRAFT_GROUP,
   PRACTICE_KLINE_DRAWING_GROUP,
   PRACTICE_KLINE_FIBONACCI_OVERLAY,
   PRACTICE_KLINE_HORIZONTAL_OVERLAY,
   PRACTICE_KLINE_MEASURE_OVERLAY,
+  PRACTICE_KLINE_PARALLEL_CHANNEL_OVERLAY,
   PRACTICE_KLINE_PRICE_GROUP,
   PRACTICE_KLINE_RSI_PANE,
   PRACTICE_KLINE_TEXT_OVERLAY,
@@ -68,6 +71,7 @@ import {
   PRACTICE_KLINE_VERTICAL_OVERLAY,
   PRACTICE_KLINE_VOLUME_PANE,
   PRACTICE_KLINE_ZONE_OVERLAY,
+  PRACTICE_MAGNET_SNAP_RADIUS_PX,
   registerPracticeKLineChartOverlays
 } from "@/lib/practice/practice-klinechart-overlays";
 import type {
@@ -196,11 +200,17 @@ type TerminalChartDragDraft = {
   pointerId: number;
   start: TerminalChartPoint;
   current: TerminalChartPoint;
+  path?: TerminalChartPoint[];
 };
 
 type TerminalTrendLineDraft = {
   start: TerminalChartPoint;
   current: TerminalChartPoint;
+};
+
+type TerminalParallelChannelDraft = {
+  baseStart: TerminalChartPoint;
+  baseEnd: TerminalChartPoint | null;
 };
 
 type TerminalTextDraft = TerminalChartPoint & {
@@ -290,7 +300,9 @@ const drawingKindOptions: Array<{ label: string; value: PracticeAnnotationKind }
   { label: "Zone", value: "zone" },
   { label: "Text note", value: "text_note" },
   { label: "Fib retracement", value: "fibonacci_retracement" },
-  { label: "Measure", value: "measurement_placeholder" }
+  { label: "Measure", value: "measurement_placeholder" },
+  { label: "Brush", value: "freehand_brush" },
+  { label: "Parallel channel", value: "parallel_channel" }
 ];
 
 const drawingColorOptions: Array<{ label: string; value: PracticeDrawingColorToken }> = [
@@ -352,6 +364,7 @@ const compactInputClass =
 
 const terminalLineTools = [
   { id: "trend", label: "Trend line", kind: "trend_line", available: true },
+  { id: "parallel-channel", label: "Parallel channel", kind: "parallel_channel", available: true },
   { id: "ray", label: "Ray (coming soon)", kind: undefined, available: false },
   { id: "extended-line", label: "Extended line (coming soon)", kind: undefined, available: false },
   { id: "horizontal", label: "Horizontal price line", kind: "horizontal_line", available: true },
@@ -373,11 +386,11 @@ const terminalTools = [
   { id: "lines", label: "Lines and trend tools", kind: undefined, Icon: TrendingUp, available: true },
   { id: "zone", label: "Rectangle zone", kind: "zone", Icon: RectangleHorizontal, available: true },
   { id: "text", label: "Text note", kind: "text_note", Icon: Type, available: true },
-  { id: "brush", label: "Brush drawing (coming soon)", kind: undefined, Icon: Brush, available: false },
+  { id: "brush", label: "Brush", kind: "freehand_brush", Icon: Brush, available: true },
   { id: "fib", label: "Fibonacci retracement", kind: "fibonacci_retracement", Icon: BarChart3, available: true },
   { id: "measure", label: "Measure", kind: "measurement_placeholder", Icon: Ruler, available: true },
   { id: "zoom", label: "Zoom in", kind: undefined, Icon: ZoomIn, available: true },
-  { id: "magnet", label: "Magnet snap (coming soon)", kind: undefined, Icon: Magnet, available: false },
+  { id: "magnet", label: "Magnet snap", kind: undefined, Icon: Magnet, available: true },
   { id: "lock", label: "Lock or unlock drawings", kind: undefined, Icon: Lock, available: true },
   { id: "visibility", label: "Hide or show drawings", kind: undefined, Icon: Eye, available: true },
   { id: "delete-selected", label: "Delete selected drawing", kind: undefined, Icon: X, available: true },
@@ -449,6 +462,8 @@ function practiceKLineOverlayName(kind: PracticeAnnotationKind) {
   if (kind === "fibonacci_retracement") return PRACTICE_KLINE_FIBONACCI_OVERLAY;
   if (kind === "zone") return PRACTICE_KLINE_ZONE_OVERLAY;
   if (kind === "measurement_placeholder") return PRACTICE_KLINE_MEASURE_OVERLAY;
+  if (kind === "freehand_brush") return PRACTICE_KLINE_BRUSH_OVERLAY;
+  if (kind === "parallel_channel") return PRACTICE_KLINE_PARALLEL_CHANNEL_OVERLAY;
   return PRACTICE_KLINE_TEXT_OVERLAY;
 }
 
@@ -643,7 +658,45 @@ function isTerminalDrawingKind(kind: TerminalActiveTool): kind is PracticeAnnota
     kind === "zone" ||
     kind === "text_note" ||
     kind === "fibonacci_retracement" ||
-    kind === "measurement_placeholder";
+    kind === "measurement_placeholder" ||
+    kind === "freehand_brush" ||
+    kind === "parallel_channel";
+}
+
+const terminalMagnetSnapToolKinds: ReadonlySet<PracticeAnnotationKind> = new Set([
+  "trend_line",
+  "horizontal_line",
+  "vertical_marker",
+  "zone",
+  "fibonacci_retracement",
+  "parallel_channel"
+]);
+
+// Stage 30A: distance-based brush simplification. Keeps points at least epsilon px apart,
+// then decimates evenly if the stroke still exceeds the committed point bound.
+function simplifyBrushStroke(path: TerminalChartPoint[], maxPoints: number, epsilonPx = 2.5) {
+  const kept: TerminalChartPoint[] = [];
+
+  for (const point of path) {
+    const previous = kept[kept.length - 1];
+
+    if (!previous || Math.hypot(point.x - previous.x, point.y - previous.y) >= epsilonPx) {
+      kept.push(point);
+    }
+  }
+
+  if (kept.length <= maxPoints) {
+    return kept;
+  }
+
+  const step = (kept.length - 1) / (maxPoints - 1);
+  const decimated: TerminalChartPoint[] = [];
+
+  for (let index = 0; index < maxPoints; index += 1) {
+    decimated.push(kept[Math.round(index * step)]);
+  }
+
+  return decimated;
 }
 
 function requiresTwoChartPoints(kind: PracticeAnnotationKind) {
@@ -971,6 +1024,7 @@ function TerminalChart({
   activeDrawingTool,
   canPlaceDrawing,
   canEditDrawings,
+  magnetSnapEnabled,
   onSelectOrder,
   onSelectDrawing,
   onSelectEvent,
@@ -991,6 +1045,7 @@ function TerminalChart({
   activeDrawingTool: TerminalActiveTool;
   canPlaceDrawing: boolean;
   canEditDrawings: boolean;
+  magnetSnapEnabled: boolean;
   onSelectOrder: (orderId: string) => void;
   onSelectDrawing: (drawingId: string) => void;
   onSelectEvent: (eventId: string) => void;
@@ -1022,6 +1077,8 @@ function TerminalChart({
   const [hoveredEventGroupId, setHoveredEventGroupId] = useState("");
   const dragDraftRef = useRef<TerminalChartDragDraft | null>(null);
   const trendLineDraftRef = useRef<TerminalTrendLineDraft | null>(null);
+  const parallelChannelDraftRef = useRef<TerminalParallelChannelDraft | null>(null);
+  const magnetSnapEnabledRef = useRef(magnetSnapEnabled);
   const [textDraft, setTextDraft] = useState<TerminalTextDraft | null>(null);
   const textDraftRef = useRef<TerminalTextDraft | null>(null);
   const textEditorRef = useRef<HTMLDivElement | null>(null);
@@ -1047,6 +1104,9 @@ function TerminalChart({
   useEffect(() => {
     activeDrawingToolRef.current = activeDrawingTool;
   }, [activeDrawingTool]);
+  useEffect(() => {
+    magnetSnapEnabledRef.current = magnetSnapEnabled;
+  }, [magnetSnapEnabled]);
   useEffect(() => {
     const finishNativeOverlayMove = () => {
       const pendingMove = nativeOverlayMoveRef.current;
@@ -1238,6 +1298,63 @@ function TerminalChart({
     };
   }
 
+  // Stage 30A: magnet snap. Bounded to revealed candles only — the search never touches
+  // hidden/future candles and never requests more data; beyond the radius nothing snaps.
+  function snapPointToRevealedCandle(point: TerminalChartPoint): TerminalChartPoint {
+    const chart = chartRef.current;
+
+    if (!magnetSnapEnabledRef.current || !chart || candles.length === 0) {
+      return point;
+    }
+
+    const baseIndex = Math.round(point.dataIndex);
+    let best: { point: TerminalChartPoint; distance: number } | null = null;
+
+    for (let index = baseIndex - 1; index <= baseIndex + 1; index += 1) {
+      if (index < 0 || index >= candles.length) continue;
+      const candle = candles[index];
+      const candlePixel = chart.convertToPixel({ dataIndex: index, value: candle.close });
+      const candleX = Array.isArray(candlePixel) ? Number.NaN : Number(candlePixel?.x);
+
+      if (!Number.isFinite(candleX)) continue;
+
+      const deltaX = candleX - point.x;
+
+      if (Math.abs(deltaX) > PRACTICE_MAGNET_SNAP_RADIUS_PX) continue;
+
+      for (const value of [candle.open, candle.high, candle.low, candle.close]) {
+        const valuePixel = chart.convertToPixel({ dataIndex: index, value });
+        const snappedY = Array.isArray(valuePixel) ? Number.NaN : Number(valuePixel?.y);
+
+        if (!Number.isFinite(snappedY)) continue;
+
+        const distance = Math.hypot(deltaX, snappedY - point.y);
+
+        if (distance <= PRACTICE_MAGNET_SNAP_RADIUS_PX && (!best || distance < best.distance)) {
+          best = {
+            distance,
+            point: {
+              x: candleX,
+              y: snappedY,
+              dataIndex: index,
+              candleIndex: index,
+              priceLevel: value
+            }
+          };
+        }
+      }
+    }
+
+    return best?.point ?? point;
+  }
+
+  function resolveAnchorPoint(point: TerminalChartPoint, tool: TerminalActiveTool): TerminalChartPoint {
+    return tool !== "select" && tool !== "zoom" &&
+      terminalMagnetSnapToolKinds.has(tool as PracticeAnnotationKind)
+      ? snapPointToRevealedCandle(point)
+      : point;
+  }
+
   function clearKLineDraft() {
     chartRef.current?.removeOverlay({ groupId: PRACTICE_KLINE_DRAFT_GROUP });
   }
@@ -1303,22 +1420,105 @@ function TerminalChart({
     });
   }
 
+  function renderBrushDraft(path: TerminalChartPoint[]) {
+    const chart = chartRef.current;
+    if (!chart || path.length === 0) return;
+    // Preview renders a decimated copy so long strokes stay cheap while drawing.
+    const previewPath = path.length > 240
+      ? Array.from({ length: 240 }, (_item, index) => path[Math.round(index * ((path.length - 1) / 239))])
+      : path;
+    const id = "practice-kline-brush-draft";
+    const existing = chart.getOverlays({ id })[0];
+
+    if (existing) {
+      chart.overrideOverlay({ id, points: previewPath.map(terminalOverlayPoint) });
+      return;
+    }
+
+    chart.createOverlay({
+      id,
+      name: PRACTICE_KLINE_BRUSH_OVERLAY,
+      groupId: PRACTICE_KLINE_DRAFT_GROUP,
+      zLevel: 30,
+      points: previewPath.map(terminalOverlayPoint),
+      lock: true,
+      needDefaultPointFigure: false,
+      extendData: { color: "#d9c28c" },
+      styles: {
+        line: { color: "#d9c28c", style: "solid", size: 2 },
+        point: { color: "transparent", borderColor: "transparent", borderSize: 0, radius: 0 }
+      }
+    });
+  }
+
+  function renderParallelChannelDraft(baseStart: TerminalChartPoint, baseEnd: TerminalChartPoint | null, current: TerminalChartPoint | null) {
+    const chart = chartRef.current;
+    if (!chart || !baseEnd) return;
+    const id = "practice-kline-parallel-channel-draft";
+    // While choosing the offset, the moving pointer acts as the third anchor so the
+    // preview shows the real parallel copy and translucent fill before commit.
+    const points = [baseStart, baseEnd, current ?? baseEnd].map(terminalOverlayPoint);
+    const existing = chart.getOverlays({ id })[0];
+
+    if (existing) {
+      chart.overrideOverlay({ id, points });
+      return;
+    }
+
+    chart.createOverlay({
+      id,
+      name: PRACTICE_KLINE_PARALLEL_CHANNEL_OVERLAY,
+      groupId: PRACTICE_KLINE_DRAFT_GROUP,
+      zLevel: 30,
+      points,
+      lock: true,
+      needDefaultPointFigure: false,
+      extendData: { color: "#d9c28c" },
+      styles: {
+        line: { color: "#d9c28c", style: "solid", size: 2 },
+        polygon: { color: "#d9c28c22", borderColor: "#d9c28c", borderSize: 1 },
+        point: { color: "transparent", borderColor: "transparent", borderSize: 0, radius: 0 }
+      }
+    });
+  }
+
   function handleDrawingCapturePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0 || !event.isPrimary) {
       return;
     }
 
     const rect = event.currentTarget.getBoundingClientRect();
-    const point = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top);
+    const rawPoint = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top);
 
     event.preventDefault();
     event.stopPropagation();
 
-    if (!point || !canPlaceDrawing || activeDrawingTool === "select") {
+    if (!rawPoint || !canPlaceDrawing || activeDrawingTool === "select") {
       return;
     }
 
-    if (activeDrawingTool === "text_note" || activeDrawingTool === "trend_line") {
+    if (activeDrawingTool === "text_note" || activeDrawingTool === "trend_line" || activeDrawingTool === "parallel_channel") {
+      return;
+    }
+
+    const point = resolveAnchorPoint(rawPoint, activeDrawingTool);
+
+    if (activeDrawingTool === "freehand_brush") {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Safari can throw when pointer capture is unavailable for a synthetic touch/mouse transition.
+      }
+
+      const nextDraft = {
+        kind: activeDrawingTool,
+        pointerId: event.pointerId,
+        start: point,
+        current: point,
+        path: [point]
+      } satisfies TerminalChartDragDraft;
+      dragDraftRef.current = nextDraft;
+      renderBrushDraft([point]);
       return;
     }
 
@@ -1343,15 +1543,38 @@ function TerminalChart({
 
     if (activeDrawingTool === "trend_line" && currentTrendLineDraft) {
       const rect = event.currentTarget.getBoundingClientRect();
-      const point = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top);
+      const rawPoint = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top);
 
       event.preventDefault();
       event.stopPropagation();
 
-      if (point) {
+      if (rawPoint) {
+        const point = resolveAnchorPoint(rawPoint, "trend_line");
         const nextDraft = { ...currentTrendLineDraft, current: point };
         trendLineDraftRef.current = nextDraft;
         renderKLineDraft("trend_line", nextDraft.start, point);
+      }
+
+      return;
+    }
+
+    if (activeDrawingTool === "parallel_channel" && parallelChannelDraftRef.current) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const rawPoint = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top);
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (rawPoint) {
+        const point = resolveAnchorPoint(rawPoint, "parallel_channel");
+        const channelDraft = parallelChannelDraftRef.current;
+
+        if (channelDraft.baseEnd) {
+          renderParallelChannelDraft(channelDraft.baseStart, channelDraft.baseEnd, point);
+        } else {
+          renderParallelChannelDraft(channelDraft.baseStart, null, point);
+          renderKLineDraft("parallel_channel", channelDraft.baseStart, point);
+        }
       }
 
       return;
@@ -1364,16 +1587,32 @@ function TerminalChart({
     }
 
     const rect = event.currentTarget.getBoundingClientRect();
-    const point = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top);
+    const rawPoint = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top);
 
     event.preventDefault();
     event.stopPropagation();
 
-    if (point) {
-      const nextDraft = { ...currentDraft, current: point };
-      dragDraftRef.current = nextDraft;
-      renderKLineDraft(currentDraft.kind, currentDraft.start, point);
+    if (!rawPoint) {
+      return;
     }
+
+    if (currentDraft.kind === "freehand_brush" && currentDraft.path) {
+      const previous = currentDraft.path[currentDraft.path.length - 1];
+
+      if (Math.hypot(rawPoint.x - previous.x, rawPoint.y - previous.y) >= 2) {
+        const nextPath = [...currentDraft.path, rawPoint];
+        const nextDraft = { ...currentDraft, current: rawPoint, path: nextPath };
+        dragDraftRef.current = nextDraft;
+        renderBrushDraft(nextPath);
+      }
+
+      return;
+    }
+
+    const point = resolveAnchorPoint(rawPoint, currentDraft.kind);
+    const nextDraft = { ...currentDraft, current: point };
+    dragDraftRef.current = nextDraft;
+    renderKLineDraft(currentDraft.kind, currentDraft.start, point);
   }
 
   function handleDrawingCapturePointerUp(event: ReactPointerEvent<HTMLDivElement>) {
@@ -1393,15 +1632,16 @@ function TerminalChart({
       }
 
       const rect = event.currentTarget.getBoundingClientRect();
-      const point = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top);
+      const rawPoint = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top);
 
       event.preventDefault();
       event.stopPropagation();
 
-      if (!point) {
+      if (!rawPoint) {
         return;
       }
 
+      const point = resolveAnchorPoint(rawPoint, "trend_line");
       const currentTrendLineDraft = trendLineDraftRef.current;
 
       if (!currentTrendLineDraft) {
@@ -1428,6 +1668,70 @@ function TerminalChart({
       return;
     }
 
+    if (activeDrawingTool === "parallel_channel") {
+      if (event.button !== 0 || !event.isPrimary) {
+        return;
+      }
+
+      const rect = event.currentTarget.getBoundingClientRect();
+      const rawPoint = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top);
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!rawPoint) {
+        return;
+      }
+
+      const point = resolveAnchorPoint(rawPoint, "parallel_channel");
+      const channelDraft = parallelChannelDraftRef.current;
+
+      if (!channelDraft) {
+        parallelChannelDraftRef.current = { baseStart: point, baseEnd: null };
+        renderKLineDraft("parallel_channel", point, point);
+        return;
+      }
+
+      if (!channelDraft.baseEnd) {
+        if (Math.hypot(point.x - channelDraft.baseStart.x, point.y - channelDraft.baseStart.y) < 6) {
+          parallelChannelDraftRef.current = null;
+          clearKLineDraft();
+          onCancelTool("Parallel channel cancelled. Choose two distinct base points.");
+          return;
+        }
+
+        parallelChannelDraftRef.current = { baseStart: channelDraft.baseStart, baseEnd: point };
+        renderParallelChannelDraft(channelDraft.baseStart, point, point);
+        return;
+      }
+
+      parallelChannelDraftRef.current = null;
+      clearKLineDraft();
+
+      const baseEnd = channelDraft.baseEnd;
+
+      if (Math.hypot(point.x - baseEnd.x, point.y - baseEnd.y) < 2) {
+        onCancelTool("Parallel channel cancelled. Move away from the base line to set the offset.");
+        return;
+      }
+
+      onCancelTool("Parallel channel completed. Select restored.");
+      void onPlaceDrawing({
+        kind: "parallel_channel",
+        candleIndex: channelDraft.baseStart.candleIndex,
+        priceLevel: channelDraft.baseStart.priceLevel,
+        secondCandleIndex: baseEnd.candleIndex,
+        secondPriceLevel: baseEnd.priceLevel,
+        coordinateVersion: "klinecharts_v2",
+        chartPoints: [
+          { dataIndex: channelDraft.baseStart.dataIndex, ...(channelDraft.baseStart.priceLevel === undefined ? {} : { value: channelDraft.baseStart.priceLevel }) },
+          { dataIndex: baseEnd.dataIndex, ...(baseEnd.priceLevel === undefined ? {} : { value: baseEnd.priceLevel }) },
+          { dataIndex: point.dataIndex, ...(point.priceLevel === undefined ? {} : { value: point.priceLevel }) }
+        ]
+      });
+      return;
+    }
+
     const currentDraft = dragDraftRef.current;
 
     if (!currentDraft || event.pointerId !== currentDraft.pointerId) {
@@ -1435,8 +1739,15 @@ function TerminalChart({
     }
 
     const rect = event.currentTarget.getBoundingClientRect();
-    const endPoint = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top) ?? currentDraft.current;
-    const pixelDistance = Math.hypot(endPoint.x - currentDraft.start.x, endPoint.y - currentDraft.start.y);
+    const rawEndPoint = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top) ?? currentDraft.current;
+    const endPoint = currentDraft.kind === "freehand_brush" ? rawEndPoint : resolveAnchorPoint(rawEndPoint, currentDraft.kind);
+    let pixelDistance = Math.hypot(endPoint.x - currentDraft.start.x, endPoint.y - currentDraft.start.y);
+
+    if (currentDraft.kind === "freehand_brush" && currentDraft.path) {
+      const strokePath = currentDraft.path;
+      pixelDistance = strokePath.reduce((total, point, index) =>
+        index === 0 ? 0 : total + Math.hypot(point.x - strokePath[index - 1].x, point.y - strokePath[index - 1].y), 0);
+    }
 
     event.preventDefault();
     event.stopPropagation();
@@ -1449,6 +1760,27 @@ function TerminalChart({
     }
     dragDraftRef.current = null;
     clearKLineDraft();
+
+    if (currentDraft.kind === "freehand_brush") {
+      const stroke = simplifyBrushStroke(currentDraft.path ?? [currentDraft.start], PRACTICE_BRUSH_MAX_POINTS);
+
+      if (stroke.length < 2 || pixelDistance < 10) {
+        onCancelTool("Brush stroke discarded. Draw a longer stroke or use Select.");
+        return;
+      }
+
+      const strokeStart = stroke[0];
+      onCancelTool("Brush stroke completed. Select restored.");
+      void onPlaceDrawing({
+        kind: "freehand_brush",
+        candleIndex: strokeStart.candleIndex,
+        priceLevel: strokeStart.priceLevel,
+        coordinateVersion: "klinecharts_v2",
+        text: "Freehand brush stroke",
+        chartPoints: stroke.map((point) => ({ dataIndex: point.dataIndex, ...(point.priceLevel === undefined ? {} : { value: point.priceLevel }) }))
+      });
+      return;
+    }
 
     if (currentDraft.kind === "zoom") {
       if (pixelDistance < 14) {
@@ -1528,6 +1860,7 @@ function TerminalChart({
     }
     dragDraftRef.current = null;
     trendLineDraftRef.current = null;
+    parallelChannelDraftRef.current = null;
     nativeOverlayMoveRef.current = null;
     clearTextDraft();
     clearKLineDraft();
@@ -1611,6 +1944,7 @@ function TerminalChart({
   useEffect(() => {
     dragDraftRef.current = null;
     trendLineDraftRef.current = null;
+    parallelChannelDraftRef.current = null;
     chartRef.current?.removeOverlay({ groupId: PRACTICE_KLINE_DRAFT_GROUP });
   }, [activeDrawingTool]);
 
@@ -1917,7 +2251,8 @@ function TerminalChart({
         zLevel: 20,
         points,
         lock: !canEditDrawings,
-        needDefaultPointFigure: true,
+        // Stage 30A: brush strokes suppress control dots; every other drawing keeps them.
+        ...(drawing.kind === "freehand_brush" ? { needDefaultPointFigure: false } : { needDefaultPointFigure: true }),
         extendData: { text: drawing.kind === "text_note" ? drawing.text : undefined, color: overlayColor },
         styles: {
           line: { color: overlayColor, size: 2, style: "solid" },
@@ -2206,6 +2541,10 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
   const [isUtilityPanelOpen, setIsUtilityPanelOpen] = useState(true);
   const [areDrawingsLocked, setAreDrawingsLocked] = useState(false);
   const [isDrawingLayerVisible, setIsDrawingLayerVisible] = useState(true);
+  const [isMagnetSnapEnabled, setIsMagnetSnapEnabled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.sessionStorage.getItem("tradehub-practice-magnet-snap") === "on";
+  });
   const [drawingPlacementStart, setDrawingPlacementStart] = useState<TerminalDrawingPlacementStart | null>(null);
   const [speedMs, setSpeedMs] = useState(900);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -2225,6 +2564,9 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
   useEffect(() => {
     selectedToolKindRef.current = selectedToolKind;
   }, [selectedToolKind]);
+  useEffect(() => {
+    window.sessionStorage.setItem("tradehub-practice-magnet-snap", isMagnetSnapEnabled ? "on" : "off");
+  }, [isMagnetSnapEnabled]);
   const warmupAppliedRef = useRef(false);
 
   const session = revealed?.session ?? detail?.session;
@@ -2838,9 +3180,13 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
       tone: "success",
       text: kind === "trend_line"
         ? "Trend line selected. Click the start, move the pointer, then click the endpoint."
-        : terminalToolRequiresDrag(kind)
-          ? `${drawingKindLabel(kind)} selected. Drag on the chart, preview, then release.`
-          : `${drawingKindLabel(kind)} selected. Click the chart to place it.`
+        : kind === "parallel_channel"
+          ? "Parallel channel selected. Click two base points, then click a third point to set the offset."
+          : kind === "freehand_brush"
+            ? "Brush selected. Press, draw a stroke, then release to save it."
+            : terminalToolRequiresDrag(kind)
+              ? `${drawingKindLabel(kind)} selected. Drag on the chart, preview, then release.`
+              : `${drawingKindLabel(kind)} selected. Click the chart to place it.`
     });
   }
 
@@ -2912,7 +3258,7 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
         : undefined;
       const tick = instrumentSpec?.tickSize ?? instrumentSpec?.pipSize ?? 0.01;
       const zoneDistance = priceLevel === undefined ? undefined : Math.max(Math.abs(priceLevel) * 0.003, tick * 20);
-      const usesSecondPoint = requiresTwoChartPoints(placement.kind);
+      const usesSecondPoint = requiresTwoChartPoints(placement.kind) || placement.kind === "parallel_channel";
       const secondCandleIndex = usesSecondPoint
         ? endPoint.candleIndex
         : undefined;
@@ -3534,10 +3880,11 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
                   : tool.Icon;
               const isSelected = tool.kind === selectedToolKind ||
                 (tool.id === "cursor" && selectedToolKind === "select") ||
-                (tool.id === "lines" && (selectedToolKind === "trend_line" || selectedToolKind === "horizontal_line" || selectedToolKind === "vertical_marker")) ||
+                (tool.id === "lines" && (selectedToolKind === "trend_line" || selectedToolKind === "horizontal_line" || selectedToolKind === "vertical_marker" || selectedToolKind === "parallel_channel")) ||
                 (tool.id === "zoom" && selectedToolKind === "zoom") ||
                 (tool.id === "lock" && areDrawingsLocked) ||
-                (tool.id === "visibility" && !isDrawingLayerVisible);
+                (tool.id === "visibility" && !isDrawingLayerVisible) ||
+                (tool.id === "magnet" && isMagnetSnapEnabled);
               const isDisabled = !tool.available ||
                 (tool.id === "delete-selected" && (!selectedDrawing || !canMutateDrawings)) ||
                 (tool.id === "delete" && (!drawings.length || !canMutateDrawings)) ||
@@ -3577,7 +3924,7 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
                       setIsLinesMenuOpen(nextOpen);
                       setIsDeleteMenuOpen(false);
                       if (nextOpen) {
-                        setLinesMenuPosition(terminalToolPopoverPosition(event.currentTarget.getBoundingClientRect(), 224, 154));
+                        setLinesMenuPosition(terminalToolPopoverPosition(event.currentTarget.getBoundingClientRect(), 224, 320));
                       }
                       setSelectedToolKind("select");
                       setSelectedDrawingId("");
@@ -3590,6 +3937,18 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
 
                     if (tool.id === "zoom") {
                       selectDrawingTool("zoom");
+                      return;
+                    }
+
+                    if (tool.id === "magnet") {
+                      const nextMagnetState = !isMagnetSnapEnabled;
+                      setIsMagnetSnapEnabled(nextMagnetState);
+                      setDockMessage({
+                        tone: "success",
+                        text: nextMagnetState
+                          ? "Magnet snap on. Point anchors snap to revealed candle prices within 12px."
+                          : "Magnet snap off. Anchors use the exact pointer position."
+                      });
                       return;
                     }
 
@@ -3641,6 +4000,7 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
                 activeDrawingTool={selectedToolKind}
                 canPlaceDrawing={(canMutateDrawings || selectedToolKind === "zoom") && selectedToolKind !== "select" && (selectedToolKind === "zoom" || !areDrawingsLocked)}
                 canEditDrawings={canMutateDrawings && selectedToolKind === "select"}
+                magnetSnapEnabled={isMagnetSnapEnabled}
                 onSelectOrder={selectTerminalOrder}
                 onSelectDrawing={selectTerminalDrawing}
                 onSelectEvent={selectTerminalEvent}

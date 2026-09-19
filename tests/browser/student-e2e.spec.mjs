@@ -679,7 +679,11 @@ test.describe("TradeHub seeded student browser E2E", () => {
     await expect(page.getByRole("button", { name: "Fibonacci retracement" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Measure" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Zoom in" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Brush drawing (coming soon)" })).toBeDisabled();
+    // Stage 30A: Brush and Magnet snap are real rail tools now (the former disabled
+    // "coming soon" placeholders). This seeded terminal is a locked/completed session,
+    // so like the other drawing tools they are asserted visible, not enabled.
+    await expect(page.getByRole("button", { name: "Brush", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Magnet snap", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Lock or unlock drawings" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Hide or show drawings" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Delete selected drawing" })).toBeVisible();
@@ -1963,6 +1967,241 @@ test.describe("TradeHub seeded student browser E2E", () => {
       await expectOverlayCount("text_note", 0);
       await expect(page.locator("body")).toContainText("Simulated response loss after the atomic drawing clear committed.");
       await page.unroute(clearRoutePattern);
+    } finally {
+      if (createdSessionId) {
+        await deleteStandalonePracticeSessionByApi(page, createdSessionId, sessionName);
+      }
+    }
+  });
+
+  test(`Practice Stage 30A magnet, brush, and parallel channel tools are truthful and persist at ${drawingViewport.label}`, async ({ page }) => {
+    test.setTimeout(240_000);
+    await page.setViewportSize({ width: drawingViewport.width, height: drawingViewport.height });
+    const sessionName = `Stage 30A Chart Tools ${drawingViewport.label}`;
+    let createdSessionId = "";
+
+    try {
+      const modal = await openQuickPracticeSession(page);
+      await modal.getByTestId("practice-asset-toggle").click();
+      await modal.getByRole("button", { name: "Crypto" }).click();
+      await modal.getByTestId("practice-asset-search").fill("BTCUSDT");
+      await modal.getByRole("option", { name: /BTCUSDT, Bitcoin \/ Tether, available/i }).click();
+      await fillQuickPracticeSession(page, {
+        name: sessionName,
+        dateEnd: "2026-07-04",
+        openTerminal: true
+      });
+
+      const createObserver = await observeNextPracticeSessionCreation(page);
+      const terminalNavigationPromise = page.waitForURL(/\/app\/practice\/[^/]+\/terminal$/);
+      await modal.getByTestId("practice-create-session").click();
+      createdSessionId = (await createObserver.payloadPromise).session.sessionId;
+      await terminalNavigationPromise;
+      await createObserver.stop();
+      await expect(page.getByTestId("practice-terminal-chart-first-shell")).toBeVisible();
+      await expect.poll(async () => Number(
+        await page.getByTestId("practice-terminal-chart-surface").getAttribute("data-revealed-candle-count")
+      )).toBeGreaterThanOrEqual(24);
+
+      const drawingResponse = (method, suffix = /\/drawings$/) => page.waitForResponse((response) =>
+        response.request().method() === method && suffix.test(new URL(response.url()).pathname)
+      );
+      const klineOverlays = (groupId = "tradehub_practice_drawings_v1") => page.evaluate((groupId) => {
+        const chart = window.__TRADEHUB_PRACTICE_KLINECHART__;
+        if (!chart) return [];
+        return chart.getOverlays({ groupId }).map((overlay) => ({
+          id: overlay.id,
+          name: overlay.name,
+          points: overlay.points.map((point) => ({ dataIndex: point.dataIndex, value: point.value }))
+        }));
+      }, groupId);
+      const overlayCountFor = (overlays, name) => overlays.filter((overlay) => overlay.name === name).length;
+      const captureRatiosForClientPoint = async (clientPoint) => {
+        const capture = page.getByTestId("practice-terminal-drawing-capture-layer");
+        const box = await capture.boundingBox();
+        expect(box).not.toBeNull();
+        return {
+          x: (clientPoint.x - box.x) / box.width,
+          y: (clientPoint.y - box.y) / box.height
+        };
+      };
+
+      // --- Magnet snap truthfulness: snapped anchors land exactly on revealed OHLC values.
+      const magnetButton = page.getByRole("button", { name: "Magnet snap", exact: true });
+      await expect(magnetButton).toBeEnabled();
+      await magnetButton.click();
+      await expect(magnetButton).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator("body")).toContainText(/Magnet snap on/i);
+
+      const snappedStart = await page.evaluate(() => {
+        const chart = window.__TRADEHUB_PRACTICE_KLINECHART__;
+        const plot = chart?.getDom("candle_pane", "main");
+        if (!chart || !plot) return null;
+        const plotRect = plot.getBoundingClientRect();
+        const candle = chart.getDataList()[10];
+        const pixel = chart.convertToPixel({ dataIndex: 10, value: candle.high });
+        return {
+          x: plotRect.left + pixel.x,
+          y: plotRect.top + pixel.y,
+          dataIndex: 10,
+          value: candle.high
+        };
+      });
+      expect(snappedStart).not.toBeNull();
+      const snappedEnd = await page.evaluate(() => {
+        const chart = window.__TRADEHUB_PRACTICE_KLINECHART__;
+        const plot = chart?.getDom("candle_pane", "main");
+        if (!chart || !plot) return null;
+        const plotRect = plot.getBoundingClientRect();
+        const candle = chart.getDataList()[16];
+        const pixel = chart.convertToPixel({ dataIndex: 16, value: candle.low });
+        return {
+          x: plotRect.left + pixel.x,
+          y: plotRect.top + pixel.y,
+          dataIndex: 16,
+          value: candle.low
+        };
+      });
+      expect(snappedEnd).not.toBeNull();
+
+      await page.getByRole("button", { name: "Lines and trend tools" }).click();
+      await page.getByTestId("practice-terminal-lines-menu").getByRole("menuitem", { name: "Trend line" }).click();
+      await expect(page.getByTestId("practice-terminal-chart-click-layer")).toHaveAttribute("data-active-drawing-tool", "trend_line");
+      const snappedStartRatio = await captureRatiosForClientPoint(snappedStart);
+      const snappedEndRatio = await captureRatiosForClientPoint(snappedEnd);
+      await clickPracticeChartCapture(page, snappedStartRatio);
+      await movePracticeChartPointer(page, snappedEndRatio);
+      const snappedTrendResponsePromise = drawingResponse("POST");
+      await clickPracticeChartCapture(page, snappedEndRatio);
+      const snappedTrendResponse = await snappedTrendResponsePromise;
+      expect(snappedTrendResponse.ok()).toBeTruthy();
+      const snappedTrend = (await snappedTrendResponse.json()).annotation;
+      expect(snappedTrend.coordinateVersion).toBe("klinecharts_v2");
+      expect(snappedTrend.chartPoints).toHaveLength(2);
+      expect(snappedTrend.chartPoints[0].dataIndex).toBe(10);
+      expect(Math.abs(snappedTrend.chartPoints[0].value - snappedStart.value)).toBeLessThan(0.000001);
+      expect(snappedTrend.chartPoints[1].dataIndex).toBe(16);
+      expect(Math.abs(snappedTrend.chartPoints[1].value - snappedEnd.value)).toBeLessThan(0.000001);
+
+      // Magnet off: the same gesture between candles keeps the raw pointer coordinates.
+      await magnetButton.click();
+      await expect(magnetButton).toHaveAttribute("aria-pressed", "false");
+      const unsnappedRatios = await page.evaluate(() => {
+        const chart = window.__TRADEHUB_PRACTICE_KLINECHART__;
+        const plot = chart?.getDom("candle_pane", "main");
+        if (!chart || !plot) return null;
+        const plotRect = plot.getBoundingClientRect();
+        const twelfth = chart.convertToPixel({ dataIndex: 12 });
+        const thirteenth = chart.convertToPixel({ dataIndex: 13 });
+        const candle = chart.getDataList()[12];
+        const midX = ((twelfth.x ?? 0) + (thirteenth.x ?? 0)) / 2;
+        const topPixel = chart.convertToPixel({ dataIndex: 12, value: candle.high });
+        const bottomPixel = chart.convertToPixel({ dataIndex: 12, value: candle.low });
+        const midY = ((topPixel.y ?? 0) + (bottomPixel.y ?? 0)) / 2;
+        return {
+          start: { x: plotRect.left + midX, y: plotRect.top + midY },
+          end: { x: plotRect.left + midX + (thirteenth.x - twelfth.x) * 3, y: plotRect.top + midY + 40 }
+        };
+      });
+      expect(unsnappedRatios).not.toBeNull();
+      await page.getByRole("button", { name: "Lines and trend tools" }).click();
+      await page.getByTestId("practice-terminal-lines-menu").getByRole("menuitem", { name: "Trend line" }).click();
+      const unsnappedStartRatio = await captureRatiosForClientPoint(unsnappedRatios.start);
+      const unsnappedEndRatio = await captureRatiosForClientPoint(unsnappedRatios.end);
+      await clickPracticeChartCapture(page, unsnappedStartRatio);
+      await movePracticeChartPointer(page, unsnappedEndRatio);
+      const unsnappedTrendResponsePromise = drawingResponse("POST");
+      await clickPracticeChartCapture(page, unsnappedEndRatio);
+      const unsnappedTrendResponse = await unsnappedTrendResponsePromise;
+      expect(unsnappedTrendResponse.ok()).toBeTruthy();
+      const unsnappedTrend = (await unsnappedTrendResponse.json()).annotation;
+      const unsnappedFirstDataIndex = unsnappedTrend.chartPoints[0].dataIndex;
+      expect(Math.abs(unsnappedFirstDataIndex - Math.round(unsnappedFirstDataIndex))).toBeGreaterThan(0.01);
+
+      // --- Brush: press-drag-release commits one bounded simplified stroke; a click persists nothing.
+      await page.getByRole("button", { name: "Brush", exact: true }).click();
+      await expect(page.getByTestId("practice-terminal-chart-click-layer")).toHaveAttribute("data-active-drawing-tool", "freehand_brush");
+      await expect(page.locator("body")).toContainText(/Brush selected/i);
+      await clickPracticeChartCapture(page, { x: 0.55, y: 0.30 });
+      await expect(page.getByTestId("practice-terminal-chart-click-layer")).toHaveAttribute("data-active-drawing-tool", "select");
+      expect((await klineOverlays()).filter((overlay) => overlay.name === "tradehubFreehandBrush")).toHaveLength(0);
+
+      await page.getByRole("button", { name: "Brush", exact: true }).click();
+      const brushFrom = { x: 0.24, y: 0.72 };
+      const brushTo = { x: 0.68, y: 0.34 };
+      const brushResponsePromise = drawingResponse("POST");
+      await dragPracticeChartCapture(page, { from: brushFrom, to: brushTo, steps: 18 });
+      const brushResponse = await brushResponsePromise;
+      expect(brushResponse.ok()).toBeTruthy();
+      const brush = (await brushResponse.json()).annotation;
+      expect(brush.kind).toBe("freehand_brush");
+      expect(brush.coordinateVersion).toBe("klinecharts_v2");
+      expect(brush.chartPoints.length).toBeGreaterThanOrEqual(2);
+      expect(brush.chartPoints.length).toBeLessThanOrEqual(120);
+      expect(brush.chartPoints.every((point) => Number.isFinite(point.value))).toBe(true);
+      await expect.poll(async () => overlayCountFor(await klineOverlays(), "tradehubFreehandBrush")).toBe(1);
+      await expect(page.getByTestId("practice-terminal-chart-click-layer")).toHaveAttribute("data-active-drawing-tool", "select");
+
+      // Delete selected removes the committed brush atomically like every other drawing.
+      await page.getByRole("button", { name: "Clear chart drawings" }).click();
+      const brushDeleteResponsePromise = drawingResponse("DELETE", /\/drawings\/[^/]+$/);
+      await page.getByTestId("practice-terminal-delete-menu").getByRole("menuitem", { name: "Delete selected drawing" }).click();
+      const brushDeleteResponse = await brushDeleteResponsePromise;
+      expect(brushDeleteResponse.ok()).toBeTruthy();
+      expect((await brushDeleteResponse.json()).deletedAnnotationId).toBe(brush.annotationId);
+      await expect.poll(async () => overlayCountFor(await klineOverlays(), "tradehubFreehandBrush")).toBe(0);
+
+      // --- Parallel channel: Escape mid-placement commits nothing; completion commits one 3-point record.
+      await page.getByRole("button", { name: "Lines and trend tools" }).click();
+      await page.getByTestId("practice-terminal-lines-menu").getByRole("menuitem", { name: "Parallel channel" }).click();
+      await expect(page.getByTestId("practice-terminal-chart-click-layer")).toHaveAttribute("data-active-drawing-tool", "parallel_channel");
+      await expect(page.locator("body")).toContainText(/Parallel channel selected/i);
+      await clickPracticeChartCapture(page, { x: 0.20, y: 0.60 });
+      await movePracticeChartPointer(page, { x: 0.40, y: 0.42 });
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("practice-terminal-chart-click-layer")).toHaveAttribute("data-active-drawing-tool", "select");
+
+      await page.getByRole("button", { name: "Lines and trend tools" }).click();
+      await page.getByTestId("practice-terminal-lines-menu").getByRole("menuitem", { name: "Parallel channel" }).click();
+      await expect(page.getByTestId("practice-terminal-chart-click-layer")).toHaveAttribute("data-active-drawing-tool", "parallel_channel");
+      const channelBaseStart = { x: 0.24, y: 0.66 };
+      const channelBaseEnd = { x: 0.52, y: 0.40 };
+      await clickPracticeChartCapture(page, channelBaseStart);
+      await movePracticeChartPointer(page, channelBaseEnd);
+      await clickPracticeChartCapture(page, channelBaseEnd);
+      await movePracticeChartPointer(page, { x: 0.52, y: 0.62 });
+      const channelResponsePromise = drawingResponse("POST");
+      await clickPracticeChartCapture(page, { x: 0.52, y: 0.62 });
+      const channelResponse = await channelResponsePromise;
+      expect(channelResponse.ok()).toBeTruthy();
+      const channel = (await channelResponse.json()).annotation;
+      expect(channel.kind).toBe("parallel_channel");
+      expect(channel.coordinateVersion).toBe("klinecharts_v2");
+      expect(channel.chartPoints).toHaveLength(3);
+      await expect.poll(async () => overlayCountFor(await klineOverlays(), "tradehubParallelChannel")).toBe(1);
+      await expect(page.getByTestId("practice-terminal-chart-click-layer")).toHaveAttribute("data-active-drawing-tool", "select");
+
+      // Reload restores the committed channel geometry exactly from the persisted record.
+      await page.reload();
+      await expect(page.getByTestId("practice-terminal-klinechart")).toBeVisible();
+      await expect.poll(async () => overlayCountFor(await klineOverlays(), "tradehubParallelChannel")).toBe(1);
+      const restoredChannel = (await klineOverlays()).find((overlay) => overlay.name === "tradehubParallelChannel");
+      expect(restoredChannel.points).toHaveLength(3);
+      channel.chartPoints.forEach((point, index) => {
+        expect(Math.abs(restoredChannel.points[index].dataIndex - point.dataIndex)).toBeLessThan(0.000001);
+        expect(Math.abs(restoredChannel.points[index].value - point.value)).toBeLessThan(0.000001);
+      });
+      await expect.poll(async () => overlayCountFor(await klineOverlays(), "tradehubFreehandBrush")).toBe(0);
+      await expect.poll(async () => overlayCountFor(await klineOverlays(), "segment")).toBe(2);
+
+      // Clear chart drawings covers the channel atomically with every other drawing.
+      await page.getByRole("button", { name: "Clear chart drawings" }).click();
+      const clearResponsePromise = drawingResponse("DELETE");
+      await page.getByTestId("practice-terminal-delete-menu").getByRole("menuitem", { name: "Clear chart drawings" }).click();
+      const clearResponse = await clearResponsePromise;
+      expect(clearResponse.ok()).toBeTruthy();
+      expect((await clearResponse.json()).deletedDrawingCount).toBe(3);
+      await expect.poll(async () => (await klineOverlays()).length).toBe(0);
     } finally {
       if (createdSessionId) {
         await deleteStandalonePracticeSessionByApi(page, createdSessionId, sessionName);

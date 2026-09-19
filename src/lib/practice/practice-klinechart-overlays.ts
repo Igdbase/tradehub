@@ -10,12 +10,19 @@ export const PRACTICE_KLINE_FIBONACCI_OVERLAY = "tradehubBoundedFibonacci";
 export const PRACTICE_KLINE_ZONE_OVERLAY = "tradehubZone";
 export const PRACTICE_KLINE_MEASURE_OVERLAY = "tradehubDirectionalMeasure";
 export const PRACTICE_KLINE_TEXT_OVERLAY = "tradehubTextNote";
+export const PRACTICE_KLINE_BRUSH_OVERLAY = "tradehubFreehandBrush";
+export const PRACTICE_KLINE_PARALLEL_CHANNEL_OVERLAY = "tradehubParallelChannel";
 export const PRACTICE_KLINE_ATR_INDICATOR = "TRADEHUB_ATR";
 export const PRACTICE_KLINE_RSI_PANE = "practice-rsi-pane";
 export const PRACTICE_KLINE_ATR_PANE = "practice-atr-pane";
 export const PRACTICE_KLINE_VOLUME_PANE = "practice-volume-pane";
 
 export const PRACTICE_FIBONACCI_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1] as const;
+
+// Stage 30A: freehand brush strokes are simplified to at most this many points before commit.
+export const PRACTICE_BRUSH_MAX_POINTS = 120;
+// Stage 30A: magnet snapping radius in plot pixels around a revealed candle's O/H/L/C.
+export const PRACTICE_MAGNET_SNAP_RADIUS_PX = 12;
 
 export type PracticeKLineOverlayData = {
   text?: string;
@@ -320,6 +327,80 @@ const textNoteOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
   }
 };
 
+const freehandBrushOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
+  name: PRACTICE_KLINE_BRUSH_OVERLAY,
+  totalStep: 2,
+  drawingMode: "step",
+  needDefaultPointFigure: false,
+  createPointFigures: ({ coordinates, overlay }) => {
+    if (coordinates.length < 2) return [];
+    const color = overlay.extendData?.color ?? "#d9c28c";
+    return [{
+      key: "brush-stroke",
+      type: "line",
+      attrs: { coordinates },
+      styles: { color, size: 2, style: "solid" }
+    }];
+  }
+};
+
+const parallelChannelOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
+  name: PRACTICE_KLINE_PARALLEL_CHANNEL_OVERLAY,
+  totalStep: 4,
+  drawingMode: "step",
+  needDefaultPointFigure: true,
+  createPointFigures: ({ coordinates, overlay, chart }) => {
+    if (coordinates.length < 2 || overlay.points.length < 2) return [];
+    const baseStart = coordinates[0];
+    const baseEnd = coordinates[1];
+    const color = overlay.extendData?.color ?? "#d9c28c";
+    const figures: OverlayFigure[] = [];
+    const baseStartPoint = overlay.points[0];
+    const baseEndPoint = overlay.points[1];
+    const offsetPoint = overlay.points[2];
+
+    if (offsetPoint && chart) {
+      const offsetDataIndex = Number(offsetPoint.dataIndex) - Number(baseEndPoint.dataIndex);
+      const offsetValue = Number(offsetPoint.value ?? 0) - Number(baseEndPoint.value ?? 0);
+      const parallelStartPixel = chart.convertToPixel({
+        dataIndex: Number(baseStartPoint.dataIndex) + offsetDataIndex,
+        value: Number(baseStartPoint.value ?? 0) + offsetValue
+      });
+      const parallelEndPixel = chart.convertToPixel({
+        dataIndex: Number(baseEndPoint.dataIndex) + offsetDataIndex,
+        value: Number(baseEndPoint.value ?? 0) + offsetValue
+      });
+
+      if (!Array.isArray(parallelStartPixel) && !Array.isArray(parallelEndPixel) &&
+        Number.isFinite(parallelStartPixel.x) && Number.isFinite(parallelStartPixel.y) &&
+        Number.isFinite(parallelEndPixel.x) && Number.isFinite(parallelEndPixel.y)) {
+        const parallelStart = { x: parallelStartPixel.x, y: parallelStartPixel.y };
+        const parallelEnd = { x: parallelEndPixel.x, y: parallelEndPixel.y };
+        figures.push({
+          key: "channel-fill",
+          type: "polygon",
+          attrs: { coordinates: [baseStart, baseEnd, parallelEnd, parallelStart] },
+          styles: { style: "fill", color: `${color}22` }
+        });
+        figures.push({
+          key: "channel-parallel-line",
+          type: "line",
+          attrs: { coordinates: [parallelStart, parallelEnd] },
+          styles: { color, size: 2, style: "solid" }
+        });
+      }
+    }
+
+    figures.push({
+      key: "channel-base-line",
+      type: "line",
+      attrs: { coordinates: [baseStart, baseEnd] },
+      styles: { color, size: 2, style: "solid" }
+    });
+    return figures;
+  }
+};
+
 type PracticeAtrResult = {
   atr?: number;
 };
@@ -362,6 +443,8 @@ export async function registerPracticeKLineChartOverlays() {
     klinecharts.registerOverlay(zoneOverlay);
     klinecharts.registerOverlay(directionalMeasureOverlay);
     klinecharts.registerOverlay(textNoteOverlay);
+    klinecharts.registerOverlay(freehandBrushOverlay);
+    klinecharts.registerOverlay(parallelChannelOverlay);
     klinecharts.registerIndicator(practiceAtrIndicator);
     productionOverlaysRegistered = true;
   }

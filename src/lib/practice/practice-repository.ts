@@ -154,6 +154,8 @@ const PRACTICE_ANNOTATION_VISIBLE_LIMIT = 24;
 const PRACTICE_DRAWING_BULK_DELETE_LIMIT = 400;
 const PRACTICE_DRAWING_VISUAL_INDEX_MARGIN = 500;
 const PRACTICE_DRAWING_POINT_LIMIT = 8;
+// Stage 30A: freehand brush strokes persist at most this many simplified chart points.
+const PRACTICE_BRUSH_POINT_LIMIT = 120;
 const PRACTICE_BOOKMARK_VISIBLE_LIMIT = 40;
 const PRACTICE_CHALLENGE_ORDER_LIMIT = 250;
 const PRACTICE_REPORT_ORDER_LIMIT = 250;
@@ -632,7 +634,9 @@ function normalizeAnnotationKind(value: unknown): PracticeAnnotationKind {
     value === "zone" ||
     value === "text_note" ||
     value === "fibonacci_retracement" ||
-    value === "measurement_placeholder"
+    value === "measurement_placeholder" ||
+    value === "freehand_brush" ||
+    value === "parallel_channel"
   ) {
     return value;
   }
@@ -647,7 +651,25 @@ function isTerminalDrawingAnnotationKind(kind: PracticeAnnotationKind) {
     kind === "zone" ||
     kind === "text_note" ||
     kind === "fibonacci_retracement" ||
-    kind === "measurement_placeholder";
+    kind === "measurement_placeholder" ||
+    kind === "freehand_brush" ||
+    kind === "parallel_channel";
+}
+
+function practiceDrawingPointLimitForKind(kind: PracticeAnnotationKind) {
+  return kind === "freehand_brush" ? PRACTICE_BRUSH_POINT_LIMIT : PRACTICE_DRAWING_POINT_LIMIT;
+}
+
+function requiredPracticeDrawingPointCount(kind: PracticeAnnotationKind): { min: number; max: number } {
+  if (kind === "freehand_brush") {
+    return { min: 2, max: PRACTICE_BRUSH_POINT_LIMIT };
+  }
+
+  if (kind === "parallel_channel") {
+    return { min: 3, max: 3 };
+  }
+
+  return requiresTwoPracticeDrawingPoints(kind) ? { min: 2, max: 2 } : { min: 1, max: 1 };
 }
 
 function defaultTextForAnnotationKind(kind: PracticeAnnotationKind) {
@@ -666,6 +688,10 @@ function defaultTextForAnnotationKind(kind: PracticeAnnotationKind) {
       return "Fib retracement";
     case "measurement_placeholder":
       return "Measure";
+    case "freehand_brush":
+      return "Freehand brush";
+    case "parallel_channel":
+      return "Parallel channel";
     default:
       return "Practice annotation";
   }
@@ -1258,12 +1284,12 @@ function mapOrder(record: Record<string, unknown>, ids: {
   };
 }
 
-function mapPracticeDrawingChartPoints(value: unknown): PracticeDrawingChartPoint[] | undefined {
+function mapPracticeDrawingChartPoints(value: unknown, pointLimit = PRACTICE_DRAWING_POINT_LIMIT): PracticeDrawingChartPoint[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;
   }
 
-  const points = value.slice(0, PRACTICE_DRAWING_POINT_LIMIT).flatMap((entry) => {
+  const points = value.slice(0, pointLimit).flatMap((entry) => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
       return [];
     }
@@ -1299,6 +1325,7 @@ function mapAnnotation(record: Record<string, unknown>, ids: {
 }): PracticeAnnotationSummary {
   const annotationId = safeString(record.annotationId) || ids.annotationId;
   const kind = normalizeAnnotationKind(record.kind);
+  const chartPoints = mapPracticeDrawingChartPoints(record.chartPoints, practiceDrawingPointLimitForKind(kind));
 
   return {
     annotationId,
@@ -1313,7 +1340,7 @@ function mapAnnotation(record: Record<string, unknown>, ids: {
     priceLevel: record.priceLevel === undefined ? undefined : Math.max(0, safeNumber(record.priceLevel, 0)),
     secondPriceLevel: record.secondPriceLevel === undefined ? undefined : Math.max(0, safeNumber(record.secondPriceLevel, 0)),
     coordinateVersion: record.coordinateVersion === "klinecharts_v1" || record.coordinateVersion === "klinecharts_v2" ? record.coordinateVersion : undefined,
-    chartPoints: mapPracticeDrawingChartPoints(record.chartPoints),
+    chartPoints,
     kind,
     label: normalizeAnnotationLabel(record.label, defaultTextForAnnotationKind(kind)) || undefined,
     text: normalizeStoredAnnotationText(record.text, defaultTextForAnnotationKind(kind), kind),
@@ -6314,7 +6341,7 @@ async function normalizeAnnotationForSession(input: {
       : undefined;
   const chartPoints = record.chartPoints === undefined
     ? input.existing?.chartPoints
-    : mapPracticeDrawingChartPoints(record.chartPoints);
+    : mapPracticeDrawingChartPoints(record.chartPoints, practiceDrawingPointLimitForKind(kind));
   const appearanceVersion = record.appearanceVersion === undefined
     ? input.existing?.appearanceVersion
     : normalizeDrawingAppearanceVersion(record.appearanceVersion);
@@ -6343,8 +6370,8 @@ async function normalizeAnnotationForSession(input: {
       throw new AdminApiError(400, "practice_drawing_chart_point_out_of_bounds", "Place the drawing within the visible practice chart workspace.");
     }
 
-    const requiredPointCount = requiresTwoPracticeDrawingPoints(kind) ? 2 : 1;
-    if (chartPoints.length !== requiredPointCount) {
+    const requiredPointCount = requiredPracticeDrawingPointCount(kind);
+    if (chartPoints.length < requiredPointCount.min || chartPoints.length > requiredPointCount.max) {
       throw new AdminApiError(400, "practice_drawing_chart_point_count_invalid", "Complete every required point before saving this drawing.");
     }
 

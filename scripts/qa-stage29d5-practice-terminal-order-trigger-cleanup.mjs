@@ -103,9 +103,9 @@ includesAll(terminal, [
 includesAll(terminal, [
   'available: false',
   "disabled={isDisabled}",
-  "Brush drawing (coming soon)",
-  "Magnet snap (coming soon)"
-], "Remaining nonfunctional terminal tools stay visibly disabled instead of pretending to work.");
+  'label: "Ray (coming soon)", kind: undefined, available: false',
+  'label: "Cross line (coming soon)", kind: undefined, available: false'
+], "Remaining nonfunctional terminal tools stay visibly disabled instead of pretending to work (Stage 30A activated Brush and Magnet snap).");
 
 includesAll(browser, [
   "practice-terminal-quick-buy",
@@ -122,7 +122,9 @@ includesAll(browser, [
   "Indicators"
 ], "Student Playwright coverage checks quick Buy/Sell, Order-tab popout, and unrelated controls.");
 
-excludesAll(`${terminal}\n${browser}`, [
+// Scoped to the terminal source only: the browser spec legitimately contains these
+// strings inside its own negated forbidden-text assertions (checked with .not.toMatch).
+excludesAll(terminal, [
   "FX Replay",
   "fxreplay",
   "/api/v3/order",

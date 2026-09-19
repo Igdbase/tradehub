@@ -75,7 +75,9 @@ export type PracticeAnnotationKind =
   | "zone"
   | "text_note"
   | "fibonacci_retracement"
-  | "measurement_placeholder";
+  | "measurement_placeholder"
+  | "freehand_brush"
+  | "parallel_channel";
 export type PracticeDrawingColorToken = "accent" | "green" | "amber" | "red" | "blue" | "neutral";
 export type PracticeDrawingCoordinateVersion = "klinecharts_v1" | "klinecharts_v2";
 export type PracticeDrawingAppearanceVersion = "trend_blue_v1" | "user_selected_v1";

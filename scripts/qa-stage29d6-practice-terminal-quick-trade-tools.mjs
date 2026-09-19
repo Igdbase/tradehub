@@ -97,9 +97,9 @@ includesAll(terminal, [
 ], "Terminal exposes a visible Zoom out control for drag zoom.");
 
 includesAll(terminal, [
-  "Brush drawing (coming soon)",
-  "Magnet snap (coming soon)"
-], "Remaining coming-soon tool labels remain clear and honest.");
+  "Ray (coming soon)",
+  "Cross line (coming soon)"
+], "Remaining coming-soon tool labels remain clear and honest (Stage 30A activated Brush and Magnet snap).");
 
 includesAll(terminal, [
   "Cursor selected. Pick a chart object to review it.",
