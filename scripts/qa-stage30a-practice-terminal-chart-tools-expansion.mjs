@@ -246,29 +246,32 @@ includesAll(
   [
     "Stage 30A",
     "Practice Terminal Chart Tools Expansion",
-    "implemented/source-QA ready",
-    "owner acceptance is not claimed",
+    "Status: owner-accepted, closed, and frozen on 1 October 2026. Evidence: the owner confirmed the magnet",
+    "the owner reviewed Stage 30B in a real browser and instructed proceeding to the final freeze",
+    "Stage 30B",
+    "Practice Terminal Owner-Feedback Corrections",
+    "Stage 29N: Final Freeze",
     "Magnet snap",
     "Freehand Brush",
     "Parallel Channel",
-    "not claimed",
     "paused Stage 29H",
     "Stage 29G external acceptance",
-    "Stage 29N final freeze remains last and unstarted",
+    "Stage 29N Final Freeze closed the roadmap as owner-frozen on 1 October 2026",
     "Stage 29D is closed and frozen",
     "Stage 29L is owner-accepted, closed, and frozen",
   ],
-  "Docs record Stage 30A truthfully alongside the Stage 29H pause and preserved frozen stage states."
+  "Docs record Stage 30A/30B owner acceptance and the Stage 29N freeze alongside the Stage 29H pause and preserved frozen stage states."
 );
 excludesAll(
   docs,
   [
-    "Stage 30A is owner-accepted",
-    "Stage 30A is closed and frozen",
     "Stage 29H is implemented",
     "Stage 29H is owner-accepted",
+    "Real Telegram/provider acceptance is complete",
+    "Stage 29G external Binance/Bybit acceptance is complete",
+    "Real Paystack sandbox/production acceptance is complete",
   ],
-  "No doc claims Stage 30A owner acceptance or Stage 29H progress beyond the recorded pause."
+  "No doc claims Stage 29H progress or deferred external acceptance beyond the recorded deferrals."
 );
 
 // --- Stage 30B owner-feedback corrections.
@@ -347,7 +350,7 @@ includesAll(
   [
     "Stage 30B",
     "Practice Terminal Owner-Feedback Corrections",
-    "owner acceptance is not claimed",
+    "Status: owner-accepted, closed, and frozen on 1 October 2026. Evidence: the owner reviewed Stage 30B in a real browser",
     "confirmed Stage 30A functionality",
     "PRACTICE_LINE_DEFAULT_COLOR",
     "subscribeBar",
@@ -358,12 +361,10 @@ includesAll(
 excludesAll(
   docs,
   [
-    "Stage 30B is owner-accepted",
-    "Stage 30B is closed and frozen",
-    "Stage 30A is owner-accepted",
-    "Stage 30A is closed and frozen",
+    "Real Telegram/provider acceptance is complete",
+    "Stage 29G external Binance/Bybit acceptance is complete",
   ],
-  "No doc claims Stage 30A/30B owner acceptance or closure."
+  "Stage 30A/30B docs record owner acceptance while external deferrals remain unclaimed."
 );
 
 console.log("Stage 30A Practice Terminal chart tools expansion QA passed.");

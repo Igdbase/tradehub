@@ -2,7 +2,7 @@
 
 Date created: 2026-08-24
 
-Status: Stage 29D is closed and frozen after owner acceptance in real Chrome and Safari on 31 August 2026. Stage 29F was owner-accepted on 3 September 2026 after the Journal visual layout, My Trades/Backtesting separation, numerical reconciliation, bounded-cohort warning, and zero/one/multi-point Equity behavior were accepted. Stage 29F is closed and frozen. Stage 29G Crypto Journal Sync is implemented/source-QA ready, but Stage 29G external Binance/Bybit acceptance remains deferred because no Google Cloud Secret Manager project and no approved provider accounts are currently available. Stage 29H remains deferred/unstarted. Stage 29I is owner-accepted, closed, and frozen after successful local owner testing on 6 September 2026. Stage 29J Signals Feed And TradeHub Signal Routing is owner-accepted, closed, and frozen after successful local owner testing on 7 September 2026. Stage 29K Telegram Signal Ingestion And Controlled Bridge is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Real Telegram/provider acceptance remains deferred and is not claimed. Stage 29L Workspace Navigation And Focused Views is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready. Stage 29N remains unstarted and next.
+Status: Stage 29D is closed and frozen after owner acceptance in real Chrome and Safari on 31 August 2026. Stage 29F was owner-accepted on 3 September 2026 after the Journal visual layout, My Trades/Backtesting separation, numerical reconciliation, bounded-cohort warning, and zero/one/multi-point Equity behavior were accepted. Stage 29F is closed and frozen. Stage 29G Crypto Journal Sync is implemented/source-QA ready, but Stage 29G external Binance/Bybit acceptance remains deferred because no Google Cloud Secret Manager project and no approved provider accounts are currently available. Stage 29H remains deferred/unstarted. Stage 29I is owner-accepted, closed, and frozen after successful local owner testing on 6 September 2026. Stage 29J Signals Feed And TradeHub Signal Routing is owner-accepted, closed, and frozen after successful local owner testing on 7 September 2026. Stage 29K Telegram Signal Ingestion And Controlled Bridge is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Real Telegram/provider acceptance remains deferred and is not claimed. Stage 29L Workspace Navigation And Focused Views is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29M Super Admin Navigation And Demo Account Reliability is owner-accepted, closed, and frozen after real-browser owner confirmation on 30 September 2026, and Stage 29N Final Freeze closed the roadmap as owner-frozen on 1 October 2026.
 
 Source complaint record: `complaint.md`
 
@@ -437,7 +437,7 @@ Implementation status:
 - Owner acceptance closure: focused Workspace navigation, concise Home, all nine responsibility views, direct routes, browser history, scoped loading, and responsive navigation were owner-accepted locally on 8 September 2026.
 - Closed/frozen at `TH-2026-09-08-STAGE29L-WORKSPACE-NAVIGATION-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`.
 - Added `npm run stage29l:qa` and `npm run stage29l:closure:qa`, and updated workspace/admin browser coverage for all nine routes, active nav state, visible nav geometry, direct URLs, Back/Forward, scoped endpoint loading, Student and Signal post-mutation request isolation, Stage 29K publication, wrong-role blocking, document overflow, and privacy-safe rendering.
-- Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready, and Stage 29N remains unstarted and next.
+- Stage 29M Super Admin Navigation And Demo Account Reliability is owner-accepted, closed, and frozen after real-browser owner confirmation on 30 September 2026, and Stage 29N Final Freeze closed the roadmap as owner-frozen on 1 October 2026.
 
 Manual acceptance checks:
 
@@ -448,13 +448,13 @@ Manual acceptance checks:
 
 ## Section 5: Influencer Workspace
 
-Stage 29L above is the canonical Workspace Navigation And Focused Views entry. It is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready, and Stage 29N remains unstarted and next.
+Stage 29L above is the canonical Workspace Navigation And Focused Views entry. It is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29M Super Admin Navigation And Demo Account Reliability is owner-accepted, closed, and frozen after real-browser owner confirmation on 30 September 2026, and Stage 29N Final Freeze closed the roadmap as owner-frozen on 1 October 2026.
 
 ## Section 6: Super Admin And Demo Reliability
 
 ### Stage 29M - Super Admin Navigation And Demo Account Reliability
 
-Status: implemented/source-QA ready. Owner acceptance is not claimed.
+Status: owner-accepted, closed, and frozen on 30 September 2026. Evidence: the owner signed in and confirmed the focused Super Admin navigation and the adviser corrections work in a real browser.
 
 Reference: TH-2026-09-08-STAGE29M-SUPER-ADMIN-NAVIGATION-DEMO-RELIABILITY-HANDOFF
 
@@ -468,8 +468,8 @@ Build:
 - Influencer logins remain routed clearly to `/workspace`; Super Admin focused routes remain gated by `super_admin`.
 - Added direct Admin routes, active navigation, browser history support, scoped loading, responsive nav visibility, and no-horizontal-overflow browser coverage.
 - Added `npm run stage29m:qa`.
-- Stage 29M adviser correction (done and verified; status remains implemented/source-QA ready, owner acceptance is not claimed): the default Overview now renders truthful non-numeric "not measured on this view" states (with "open Payments" / "open Execution Safety" pointers) for chips whose backing data was not loaded, and the hardcoded MVP browser QA chip was removed; `/admin/workspaces` no longer fetches `/api/admin/overview` and the dedicated applications effect with a refresh nonce is the single owner of application loading; a bounded browser test signs in all seven seeded personas (`demo.superadmin@example.test`, `demo.launch.influencer@example.test`, `demo.pro.influencer@example.test`, `demo.enterprise.influencer@example.test`, `demo.student.active@example.test`, `demo.student.pending@example.test`, `demo.student.payment@example.test`, all `TradeHubDemo!123`) and asserts their truthful landings; `npm run stage29m:qa` asserts all of this.
-- Stage 29L is owner-accepted, closed, and frozen. Stage 29K is owner-accepted, closed, and frozen. Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29F remains owner-accepted, closed, and frozen. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29N remains unstarted and next.
+- Stage 29M adviser correction (done and verified; Stage 29M is owner-accepted, closed, and frozen on 30 September 2026): the default Overview now renders truthful non-numeric "not measured on this view" states (with "open Payments" / "open Execution Safety" pointers) for chips whose backing data was not loaded, and the hardcoded MVP browser QA chip was removed; `/admin/workspaces` no longer fetches `/api/admin/overview` and the dedicated applications effect with a refresh nonce is the single owner of application loading; a bounded browser test signs in all seven seeded personas (`demo.superadmin@example.test`, `demo.launch.influencer@example.test`, `demo.pro.influencer@example.test`, `demo.enterprise.influencer@example.test`, `demo.student.active@example.test`, `demo.student.pending@example.test`, `demo.student.payment@example.test`, all `TradeHubDemo!123`) and asserts their truthful landings; `npm run stage29m:qa` asserts all of this.
+- Stage 29L is owner-accepted, closed, and frozen. Stage 29K is owner-accepted, closed, and frozen. Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29F remains owner-accepted, closed, and frozen. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29N Final Freeze closed the roadmap as owner-frozen on 1 October 2026.
 
 Owner acceptance:
 

@@ -64,8 +64,8 @@ const closureRequired = [
   "Stage 29G external Binance/Bybit acceptance remains deferred",
   "Stage 29H remains deferred/unstarted",
   "Stage 29L is owner-accepted, closed, and frozen",
-  "Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready",
-  "Stage 29N remains unstarted and next",
+  "Stage 29M Super Admin Navigation And Demo Account Reliability is owner-accepted, closed, and frozen",
+  "Stage 29N Final Freeze closed the roadmap as owner-frozen on 1 October 2026",
 ];
 
 for (const docPath of authoritativeDocs) {

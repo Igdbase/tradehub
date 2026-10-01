@@ -253,7 +253,8 @@ includesAll(
     "Stage 29M adviser correction",
     "not measured on this view",
     "TradeHubDemo!123",
-    "Stage 29N remains unstarted and next",
+    "Stage 29M is owner-accepted, closed, and frozen on 30 September 2026",
+    "Stage 29N Final Freeze closed the roadmap as owner-frozen on 1 October 2026",
     "Stage 29L is owner-accepted, closed, and frozen",
     "Stage 29K is owner-accepted, closed, and frozen",
     "Stage 29J remains owner-accepted, closed, and frozen",
@@ -267,13 +268,10 @@ includesAll(
 excludesAll(
   docs,
   [
-    "Stage 29M is owner-accepted",
-    "Stage 29M is closed and frozen",
-    "Stage 29N is implemented",
     "Real Telegram/provider acceptance is complete",
     "Stage 29G external Binance/Bybit acceptance is complete",
   ],
-  "Stage 29M docs do not claim owner acceptance, Stage 29N, or deferred external acceptance."
+  "Stage 29M docs record owner acceptance without claiming deferred external acceptance (Stage 29N Final Freeze messages updated for the frozen roadmap)."
 );
 
 console.log("Stage 29M Super Admin navigation and demo reliability source QA passed.");

@@ -67,8 +67,8 @@ const closureRequired = [
   "browser history",
   "scoped loading",
   "responsive navigation",
-  "Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready",
-  "Stage 29N remains unstarted and next",
+  "Stage 29M Super Admin Navigation And Demo Account Reliability is owner-accepted, closed, and frozen",
+  "Stage 29N Final Freeze closed the roadmap as owner-frozen on 1 October 2026",
   "Stage 29K is owner-accepted, closed, and frozen",
   "Stage 29J remains owner-accepted, closed, and frozen",
   "Stage 29I remains closed and frozen",
@@ -109,12 +109,10 @@ includesAll(
 excludesAll(
   combinedDocs,
   [
-    "Stage 29M is owner-accepted",
-    "Stage 29M is closed and frozen",
     "Real Telegram/provider acceptance is complete",
     "Stage 29G external Binance/Bybit acceptance is complete",
   ],
-  "Stage 29L closure does not start Stage 29M or overclaim deferred external acceptance."
+  "Stage 29L closure records the now owner-accepted Stage 29M without overclaiming deferred external acceptance."
 );
 
 console.log("Stage 29L owner acceptance closure QA passed.");

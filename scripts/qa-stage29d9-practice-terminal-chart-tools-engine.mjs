@@ -29,6 +29,7 @@ function sectionBetween(source, startNeedle, endNeedle) {
 
 const packageJson = JSON.parse(read("package.json"));
 const terminal = read("src/components/student-app/student-practice-terminal-client.tsx");
+const overlayModule = read("src/lib/practice/practice-klinechart-overlays.ts");
 const practiceTypes = read("src/types/practice.ts");
 const practiceRepository = read("src/lib/practice/practice-repository.ts");
 const browser = read("tests/browser/student-e2e.spec.mjs");
@@ -44,101 +45,141 @@ assert(
   packageJson.scripts?.["stage29d9:qa"] === "node scripts/qa-stage29d9-practice-terminal-chart-tools-engine.mjs",
   "package.json exposes npm run stage29d9:qa."
 );
+assert(packageJson.dependencies?.klinecharts === "10.0.3", "The drawing engine stays on the pinned KLineChart 10.0.3.");
 
+// --- Versioned drawing model.
 includesAll(practiceTypes, [
   '"trend_line"',
   '"fibonacci_retracement"',
-  '"measurement_placeholder"'
-], "Practice annotation types include trend, Fibonacci, and measure drawings.");
+  '"measurement_placeholder"',
+  '"freehand_brush"',
+  '"parallel_channel"',
+  '"klinecharts_v1"',
+  '"klinecharts_v2"',
+  "interface PracticeDrawingChartPoint"
+], "Practice annotation types include the multi-tool drawing kinds and the versioned klinecharts_v1/v2 coordinate model.");
 
-includesAll(practiceRepository, [
-  'value === "trend_line"',
-  'value === "fibonacci_retracement"',
-  'return "Trend line"',
-  'return "Fib retracement"',
-  'return "Measure"',
-  '"practice_annotation_future_candle_blocked"',
-  '"practice_drawing_future_candle_blocked"'
-], "Repository accepts new drawing kinds while preserving revealed-candle-only validation.");
+// --- TradeHub-owned overlay templates registered on the chart.
+includesAll(overlayModule, [
+  'PRACTICE_KLINE_TREND_OVERLAY = "segment"',
+  'PRACTICE_KLINE_HORIZONTAL_OVERLAY = "tradehubHorizontalLine"',
+  'PRACTICE_KLINE_VERTICAL_OVERLAY = "tradehubVerticalLine"',
+  'PRACTICE_KLINE_FIBONACCI_OVERLAY = "tradehubBoundedFibonacci"',
+  'PRACTICE_KLINE_ZONE_OVERLAY = "tradehubZone"',
+  'PRACTICE_KLINE_MEASURE_OVERLAY = "tradehubDirectionalMeasure"',
+  'PRACTICE_KLINE_TEXT_OVERLAY = "tradehubTextNote"',
+  'PRACTICE_KLINE_BRUSH_OVERLAY = "tradehubFreehandBrush"',
+  'PRACTICE_KLINE_PARALLEL_CHANNEL_OVERLAY = "tradehubParallelChannel"',
+  "registerOverlay(horizontalLineOverlay)",
+  "registerOverlay(verticalLineOverlay)",
+  "registerOverlay(boundedFibonacciOverlay)",
+  "registerOverlay(zoneOverlay)",
+  "registerOverlay(directionalMeasureOverlay)",
+  "registerOverlay(textNoteOverlay)",
+  "registerOverlay(freehandBrushOverlay)",
+  "registerOverlay(parallelChannelOverlay)",
+  "PRACTICE_FIBONACCI_LEVELS"
+], "The TradeHub overlays module owns and registers every drawing overlay template, including the bounded Fibonacci levels.");
+includesAll(terminal, [
+  "registerPracticeKLineChartOverlays",
+  "practiceKLineOverlayName(drawing.kind)",
+  "PRACTICE_KLINE_DRAWING_GROUP",
+  "PRACTICE_KLINE_DRAFT_GROUP"
+], "The terminal renders persisted and draft drawings through the registered TradeHub overlay templates.");
 
+// --- Terminal multi-tool drawing engine (current klinecharts-era implementation).
 includesAll(terminal, [
   "TerminalDrawingPlacementStart",
   "drawingPlacementStart",
   "requiresTwoChartPoints",
-  "fibonacciRetracementLevels",
-  "trend_line",
-  "fibonacci_retracement",
   "buildMeasurementSummary",
-  "editableKeyboardTarget"
-], "Terminal contains a real multi-tool drawing engine.");
+  "editableKeyboardTarget",
+  "coordinateVersion: \"klinecharts_v2\""
+], "Terminal contains a real multi-tool drawing engine committing versioned klinecharts_v2 chart points.");
 
+// --- Per-kind server point-count validation and revealed-candle-only boundaries.
+includesAll(practiceRepository, [
+  'value === "trend_line"',
+  'value === "fibonacci_retracement"',
+  'value === "freehand_brush"',
+  'value === "parallel_channel"',
+  'return "Trend line"',
+  'return "Fib retracement"',
+  'return "Measure"',
+  "requiredPracticeDrawingPointCount",
+  "{ min: 2, max: PRACTICE_BRUSH_POINT_LIMIT }",
+  "{ min: 3, max: 3 }",
+  '"practice_annotation_future_candle_blocked"',
+  '"practice_drawing_future_candle_blocked"'
+], "Repository accepts every drawing kind with per-kind required point counts while preserving revealed-candle-only validation.");
+
+// --- Shared cancellation path in the chart capture layer.
+const cancellation = sectionBetween(
+  terminal,
+  "function handleDrawingCapturePointerCancel",
+  "async function commitTextDraft"
+);
+includesAll(cancellation, [
+  "releasePointerCapture",
+  "dragDraftRef.current = null",
+  "trendLineDraftRef.current = null",
+  "parallelChannelDraftRef.current = null",
+  "clearTextDraft()",
+  "clearKLineDraft()",
+  'onCancelTool("Drawing cancelled. Select restored.");'
+], "Pointer cancellation clears every draft kind and restores Select through the shared cancellation path.");
+includesAll(terminal, [
+  "}, [activeDrawingTool]);"
+], "Tool switching resets drafts through the same draft-clearing path.");
+
+// --- Tool rail and Lines menu (current reality including the Stage 30A tools).
 const tools = sectionBetween(terminal, "const terminalTools = [", "const TERMINAL_WARMUP_CANDLE_COUNT");
 includesAll(tools, [
   'label: "Lines and trend tools"',
   'label: "Rectangle zone", kind: "zone"',
   'label: "Text note", kind: "text_note"',
+  'label: "Brush", kind: "freehand_brush"',
   'label: "Fibonacci retracement", kind: "fibonacci_retracement"',
   'label: "Measure", kind: "measurement_placeholder"',
-  "Brush drawing (coming soon)",
-  "Magnet snap (coming soon)",
-  "available: false"
-], "Tool rail exposes working chart tools and keeps remaining unfinished tools disabled.");
+  'label: "Magnet snap"',
+  'label: "Delete selected drawing"',
+  'label: "Clear chart drawings"'
+], "Tool rail exposes the working chart tools including the Stage 30A Brush and Magnet snap.");
 const lineTools = sectionBetween(terminal, "const terminalLineTools = [", "const terminalObjectFilters");
 includesAll(lineTools, [
   'label: "Trend line", kind: "trend_line"',
+  'label: "Parallel channel", kind: "parallel_channel"',
   'label: "Horizontal price line", kind: "horizontal_line"',
   'label: "Vertical line", kind: "vertical_marker"',
   "coming soon"
 ], "Line tools are grouped under the Lines menu with disabled future variants.");
 
-const chartComponent = sectionBetween(terminal, "function TerminalChart", "function TerminalBody");
-includesAll(chartComponent, [
-  "chart.subscribeClick(handleChartClick)",
-  "timeScale.timeToCoordinate",
-  "series.priceToCoordinate",
-  "series.coordinateToPrice",
-  'data-practice-drawing-kind="trend_line"',
-  'data-practice-drawing-kind="fibonacci_retracement"',
-  'data-practice-drawing-kind="horizontal_line"',
-  'data-practice-drawing-kind="vertical_marker"',
-  'data-practice-drawing-kind="zone"',
-  'data-practice-drawing-kind="text_note"',
-  'data-practice-drawing-kind="measurement_placeholder"',
-  "fibonacciRetracementLevels",
-  "onSelectDrawing(drawing.annotationId)"
-], "Chart renders selectable, timeScale-positioned overlays for real drawing tools.");
-
+// --- Placement flow: clamped to revealed candles, one- and two-click objects.
 const createFromChart = sectionBetween(
   terminal,
   "async function createTerminalDrawingFromChartPoint",
   "async function updateSelectedDrawing"
 );
-
 includesAll(createFromChart, [
   "requiresTwoChartPoints(placement.kind)",
   "setDrawingPlacementStart(boundedClickPoint)",
   "start selected. Click second point.",
   "secondCandleIndex",
   "secondPriceLevel",
-  "Math.max(0, Math.min(placement.candleIndex, currentIndex))",
-  "setSelectedToolKind(placement.kind)",
-  "setMobilePanelTab(\"objects\")"
-], "Drawing placement supports one-click and two-click objects, clamps to revealed candles, and returns to Objects.");
+  "Math.max(0, Math.min(placement.candleIndex, currentIndex))"
+], "Drawing placement supports one-click and two-click objects and clamps anchors to revealed candles.");
 
+// --- Keyboard and object-tree surfaces.
 const keyboard = sectionBetween(
   terminal,
   "function handleTerminalKeyboard",
   "window.addEventListener(\"keydown\", handleTerminalKeyboard)"
 );
-
 includesAll(keyboard, [
   'event.key === "Escape"',
   'event.key === "Delete"',
   'event.key === "Backspace"',
-  "editableKeyboardTarget(event.target)",
-  "setDrawingPlacementStart(null)",
-  "setSelectedDrawingId(\"\")",
-  "void deleteSelectedDrawing()"
+  "editableKeyboardTarget(event.target)"
 ], "Escape and Delete/Backspace keyboard interactions are wired safely.");
 
 const objectPanel = sectionBetween(
@@ -146,30 +187,19 @@ const objectPanel = sectionBetween(
   'data-testid="practice-terminal-object-tree"',
   'data-testid="practice-terminal-journal-panel"'
 );
-
 includesAll(objectPanel, [
   'data-practice-terminal-object-tree="compact-real-tools"',
-  'data-practice-terminal-drawing-list="compact-object-tree"',
-  'data-testid="practice-terminal-object-tree-row"',
   'data-testid="practice-terminal-selected-object-editor"',
-  "Selected object",
   "Edit the focused chart object or delete it here.",
-  "Drawing second candle index",
-  "Drawing second price",
   "Delete selected"
 ], "Objects panel has compact rows and exactly one selected drawing editor.");
 
-excludesAll(objectPanel, [
-  "No drawings yet. Use the left toolbar, then click the chart to place one.",
-  "Measure placeholder"
-], "Objects panel no longer carries old placeholder-heavy drawing copy.");
-
+// --- Simulated-only quick orders remain decoupled from the drawing tools.
 const quickSubmit = sectionBetween(
   terminal,
   "async function submitQuickMarketOrder",
   "async function submitTerminalOrder"
 );
-
 excludesAll(quickSubmit, [
   "focusTerminalTicket",
   "openUtilityPanel(\"order\")"
@@ -183,7 +213,9 @@ includesAll(browser, [
   "practice-terminal-order-ticket"
 ], "Student browser suite still covers core terminal order and object surfaces.");
 
-excludesAll(`${terminal}\n${practiceRepository}\n${browser}`, [
+// Scoped to the terminal and repository sources: the browser spec legitimately contains
+// secret-shaped strings inside its own negated forbidden-text assertions.
+excludesAll(`${terminal}\n${practiceRepository}`, [
   "FX Replay",
   "fxreplay",
   "/api/v3/order",

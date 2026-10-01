@@ -294,8 +294,8 @@ includesAll(docs, [
   "Real Telegram/provider acceptance remains deferred",
   "Stage 29J remains owner-accepted, closed, and frozen",
   "Stage 29L is owner-accepted, closed, and frozen",
-  "Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready",
-  "Stage 29N remains unstarted and next"
+  "Stage 29M Super Admin Navigation And Demo Account Reliability is owner-accepted, closed, and frozen",
+  "Stage 29N Final Freeze closed the roadmap as owner-frozen on 1 October 2026"
 ], "Stage 29K documentation records implementation, owner acceptance closure, preserved frozen stages, and deferred real-provider acceptance.");
 
 excludesAll(docs, [

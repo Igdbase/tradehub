@@ -824,7 +824,7 @@ Status: owner-accepted, closed, and frozen after successful local owner testing 
 
 Reference: `TH-2026-09-08-STAGE29K-TELEGRAM-SIGNAL-BRIDGE-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`
 
-Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29L is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready, and Stage 29N remains unstarted and next.
+Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29L is owner-accepted, closed, and frozen after successful local owner testing on 8 September 2026. Stage 29M Super Admin Navigation And Demo Account Reliability is owner-accepted, closed, and frozen after real-browser owner confirmation on 30 September 2026, and Stage 29N Final Freeze closed the roadmap as owner-frozen on 1 October 2026.
 
 Owner-accepted local scope: visible Super Admin Telegram source setup, server-only conversion of raw Telegram identity, quarantined candidate creation, explicit Super Admin approval, explicit workspace publication, safe student Signals display, absence of raw Telegram identifiers/messages, and preserved routing and execution gates were accepted on 8 September 2026.
 
@@ -846,7 +846,7 @@ Status: owner-accepted, closed, and frozen after successful local owner testing 
 
 Reference: `TH-2026-09-08-STAGE29L-WORKSPACE-NAVIGATION-OWNER-ACCEPTANCE-CLOSURE-HANDOFF`
 
-Owner-accepted local scope: focused Workspace navigation, concise Home, all nine responsibility views, direct routes, browser history, scoped loading, and responsive navigation were accepted on 8 September 2026. Stage 29F remains owner-accepted, closed, and frozen. Stage 29K is owner-accepted, closed, and frozen. Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29M Super Admin Navigation And Demo Account Reliability is implemented/source-QA ready, and Stage 29N remains unstarted and next.
+Owner-accepted local scope: focused Workspace navigation, concise Home, all nine responsibility views, direct routes, browser history, scoped loading, and responsive navigation were accepted on 8 September 2026. Stage 29F remains owner-accepted, closed, and frozen. Stage 29K is owner-accepted, closed, and frozen. Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29M Super Admin Navigation And Demo Account Reliability is owner-accepted, closed, and frozen after real-browser owner confirmation on 30 September 2026, and Stage 29N Final Freeze closed the roadmap as owner-frozen on 1 October 2026.
 
 - Sign in as `demo.pro.influencer@example.test`.
 - Open `/workspace` and show the concise Home summary, readiness snapshot, and next-action links.
@@ -862,7 +862,7 @@ Owner-accepted local scope: focused Workspace navigation, concise Home, all nine
 
 ## Stage 29M Super Admin Navigation Demo Flow
 
-Status: implemented/source-QA ready. Owner acceptance is not claimed.
+Status: owner-accepted, closed, and frozen on 30 September 2026. Evidence: the owner signed in and confirmed the focused Super Admin navigation and the adviser corrections work in a real browser.
 
 Reference: `TH-2026-09-08-STAGE29M-SUPER-ADMIN-NAVIGATION-DEMO-RELIABILITY-HANDOFF`
 
@@ -881,4 +881,4 @@ Reference: `TH-2026-09-08-STAGE29M-SUPER-ADMIN-NAVIGATION-DEMO-RELIABILITY-HANDO
 - Confirm `/admin/workspaces` loads only the applications list (no `/api/admin/overview` request) and that saving an application or creating a workspace shell refreshes only that list.
 - Confirm no raw student ids, workspace ids, payment refs, provider payloads, Telegram identifiers, credentials, vault refs, execution internals, or diagnostics appear.
 
-Stage 29L is owner-accepted, closed, and frozen. Stage 29K is owner-accepted, closed, and frozen. Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29F remains owner-accepted, closed, and frozen. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29N remains unstarted and next.
+Stage 29L is owner-accepted, closed, and frozen. Stage 29K is owner-accepted, closed, and frozen. Stage 29J remains owner-accepted, closed, and frozen. Stage 29I remains closed and frozen. Stage 29F remains owner-accepted, closed, and frozen. Stage 29G external Binance/Bybit acceptance remains deferred. Stage 29H remains deferred/unstarted. Stage 29N Final Freeze closed the roadmap as owner-frozen on 1 October 2026.
