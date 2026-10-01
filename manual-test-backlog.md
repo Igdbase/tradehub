@@ -2700,3 +2700,10 @@ Reference: TH-2026-09-08-STAGE29M-SUPER-ADMIN-NAVIGATION-DEMO-RELIABILITY-HANDOF
 - Confirm only the active focused section loads; a failed section should not break the shared nav or unrelated routes.
 - Confirm wrong-role students remain blocked from workspace routes.
 - Confirm no private student records, raw payment references, provider payloads, credentials, vault refs, raw workspace/student ids, hidden candles, or execution internals appear.
+
+## Stage 30D Legacy QA Guard Triage (QA hygiene only, no product changes)
+
+- Stage 30D paid the Stage 29N legacy-guard debt: 89 failing source-QA scripts were triaged with zero product code changes.
+- 27 guards were RETIRED (scripts deleted, package.json entries removed): stage15k:qa, stage15y:qa, stage17b:qa, stage17e:qa, stage18a:qa, stage18b:qa, stage18c:qa, stage18d:qa, stage18g:qa, stage18h:qa, stage18x:qa, stage21a:qa through stage21d:qa (manual journal trading was removed in Stage 29F), stage23c:qa (reminder preferences entry point was removed), stage25a:qa through stage25c:qa (superseded by the Stage 29I copier implementation), stage29d1:qa, stage29d3:qa, stage29d7:qa, stage29d10:qa through stage29d14:qa (pre-KLineChart terminal guards superseded by Stage 29D.15/29D.16/30A/30B/30C coverage). Each retirement and its superseding coverage is recorded in docs/legacy-guard-triage.md.
+- 58 guards were REWRITTEN to assert current truth with needles that can still fail, following the Stage 29N stage29d9:qa precedent; 4 fixture guards (stage15f:qa, stage15h:qa, stage15i:qa, stage28f:qa) are verified with their era seed packs and the emulator stack.
+- Guards that asserted the retired scripts' existence or package.json wiring were updated truthfully (Stage 23A/23B/23D/25E/28A/28B/28F and the era batches). The full per-script ledger lives in docs/legacy-guard-triage.md.
