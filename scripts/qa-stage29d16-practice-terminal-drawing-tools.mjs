@@ -197,7 +197,9 @@ includesAll(pointerCancel, [
 
 const trendAppearance = sectionBetween(terminal, "const PRACTICE_TREND_DEFAULT_COLOR", "function MiniOrderStat");
 includesAll(trendAppearance, [
-  'PRACTICE_TREND_DEFAULT_COLOR = "#2962ff"',
+  // Stage 30B: the trend blue is now the shared PRACTICE_LINE_DEFAULT_COLOR owned by the
+  // TradeHub overlays module; the terminal aliases it so the trend appearance rule is unchanged.
+  'PRACTICE_TREND_DEFAULT_COLOR = PRACTICE_LINE_DEFAULT_COLOR',
   'kind === "trend_line"',
   'appearanceVersion === "trend_blue_v1"',
   'appearanceVersion !== "user_selected_v1"',
@@ -214,10 +216,10 @@ includesAll(createDrawing, [
 ], "New Trends persist the blue default and its appearance version instead of the gold accent.");
 excludesAll(createDrawing, ['placement.kind === "trend_line" ? "accent"'], "New default Trends cannot persist the gold accent.");
 includesAll(chart, [
-  'kind === "trend_line" ? PRACTICE_TREND_DEFAULT_COLOR',
+  'isLineFamilyDraft ? PRACTICE_LINE_DEFAULT_COLOR',
   "drawingColorHex(drawing.colorToken, drawing.kind, drawing.appearanceVersion)",
   "borderColor: overlayColor"
-], "Trend draft, saved geometry, selection handles, and restored overlays resolve through the same blue appearance.");
+], "Trend draft, saved geometry, selection handles, and restored overlays resolve through the same blue appearance (Stage 30B shares it across the line family).");
 
 const toolRailMarkup = sectionBetween(terminal, 'data-testid="practice-terminal-left-tool-rail"', "</aside>");
 includesAll(terminal, [
@@ -299,7 +301,8 @@ includesAll(chart, [
   "paneId: PRACTICE_KLINE_VOLUME_PANE"
 ], "SMA, EMA, RSI, ATR, and Volume MA render through KLineChart in explicit main/lower panes.");
 includesAll(chart, [
-  "chart.getDataList().length",
+  "chart.getDataList()",
+  "previousList.length",
   "chart.getBarSpace().bar",
   "chart.getOffsetRightDistance()",
   "chart.getVisibleRange()",

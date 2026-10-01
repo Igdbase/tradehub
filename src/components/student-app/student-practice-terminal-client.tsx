@@ -71,6 +71,7 @@ import {
   PRACTICE_KLINE_VERTICAL_OVERLAY,
   PRACTICE_KLINE_VOLUME_PANE,
   PRACTICE_KLINE_ZONE_OVERLAY,
+  PRACTICE_LINE_DEFAULT_COLOR,
   PRACTICE_MAGNET_SNAP_RADIUS_PX,
   registerPracticeKLineChartOverlays
 } from "@/lib/practice/practice-klinechart-overlays";
@@ -960,7 +961,16 @@ function orderChipToneClass(order: PracticeOrderSummary, selected: boolean) {
     : `${base} bg-black/95 hover:bg-white/10`;
 }
 
-const PRACTICE_TREND_DEFAULT_COLOR = "#2962ff";
+const PRACTICE_TREND_DEFAULT_COLOR = PRACTICE_LINE_DEFAULT_COLOR;
+
+// Stage 30B: the line-family drawing tools share one versioned saturated blue default.
+const terminalLineFamilyKinds: ReadonlySet<PracticeAnnotationKind> = new Set([
+  "trend_line",
+  "horizontal_line",
+  "vertical_marker",
+  "freehand_brush",
+  "parallel_channel"
+]);
 
 function drawingColorHex(
   colorToken: PracticeDrawingColorToken | undefined,
@@ -975,6 +985,18 @@ function drawingColorHex(
     )
   ) {
     return PRACTICE_TREND_DEFAULT_COLOR;
+  }
+
+  // Stage 30B narrow legacy conversion at render time: line-family drawings stored with the
+  // old cream default token (accent/undefined, never deliberately customized) display in the
+  // shared blue; genuinely custom tokens keep their stored color. Stored records are untouched.
+  if (
+    kind !== undefined &&
+    terminalLineFamilyKinds.has(kind) &&
+    kind !== "trend_line" &&
+    (colorToken === undefined || colorToken === "accent")
+  ) {
+    return PRACTICE_LINE_DEFAULT_COLOR;
   }
 
   if (
@@ -1079,6 +1101,7 @@ function TerminalChart({
   const trendLineDraftRef = useRef<TerminalTrendLineDraft | null>(null);
   const parallelChannelDraftRef = useRef<TerminalParallelChannelDraft | null>(null);
   const magnetSnapEnabledRef = useRef(magnetSnapEnabled);
+  const replayTickPublisherRef = useRef<((candle: KLineData) => void) | null>(null);
   const [textDraft, setTextDraft] = useState<TerminalTextDraft | null>(null);
   const textDraftRef = useRef<TerminalTextDraft | null>(null);
   const textEditorRef = useRef<HTMLDivElement | null>(null);
@@ -1393,7 +1416,9 @@ function TerminalChart({
         ? practiceKLineOverlayName(kind)
         : PRACTICE_KLINE_ZONE_OVERLAY;
     const isUp = (end.priceLevel ?? 0) >= (start.priceLevel ?? 0);
-    const color = kind === "measurement_placeholder" ? (isUp ? "#60a5fa" : "#ef4444") : kind === "zoom" ? "#60a5fa" : kind === "trend_line" ? PRACTICE_TREND_DEFAULT_COLOR : "#d9c28c";
+    // Stage 30B: line-family drafts preview in the shared blue; zone/measure/zoom keep theirs.
+    const isLineFamilyDraft = kind !== "zoom" && kind !== "select" && terminalLineFamilyKinds.has(kind);
+    const color = kind === "measurement_placeholder" ? (isUp ? "#60a5fa" : "#ef4444") : kind === "zoom" ? "#60a5fa" : isLineFamilyDraft ? PRACTICE_LINE_DEFAULT_COLOR : "#d9c28c";
     const id = kind === "trend_line" ? "practice-kline-trend-draft" : "practice-kline-drag-draft";
     const nextPoints = [terminalOverlayPoint(start), terminalOverlayPoint(end)];
     const existing = chart.getOverlays({ id })[0];
@@ -1443,9 +1468,9 @@ function TerminalChart({
       points: previewPath.map(terminalOverlayPoint),
       lock: true,
       needDefaultPointFigure: false,
-      extendData: { color: "#d9c28c" },
+      extendData: { color: PRACTICE_LINE_DEFAULT_COLOR },
       styles: {
-        line: { color: "#d9c28c", style: "solid", size: 2 },
+        line: { color: PRACTICE_LINE_DEFAULT_COLOR, style: "solid", size: 2 },
         point: { color: "transparent", borderColor: "transparent", borderSize: 0, radius: 0 }
       }
     });
@@ -1473,10 +1498,10 @@ function TerminalChart({
       points,
       lock: true,
       needDefaultPointFigure: false,
-      extendData: { color: "#d9c28c" },
+      extendData: { color: PRACTICE_LINE_DEFAULT_COLOR },
       styles: {
-        line: { color: "#d9c28c", style: "solid", size: 2 },
-        polygon: { color: "#d9c28c22", borderColor: "#d9c28c", borderSize: 1 },
+        line: { color: PRACTICE_LINE_DEFAULT_COLOR, style: "solid", size: 2 },
+        polygon: { color: `${PRACTICE_LINE_DEFAULT_COLOR}22`, borderColor: PRACTICE_LINE_DEFAULT_COLOR, borderSize: 1 },
         point: { color: "transparent", borderColor: "transparent", borderSize: 0, radius: 0 }
       }
     });
@@ -2029,6 +2054,15 @@ function TerminalChart({
       chart.setDataLoader({
         getBars: ({ type, callback }) => {
           callback(type === "init" ? chartDataRef.current : [], { forward: false, backward: false });
+        },
+        // Stage 30B: replay ticks publish single candles through subscribeBar so klinecharts
+        // uses the incremental update path (viewport pinned in place, cached y-axis width)
+        // instead of a full per-tick resetData that rebuilt the viewport every frame.
+        subscribeBar: ({ callback }) => {
+          replayTickPublisherRef.current = callback;
+        },
+        unsubscribeBar: () => {
+          replayTickPublisherRef.current = null;
         }
       });
       chart.setSymbol({ ticker: "PRACTICE", pricePrecision: 8, volumePrecision: 8 });
@@ -2056,6 +2090,7 @@ function TerminalChart({
       }
       chartRef.current = null;
       disposeChartRef.current = null;
+      replayTickPublisherRef.current = null;
       delete window.__TRADEHUB_PRACTICE_KLINECHART__;
       setIsKLineReady(false);
       initialViewportAppliedRef.current = false;
@@ -2076,7 +2111,8 @@ function TerminalChart({
       return;
     }
 
-    const previousDataCount = chart.getDataList().length;
+    const previousList = chart.getDataList();
+    const previousDataCount = previousList.length;
     const previousBarSpace = chart.getBarSpace().bar;
     const previousOffsetRightDistance = chart.getOffsetRightDistance();
     const previousVisibleRange = chart.getVisibleRange();
@@ -2096,7 +2132,105 @@ function TerminalChart({
     const wasAtLiveEdge = viewportModeRef.current !== "historical";
     const historicalRightDataIndex = historicalRightDataIndexRef.current ?? previousVisibleRange.to;
 
-    chart.resetData();
+    if (viewportRestoreFrameRef.current !== null) {
+      window.cancelAnimationFrame(viewportRestoreFrameRef.current);
+      viewportRestoreFrameRef.current = null;
+    }
+
+    // Stage 30B: when the revealed list only grew or updated at the tail (replay ticks),
+    // publish the new candles through klinecharts' subscribeBar path. That keeps the
+    // viewport and cached y-axis width in place. The old per-tick chart.resetData() wiped
+    // the visible range and re-measured the y-axis width without cache on every tick
+    // (cacheYAxisWidth: false on the init path), producing a one-frame plot shift plus a
+    // rAF correction — the repeated tiny shake the owner saw during Play.
+    const overlapIsStable =
+      previousDataCount > 0 &&
+      chartData.length >= previousDataCount &&
+      chartData.slice(0, previousDataCount).every((candle, index) => candle.timestamp === previousList[index]?.timestamp);
+    const incrementalTickPublisher = overlapIsStable ? replayTickPublisherRef.current : null;
+
+    if (incrementalTickPublisher) {
+      const changedTail: KLineData[] = [];
+      const lastStored = previousList[previousDataCount - 1];
+      const lastNext = chartData[previousDataCount - 1];
+
+      if (lastStored && lastNext && (
+        lastStored.open !== lastNext.open ||
+        lastStored.high !== lastNext.high ||
+        lastStored.low !== lastNext.low ||
+        lastStored.close !== lastNext.close ||
+        lastStored.volume !== lastNext.volume
+      )) {
+        changedTail.push(lastNext);
+      }
+      for (let index = previousDataCount; index < chartData.length; index += 1) {
+        changedTail.push(chartData[index]);
+      }
+
+      if (changedTail.length > 0) {
+        for (const candle of changedTail) {
+          incrementalTickPublisher(candle);
+        }
+
+        // klinecharts treats a right edge exactly on the last bar (diff 0) as the live edge
+        // and follows appended candles. While the owner has panned/zoomed back in history,
+        // re-anchor the viewport synchronously inside this same effect body: an axis-width
+        // change from the newly visible candles shifts every pixel, so measure the anchor
+        // error and correct it by distance. No intermediate frame is ever painted.
+        if (!wasAtLiveEdge) {
+          const restoredAnchorPixel = chart.convertToPixel({ dataIndex: previousAnchorDataIndex });
+          if (!Array.isArray(restoredAnchorPixel) && typeof restoredAnchorPixel.x === "number" && previousAnchorPixelX !== null) {
+            chart.scrollByDistance(previousAnchorPixelX - restoredAnchorPixel.x);
+          }
+          historicalRightDataIndexRef.current = chart.getVisibleRange().to;
+        }
+      }
+    } else {
+      chart.resetData();
+
+      if (chartData.length > 0 && chartWidth > 0 && !initialViewportAppliedRef.current) {
+        initialViewportAppliedRef.current = true;
+        viewportRestoreFrameRef.current = window.requestAnimationFrame(() => {
+          isRestoringViewportRef.current = true;
+          const plotWidth = chart.getSize("candle_pane", "main")?.width ?? chartWidth;
+          chart.setBarSpace(Math.max(4, Math.min(18, plotWidth / Math.max(chartData.length + 10, 24))));
+          chart.scrollToDataIndex(chartData.length - 1);
+          chart.setOffsetRightDistance(Math.max(96, Math.round(plotWidth * 0.24)));
+          viewportModeRef.current = "live";
+          historicalRightDataIndexRef.current = null;
+          isRestoringViewportRef.current = false;
+          viewportRestoreFrameRef.current = null;
+        });
+      } else if (chartData.length > 0 && previousDataCount > 0) {
+        viewportRestoreFrameRef.current = window.requestAnimationFrame(() => {
+          isRestoringViewportRef.current = true;
+          const restoreHistoricalViewport = () => {
+            chart.setBarSpace(previousBarSpace);
+            chart.setOffsetRightDistance(previousOffsetRightDistance);
+            chart.scrollToDataIndex(historicalRightDataIndex);
+            const restoredAnchorPixel = chart.convertToPixel({ dataIndex: previousAnchorDataIndex });
+            if (!Array.isArray(restoredAnchorPixel) && typeof restoredAnchorPixel.x === "number" && previousAnchorPixelX !== null) {
+              chart.scrollByDistance(previousAnchorPixelX - restoredAnchorPixel.x);
+            }
+            historicalRightDataIndexRef.current = chart.getVisibleRange().to;
+          };
+
+          chart.setBarSpace(previousBarSpace);
+          chart.setOffsetRightDistance(previousOffsetRightDistance);
+          if (!wasAtLiveEdge) {
+            restoreHistoricalViewport();
+            viewportRestoreFrameRef.current = window.requestAnimationFrame(() => {
+              restoreHistoricalViewport();
+              isRestoringViewportRef.current = false;
+              viewportRestoreFrameRef.current = null;
+            });
+            return;
+          }
+          isRestoringViewportRef.current = false;
+          viewportRestoreFrameRef.current = null;
+        });
+      }
+    }
 
     chart.removeOverlay({ groupId: PRACTICE_KLINE_PRICE_GROUP });
     if (lastCandle) {
@@ -2108,53 +2242,6 @@ function TerminalChart({
         lock: true,
         needDefaultPointFigure: false,
         styles: { line: { color: "#18a999", style: "dashed", size: 1 } }
-      });
-    }
-
-    if (viewportRestoreFrameRef.current !== null) {
-      window.cancelAnimationFrame(viewportRestoreFrameRef.current);
-    }
-
-    if (chartData.length > 0 && chartWidth > 0 && !initialViewportAppliedRef.current) {
-      initialViewportAppliedRef.current = true;
-      viewportRestoreFrameRef.current = window.requestAnimationFrame(() => {
-        isRestoringViewportRef.current = true;
-        const plotWidth = chart.getSize("candle_pane", "main")?.width ?? chartWidth;
-        chart.setBarSpace(Math.max(4, Math.min(18, plotWidth / Math.max(chartData.length + 10, 24))));
-        chart.scrollToDataIndex(chartData.length - 1);
-        chart.setOffsetRightDistance(Math.max(96, Math.round(plotWidth * 0.24)));
-        viewportModeRef.current = "live";
-        historicalRightDataIndexRef.current = null;
-        isRestoringViewportRef.current = false;
-        viewportRestoreFrameRef.current = null;
-      });
-    } else if (chartData.length > 0 && previousDataCount > 0) {
-      viewportRestoreFrameRef.current = window.requestAnimationFrame(() => {
-        isRestoringViewportRef.current = true;
-        const restoreHistoricalViewport = () => {
-          chart.setBarSpace(previousBarSpace);
-          chart.setOffsetRightDistance(previousOffsetRightDistance);
-          chart.scrollToDataIndex(historicalRightDataIndex);
-          const restoredAnchorPixel = chart.convertToPixel({ dataIndex: previousAnchorDataIndex });
-          if (!Array.isArray(restoredAnchorPixel) && typeof restoredAnchorPixel.x === "number" && previousAnchorPixelX !== null) {
-            chart.scrollByDistance(previousAnchorPixelX - restoredAnchorPixel.x);
-          }
-          historicalRightDataIndexRef.current = chart.getVisibleRange().to;
-        };
-
-        chart.setBarSpace(previousBarSpace);
-        chart.setOffsetRightDistance(previousOffsetRightDistance);
-        if (!wasAtLiveEdge) {
-          restoreHistoricalViewport();
-          viewportRestoreFrameRef.current = window.requestAnimationFrame(() => {
-            restoreHistoricalViewport();
-            isRestoringViewportRef.current = false;
-            viewportRestoreFrameRef.current = null;
-          });
-          return;
-        }
-        isRestoringViewportRef.current = false;
-        viewportRestoreFrameRef.current = null;
       });
     }
 
@@ -3896,7 +3983,9 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
                   ref={tool.id === "lines" ? linesButtonRef : tool.id === "delete" ? deleteButtonRef : undefined}
                   type="button"
                   disabled={isDisabled}
-                  title={tool.label}
+                  title={tool.id === "magnet"
+                    ? "Magnet snap — when on, drawing points snap to the nearest candle's Open/High/Low/Close while drawing. Pick Trend, Fibonacci, Zone, or Channel after turning it on."
+                    : tool.label}
                   aria-label={tool.label}
                   aria-pressed={isSelected}
                   className={`focus-ring grid h-[3.25rem] w-[3.25rem] shrink-0 place-items-center rounded-[8px] border transition disabled:cursor-not-allowed disabled:opacity-30 ${isSelected ? "border-[color:var(--accent)] bg-[color:color-mix(in_srgb,var(--accent)_20%,black)] text-[color:var(--accent)] shadow-[inset_0_0_0_1px_rgba(217,194,140,0.2)]" : "border-transparent text-[color:var(--label2)] hover:border-white/15 hover:bg-white/10 hover:text-white"}`}
@@ -3946,7 +4035,7 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
                       setDockMessage({
                         tone: "success",
                         text: nextMagnetState
-                          ? "Magnet snap on. Point anchors snap to revealed candle prices within 12px."
+                          ? "Magnet snap on — now pick Trend, Fibonacci, Zone, or Channel; points will snap to the nearest candle's Open/High/Low/Close while drawing."
                           : "Magnet snap off. Anchors use the exact pointer position."
                       });
                       return;

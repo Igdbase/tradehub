@@ -23,6 +23,10 @@ export const PRACTICE_FIBONACCI_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]
 export const PRACTICE_BRUSH_MAX_POINTS = 120;
 // Stage 30A: magnet snapping radius in plot pixels around a revealed candle's O/H/L/C.
 export const PRACTICE_MAGNET_SNAP_RADIUS_PX = 12;
+// Stage 30B: single default color for the line-family drawing tools (trend, horizontal,
+// vertical, freehand brush, parallel channel) and their overlay fallbacks. Zone, Fibonacci
+// levels, Measure direction colors, and text notes keep their deliberate owner-accepted looks.
+export const PRACTICE_LINE_DEFAULT_COLOR = "#2962ff";
 
 export type PracticeKLineOverlayData = {
   text?: string;
@@ -106,7 +110,7 @@ const horizontalLineOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
   createPointFigures: ({ coordinates, overlay, bounding }) => coordinates[0] ? [{
     type: "line",
     attrs: { coordinates: [{ x: 0, y: coordinates[0].y }, { x: bounding.width, y: coordinates[0].y }] },
-    styles: { color: overlay.extendData?.color ?? "#d9c28c", size: 1, style: "solid" }
+    styles: { color: overlay.extendData?.color ?? PRACTICE_LINE_DEFAULT_COLOR, size: 1, style: "solid" }
   }] : []
 };
 
@@ -118,7 +122,7 @@ const verticalLineOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
   createPointFigures: ({ coordinates, overlay, bounding }) => coordinates[0] ? [{
     type: "line",
     attrs: { coordinates: [{ x: coordinates[0].x, y: 0 }, { x: coordinates[0].x, y: bounding.height }] },
-    styles: { color: overlay.extendData?.color ?? "#d9c28c", size: 1, style: "solid" }
+    styles: { color: overlay.extendData?.color ?? PRACTICE_LINE_DEFAULT_COLOR, size: 1, style: "solid" }
   }] : []
 };
 
@@ -209,7 +213,7 @@ const zoneOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
     if (coordinates.length < 2) return [];
     const start = coordinates[0];
     const end = coordinates[coordinates.length - 1];
-    const color = overlay.extendData?.color ?? "#d9c28c";
+    const color = overlay.extendData?.color ?? PRACTICE_LINE_DEFAULT_COLOR;
     return [{
       type: "polygon",
       attrs: { coordinates: [start, { x: end.x, y: start.y }, end, { x: start.x, y: end.y }] },
@@ -334,7 +338,7 @@ const freehandBrushOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
   needDefaultPointFigure: false,
   createPointFigures: ({ coordinates, overlay }) => {
     if (coordinates.length < 2) return [];
-    const color = overlay.extendData?.color ?? "#d9c28c";
+    const color = overlay.extendData?.color ?? PRACTICE_LINE_DEFAULT_COLOR;
     return [{
       key: "brush-stroke",
       type: "line",
@@ -353,7 +357,7 @@ const parallelChannelOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
     if (coordinates.length < 2 || overlay.points.length < 2) return [];
     const baseStart = coordinates[0];
     const baseEnd = coordinates[1];
-    const color = overlay.extendData?.color ?? "#d9c28c";
+    const color = overlay.extendData?.color ?? PRACTICE_LINE_DEFAULT_COLOR;
     const figures: OverlayFigure[] = [];
     const baseStartPoint = overlay.points[0];
     const baseEndPoint = overlay.points[1];

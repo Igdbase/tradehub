@@ -2208,6 +2208,170 @@ test.describe("TradeHub seeded student browser E2E", () => {
       }
     }
   });
+
+  test(`Practice Stage 30B owner-feedback corrections: blue line defaults, replay stability, and magnet guidance at ${drawingViewport.label}`, async ({ page }) => {
+    test.setTimeout(240_000);
+    await page.setViewportSize({ width: drawingViewport.width, height: drawingViewport.height });
+    const sessionName = `Stage 30B Owner Feedback ${drawingViewport.label}`;
+    let createdSessionId = "";
+
+    try {
+      const modal = await openQuickPracticeSession(page);
+      await modal.getByTestId("practice-asset-toggle").click();
+      await modal.getByRole("button", { name: "Crypto" }).click();
+      await modal.getByTestId("practice-asset-search").fill("BTCUSDT");
+      await modal.getByRole("option", { name: /BTCUSDT, Bitcoin \/ Tether, available/i }).click();
+      await fillQuickPracticeSession(page, {
+        name: sessionName,
+        dateEnd: "2026-07-04",
+        openTerminal: true
+      });
+
+      const createObserver = await observeNextPracticeSessionCreation(page);
+      const terminalNavigationPromise = page.waitForURL(/\/app\/practice\/[^/]+\/terminal$/);
+      await modal.getByTestId("practice-create-session").click();
+      createdSessionId = (await createObserver.payloadPromise).session.sessionId;
+      await terminalNavigationPromise;
+      await createObserver.stop();
+      await expect(page.getByTestId("practice-terminal-chart-first-shell")).toBeVisible();
+      await expect.poll(async () => Number(
+        await page.getByTestId("practice-terminal-chart-surface").getAttribute("data-revealed-candle-count")
+      )).toBeGreaterThanOrEqual(24);
+
+      const drawingResponse = (method, suffix = /\/drawings$/) => page.waitForResponse((response) =>
+        response.request().method() === method && suffix.test(new URL(response.url()).pathname)
+      );
+      const klineOverlays = () => page.evaluate(() => {
+        const chart = window.__TRADEHUB_PRACTICE_KLINECHART__;
+        if (!chart) return [];
+        return chart.getOverlays({ groupId: "tradehub_practice_drawings_v1" }).map((overlay) => ({
+          id: overlay.id,
+          name: overlay.name,
+          color: overlay.extendData?.color,
+          points: overlay.points.map((point) => ({ dataIndex: point.dataIndex, value: point.value }))
+        }));
+      });
+      const overlayCountFor = (overlays, name) => overlays.filter((overlay) => overlay.name === name).length;
+
+      // --- Issue 3: magnet guidance.
+      const magnetButton = page.getByRole("button", { name: "Magnet snap", exact: true });
+      await magnetButton.click();
+      await expect(page.locator("body")).toContainText("Magnet snap on — now pick Trend, Fibonacci, Zone, or Channel; points will snap to the nearest candle's Open/High/Low/Close while drawing.");
+      await expect(magnetButton).toHaveAttribute("aria-pressed", "true");
+      await expect(magnetButton).toHaveAttribute("title", /snap to the nearest candle's Open\/High\/Low\/Close while drawing/);
+      await magnetButton.click();
+      await expect(page.locator("body")).toContainText(/Magnet snap off\. Anchors use the exact pointer position\./);
+      await expect(magnetButton).toHaveAttribute("aria-pressed", "false");
+
+      // --- Issue 1: new brush and parallel channel commit with the shared blue default.
+      await page.getByRole("button", { name: "Brush", exact: true }).click();
+      const brushResponsePromise = drawingResponse("POST");
+      await dragPracticeChartCapture(page, { from: { x: 0.16, y: 0.70 }, to: { x: 0.44, y: 0.36 }, steps: 14 });
+      const brushResponse = await brushResponsePromise;
+      expect(brushResponse.ok()).toBeTruthy();
+      const brush = (await brushResponse.json()).annotation;
+      expect(brush.kind).toBe("freehand_brush");
+      await expect.poll(async () => (await klineOverlays()).find((overlay) => overlay.id === brush.annotationId)?.color).toBe("#2962ff");
+
+      await page.getByRole("button", { name: "Lines and trend tools" }).click();
+      await page.getByTestId("practice-terminal-lines-menu").getByRole("menuitem", { name: "Parallel channel" }).click();
+      await clickPracticeChartCapture(page, { x: 0.60, y: 0.64 });
+      await movePracticeChartPointer(page, { x: 0.82, y: 0.40 });
+      await clickPracticeChartCapture(page, { x: 0.82, y: 0.40 });
+      await movePracticeChartPointer(page, { x: 0.82, y: 0.60 });
+      const channelResponsePromise = drawingResponse("POST");
+      await clickPracticeChartCapture(page, { x: 0.82, y: 0.60 });
+      const channelResponse = await channelResponsePromise;
+      expect(channelResponse.ok()).toBeTruthy();
+      const channel = (await channelResponse.json()).annotation;
+      expect(channel.kind).toBe("parallel_channel");
+      expect(channel.chartPoints).toHaveLength(3);
+      await expect.poll(async () => (await klineOverlays()).find((overlay) => overlay.id === channel.annotationId)?.color).toBe("#2962ff");
+
+      // Legacy cream-default (accent token) horizontal line renders blue; a genuinely custom
+      // green drawing keeps its stored color. Both created through the API like persisted data.
+      const authResponse = await page.request.post(
+        "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=stage15f-local",
+        { data: { email: demoUsers.student.email, password: demoUsers.student.password, returnSecureToken: true } }
+      );
+      expect(authResponse.ok()).toBeTruthy();
+      const studentToken = (await authResponse.json()).idToken;
+      const postLegacyDrawing = async (colorToken, label) => {
+        const response = await page.request.post(
+          new URL(`/api/student/practice/sessions/${createdSessionId}/drawings`, page.url()).toString(),
+          {
+            headers: { Authorization: `Bearer ${studentToken}` },
+            data: {
+              kind: "horizontal_line",
+              label,
+              text: label,
+              candleIndex: 5,
+              priceLevel: colorToken === "green" ? 66500 : 67500,
+              coordinateVersion: "klinecharts_v2",
+              chartPoints: [{ dataIndex: 5, value: colorToken === "green" ? 66500 : 67500 }],
+              colorToken,
+              isMainLesson: false
+            }
+          }
+        );
+        expect(response.ok(), `legacy ${colorToken} drawing should persist`).toBeTruthy();
+        return (await response.json()).annotation;
+      };
+      const legacyCream = await postLegacyDrawing("accent", "Legacy cream default");
+      const customGreen = await postLegacyDrawing("green", "Custom green stays");
+      // The API-created drawings are unknown to the live client until reload, so their
+      // render-time color conversion is asserted from the reloaded persisted state below.
+      await page.reload();
+      await expect(page.getByTestId("practice-terminal-klinechart")).toBeVisible();
+      await expect.poll(async () => (await klineOverlays()).find((overlay) => overlay.id === legacyCream.annotationId)?.color).toBe("#2962ff");
+      await expect.poll(async () => (await klineOverlays()).find((overlay) => overlay.id === customGreen.annotationId)?.color).toBe("#18a999");
+      await expect.poll(async () => (await klineOverlays()).find((overlay) => overlay.id === brush.annotationId)?.color).toBe("#2962ff");
+      await expect.poll(async () => (await klineOverlays()).find((overlay) => overlay.id === channel.annotationId)?.color).toBe("#2962ff");
+
+      // --- Issue 2: replay playback advances without plot-area jitter.
+      const samplePlot = () => page.evaluate(() => {
+        const chart = window.__TRADEHUB_PRACTICE_KLINECHART__;
+        const plot = chart?.getDom("candle_pane", "main");
+        const axis = chart?.getDom("candle_pane", "right");
+        if (!chart || !plot) return null;
+        const rect = plot.getBoundingClientRect();
+        return {
+          x: rect.x,
+          width: rect.width,
+          height: rect.height,
+          axisWidth: axis ? axis.getBoundingClientRect().width : -1,
+          dataCount: chart.getDataList().length
+        };
+      });
+      const firstSample = await samplePlot();
+      expect(firstSample).not.toBeNull();
+      await page.getByRole("button", { name: "Play replay" }).click();
+      const samples = [firstSample];
+      while (samples[samples.length - 1].dataCount - firstSample.dataCount < 10 && samples.length < 80) {
+        await page.waitForTimeout(250);
+        const sample = await samplePlot();
+        if (sample) samples.push(sample);
+      }
+      await page.getByRole("button", { name: "Pause replay" }).click();
+      expect(samples[samples.length - 1].dataCount - firstSample.dataCount, "replay should advance at least ten ticks").toBeGreaterThanOrEqual(10);
+      expect(samples.length).toBeGreaterThanOrEqual(11);
+      const maxPlotDelta = { x: 0, width: 0, height: 0, axisWidth: 0 };
+      for (let index = 1; index < samples.length; index += 1) {
+        maxPlotDelta.x = Math.max(maxPlotDelta.x, Math.abs(samples[index].x - samples[index - 1].x));
+        maxPlotDelta.width = Math.max(maxPlotDelta.width, Math.abs(samples[index].width - samples[index - 1].width));
+        maxPlotDelta.height = Math.max(maxPlotDelta.height, Math.abs(samples[index].height - samples[index - 1].height));
+        maxPlotDelta.axisWidth = Math.max(maxPlotDelta.axisWidth, Math.abs(samples[index].axisWidth - samples[index - 1].axisWidth));
+      }
+      expect(maxPlotDelta.x, `plot x jitter: ${JSON.stringify(maxPlotDelta)}`).toBeLessThanOrEqual(1);
+      expect(maxPlotDelta.width, `plot width jitter: ${JSON.stringify(maxPlotDelta)}`).toBeLessThanOrEqual(1);
+      expect(maxPlotDelta.height, `plot height jitter: ${JSON.stringify(maxPlotDelta)}`).toBeLessThanOrEqual(1);
+      expect(maxPlotDelta.axisWidth, `y-axis width jitter: ${JSON.stringify(maxPlotDelta)}`).toBeLessThanOrEqual(1);
+    } finally {
+      if (createdSessionId) {
+        await deleteStandalonePracticeSessionByApi(page, createdSessionId, sessionName);
+      }
+    }
+  });
   }
 
   test("courses, lesson reader, notes, bookmarks, and proof route load safely", async ({ page }) => {

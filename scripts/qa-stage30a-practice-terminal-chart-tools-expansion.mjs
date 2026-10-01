@@ -57,7 +57,6 @@ includesAll(
     "{ id: \"magnet\", label: \"Magnet snap\", kind: undefined, Icon: Magnet, available: true }",
     "{ id: \"parallel-channel\", label: \"Parallel channel\", kind: \"parallel_channel\", available: true }",
     "tool.id === \"magnet\" && isMagnetSnapEnabled",
-    "Magnet snap on. Point anchors snap to revealed candle prices within 12px.",
   ],
   "The drawing rail exposes the Brush tool, the Magnet snap toggle, and the Parallel channel tool with truthful on/off state."
 );
@@ -270,6 +269,101 @@ excludesAll(
     "Stage 29H is owner-accepted",
   ],
   "No doc claims Stage 30A owner acceptance or Stage 29H progress beyond the recorded pause."
+);
+
+// --- Stage 30B owner-feedback corrections.
+includesAll(
+  overlayModule,
+  [
+    "PRACTICE_LINE_DEFAULT_COLOR = \"#2962ff\"",
+    "PRACTICE_LINE_DEFAULT_COLOR",
+  ],
+  "The overlays module owns the single shared PRACTICE_LINE_DEFAULT_COLOR used by line-family fallbacks."
+);
+excludesAll(
+  overlayModule,
+  ["d9c28c"],
+  "No cream #d9c28c default remains in the TradeHub overlays module."
+);
+includesAll(
+  terminal,
+  [
+    "const PRACTICE_TREND_DEFAULT_COLOR = PRACTICE_LINE_DEFAULT_COLOR;",
+    "terminalLineFamilyKinds",
+    "kind !== \"trend_line\" &&\n    (colorToken === undefined || colorToken === \"accent\")",
+    "return PRACTICE_LINE_DEFAULT_COLOR;",
+    "isLineFamilyDraft ? PRACTICE_LINE_DEFAULT_COLOR",
+    "extendData: { color: PRACTICE_LINE_DEFAULT_COLOR }",
+  ],
+  "All line-family defaults, legacy cream-default conversion, drafts, and previews resolve through the shared blue constant at render time."
+);
+const terminalCreamLines = terminal.split("\n").filter((line) => line.includes("d9c28c"));
+assert(
+  terminalCreamLines.length === 2 &&
+    terminalCreamLines.every((line) => line.includes("return \"#d9c28c\";") || line.includes(': "#d9c28c";')),
+  "The only remaining cream references in the terminal are the deliberate zone default and its draft fallback."
+);
+excludesAll(
+  repository,
+  ["2962ff", "d9c28c"],
+  "Repository drawing storage holds tokens only: Stage 30B legacy conversion happens at render time, not by rewriting records."
+);
+includesAll(
+  terminal,
+  [
+    "subscribeBar: ({ callback }) => {",
+    "replayTickPublisherRef",
+    "overlapIsStable",
+    "changedTail.push(lastNext);",
+    "incrementalTickPublisher(candle);",
+  ],
+  "Replay ticks publish through klinecharts' incremental subscribeBar path instead of per-tick resetData."
+);
+includesAll(
+  terminal,
+  [
+    "Magnet snap on — now pick Trend, Fibonacci, Zone, or Channel; points will snap to the nearest candle's Open/High/Low/Close while drawing.",
+    "Magnet snap off. Anchors use the exact pointer position.",
+    "Magnet snap — when on, drawing points snap to the nearest candle's Open/High/Low/Close while drawing.",
+  ],
+  "The magnet toggle gives plain turn-on guidance, restores a neutral off message, and carries a matching tooltip."
+);
+includesAll(
+  browserStudent,
+  [
+    "Practice Stage 30B owner-feedback corrections: blue line defaults, replay stability, and magnet guidance",
+    "Legacy cream default",
+    "Custom green stays",
+    "replay should advance at least ten ticks",
+    "plot x jitter",
+    "y-axis width jitter",
+    "toBeLessThanOrEqual(1)",
+    "Magnet snap on — now pick Trend, Fibonacci, Zone, or Channel",
+  ],
+  "Browser coverage proves blue defaults with legacy conversion, bounded replay jitter sampling at laptop and tablet, and the magnet guidance message."
+);
+includesAll(
+  docs,
+  [
+    "Stage 30B",
+    "Practice Terminal Owner-Feedback Corrections",
+    "owner acceptance is not claimed",
+    "confirmed Stage 30A functionality",
+    "PRACTICE_LINE_DEFAULT_COLOR",
+    "subscribeBar",
+    "cacheYAxisWidth",
+  ],
+  "Docs record the Stage 30B owner-feedback corrections truthfully without claiming owner acceptance."
+);
+excludesAll(
+  docs,
+  [
+    "Stage 30B is owner-accepted",
+    "Stage 30B is closed and frozen",
+    "Stage 30A is owner-accepted",
+    "Stage 30A is closed and frozen",
+  ],
+  "No doc claims Stage 30A/30B owner acceptance or closure."
 );
 
 console.log("Stage 30A Practice Terminal chart tools expansion QA passed.");
