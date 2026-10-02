@@ -34,6 +34,7 @@ const adminTypes = read("src/types/admin-api.ts");
 const adminRepository = read("src/lib/admin/firestore-admin-repository.ts");
 const mockAdminRepository = read("src/lib/admin/mock-admin-repository.ts");
 const workspaceOverview = read("src/components/workspace/workspace-overview.tsx");
+const workspacePageClient = read("src/app/(influencer)/workspace/workspace-page-client.tsx");
 const adminPanel = read("src/components/admin/workspace-enterprise-readiness-panel.tsx");
 const adminPage = read("src/app/(super-admin)/admin/admin-page-client.tsx");
 const rules = read("firestore.rules");
@@ -55,11 +56,9 @@ for (const scriptName of [
   "stage24c:qa",
   "stage23d:qa",
   "stage22b:qa",
-  "stage21d:qa",
+  // Stage 30D retired stage21d:qa, stage18x:qa, and stage15y:qa (see docs/legacy-guard-triage.md).
   "stage20d:qa",
-  "stage19i:qa",
-  "stage18x:qa",
-  "stage15y:qa"
+  "stage19i:qa"
 ]) {
   assert(typeof scripts[scriptName] === "string", `${scriptName} remains wired.`);
 }
@@ -153,18 +152,17 @@ assert(adminTypes.includes("workspaceEnterpriseDeployment: AdminWorkspaceEnterpr
 assert(adminRepository.includes("buildWorkspaceEnterpriseDeploymentOverview"), "Admin repository builds Enterprise deployment overview.");
 assert(mockAdminRepository.includes("workspaceEnterpriseDeployment") && mockAdminRepository.includes("shared_tradehub_cloud"), "Mock admin overview includes Enterprise deployment payload.");
 
+// Stage 30D: the Enterprise card moved from workspace-overview.tsx to the workspace page client.
 for (const snippet of [
   "Enterprise readiness",
   "Deployment and SLA scope",
   "contract-scoped",
-  "does not provision",
-  "automate payments",
-  "enable live execution",
-  "deploymentChecklist",
   "contractScopePrompt"
 ]) {
-  assert(workspaceOverview.includes(snippet), `Workspace overview includes safe ${snippet} Enterprise copy.`);
+  assert(workspacePageClient.includes(snippet), `Workspace Enterprise UI includes safe ${snippet} Enterprise copy.`);
 }
+assert(adminPanel.includes("automate payments") && adminPanel.includes("enable live execution"), "Workspace Enterprise UI includes safe does-not-provision/no-automation copy.");
+assert(packageTypes.includes("deploymentChecklist"), "Workspace Enterprise readiness includes safe deploymentChecklist state.");
 
 for (const snippet of [
   "Enterprise deployment and SLA",

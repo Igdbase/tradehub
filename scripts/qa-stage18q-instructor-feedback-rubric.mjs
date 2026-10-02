@@ -274,7 +274,7 @@ assertIncludesAll(
     "latestInstructorFeedback",
     "mapPracticeInstructorFeedback",
     "practice_instructor_feedback",
-    "Latest instructor feedback"
+    "publishedInstructorFeedback"
   ],
   "Student journal Practice/backtesting section can show latest safe instructor feedback."
 );

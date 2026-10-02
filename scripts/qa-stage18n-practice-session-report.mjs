@@ -188,7 +188,7 @@ assertIncludesAll(
     "practice-report-section",
     "Session Summary",
     "Practice Challenge",
-    "Playbook Summary",
+    "Strategy Summary",
     "Closed Simulated Orders",
     "Best And Worst Trade",
     "Annotations, Drawings, And Events",
@@ -231,7 +231,7 @@ assertIncludesAll(
   terminalClient,
   [
     `/app/practice/$\{encodeURIComponent(sessionId)\}/report`,
-    "Report",
+    "Session report",
     "Printable report"
   ],
   "Practice terminal links to the printable report."

@@ -41,6 +41,16 @@ const practiceModules = [
   annotationsRoute,
   annotationRoute
 ].join("\n");
+// The journal client also hosts the Journal Sync exchange-connection form (students submit their
+// own read-only API key/secret), so the secret-scan below covers the practice annotation modules only.
+const practiceModulesForSecretScan = [
+  practiceTypes,
+  practiceRepo,
+  replayClient,
+  journalLedger,
+  annotationsRoute,
+  annotationRoute
+].join("\n");
 const annotationRecord = practiceTypes.slice(
   practiceTypes.indexOf("export interface PracticeAnnotationRecord"),
   practiceTypes.indexOf("export type PracticeAnnotationSummary")
@@ -136,7 +146,7 @@ assertIncludesAll(
     "latestMainLesson",
     "mapPracticeMainLesson",
     "practice_annotations",
-    "Latest practice main lesson",
+    "latestMainLesson?: PracticeAnnotationSummary;",
     "PracticeAnnotationSummary"
   ],
   "Journal shows the latest completed-session main lesson under Practice/backtesting."
@@ -177,13 +187,13 @@ assert(
 );
 
 assert(
-  !practiceModules.includes("apiSecret") &&
-    !practiceModules.includes("brokerPassword") &&
-    !practiceModules.includes("metaApiToken") &&
-    !practiceModules.includes("credentialRefPath") &&
-    !practiceModules.includes("rawProviderPayload") &&
-    !practiceModules.includes("vaultRef") &&
-    !practiceModules.includes("accountId"),
+  !practiceModulesForSecretScan.includes("apiSecret") &&
+    !practiceModulesForSecretScan.includes("brokerPassword") &&
+    !practiceModulesForSecretScan.includes("metaApiToken") &&
+    !practiceModulesForSecretScan.includes("credentialRefPath") &&
+    !practiceModulesForSecretScan.includes("rawProviderPayload") &&
+    !practiceModulesForSecretScan.includes("vaultRef") &&
+    !practiceModulesForSecretScan.includes("accountId"),
   "Stage 17H annotation modules do not expose secrets, account IDs, vault refs, or raw provider payloads."
 );
 

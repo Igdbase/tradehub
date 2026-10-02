@@ -78,8 +78,8 @@ check(
 );
 check(
   "student production risk UX is explicit",
-  studentUi.includes("Why production is gated") &&
-    studentUi.includes("TradeHub still requires vault readiness") &&
+  studentUi.includes("I understand copying trades can lose money") &&
+    studentUi.includes("I understand copied fills and timing may differ.") &&
     studentUi.includes("TradeHub does not custody"),
   "Student copier must explain consent, custody, and production gates without implying live trading is active."
 );
@@ -87,9 +87,9 @@ check(
   "influencer publish review exists",
   signalUi.includes("Publish review") &&
     signalUi.includes("expectedRoutingMode") &&
-    signalUi.includes("Eligible sample") &&
-    signalUi.includes("forex paper simulation") &&
-    signalUi.includes("No broker, MetaAPI, demo, or live forex order is called"),
+    signalUi.includes("Ready students") &&
+    signalUi.includes("Forex student review") &&
+    signalUi.includes("Forex signals stay controlled by each student"),
   "Influencer signal form must show a mature pre-publish routing review."
 );
 check(

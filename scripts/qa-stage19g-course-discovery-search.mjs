@@ -127,8 +127,8 @@ assertIncludesAll(
   studentList,
   [
     "Learning shortcuts and search",
-    "Search available lesson titles, section names, safe resource metadata",
-    "Locked course lessons and resource links are not included here.",
+    "Search lesson titles, sections, resources, and your own private notes or bookmarks.",
+    "Locked lesson resources are hidden until the lesson is available.",
     "Accessible lessons and resources",
     "Your private notes and bookmarks",
     "No lesson, resource, private note, or bookmark results match that search.",

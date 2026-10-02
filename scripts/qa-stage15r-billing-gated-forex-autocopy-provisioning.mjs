@@ -40,7 +40,7 @@ assert(
 );
 
 assert(
-  repository.includes("forex_autocopy_subscriptions/current") &&
+  repository.includes("resolveTradeCopierBillingAccess") &&
     repository.includes("resolveStudentEntitlements") &&
     repository.includes("autoCopyEntitlement.access !== \"allowed\"") &&
     repository.includes("base.entitlements.riskPosture !== \"personal_account\"") &&
@@ -76,11 +76,11 @@ assert(
 );
 
 assert(
-  studentUi.includes("Forex AutoCopy broker setup") &&
-    studentUi.includes("Broker server") &&
+  studentUi.includes("MT4/MT5 broker setup") &&
+    studentUi.includes("Broker name/server") &&
     studentUi.includes("Broker login") &&
     studentUi.includes("Broker password") &&
-    studentUi.includes("Record dry-run provisioning") &&
+    studentUi.includes("Submit broker setup") &&
     !studentUi.includes("metaApiToken") &&
     !studentUi.includes("metaApiAccountId") &&
     !studentUi.includes("Verify MetaAPI metadata"),

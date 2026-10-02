@@ -4,10 +4,9 @@ import path from "node:path";
 const rootDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 
 const requiredFrozenScripts = [
-  "stage18x:qa",
+  // Stage 30D retired stage18x:qa and stage21d:qa (see docs/legacy-guard-triage.md).
   "stage19i:qa",
   "stage20d:qa",
-  "stage21d:qa",
   "stage22b:qa",
   "stage23d:qa",
   "stage24c:qa",
@@ -49,7 +48,7 @@ const requiredDocSnippets = [
   "/workspace",
   "/admin",
   "Practice terminal/backtesting flow",
-  "Manual journal CRUD/review/analytics",
+  "Journal My Trades and Backtesting",
   "Courses/lesson/check/proof flow",
   "Controlled live AutoCopy stays blocked/frozen",
   "Must not appear",

@@ -44,9 +44,7 @@ const workspacePanel = read("src/components/workspace/crypto-execution-ops-secti
 const studentCopier = read("src/components/student-app/student-copier-client.tsx");
 const externalPreview = read("src/components/workspace/external-signal-preview-section.tsx");
 const externalIngestionTypes = read("src/types/external-signal-ingestion.ts");
-const qa25a = read("scripts/qa-stage25a-live-autocopy-readiness.mjs");
-const qa25b = read("scripts/qa-stage25b-live-autocopy-cohort-gate.mjs");
-const qa25c = read("scripts/qa-stage25c-crypto-live-autocopy-cohort-rollout.mjs");
+// Stage 30D retired qa-stage25a/25b/25c (superseded by Stage 29I copier implementation, see docs/legacy-guard-triage.md).
 const qa25d = read("scripts/qa-stage25d-live-autocopy-reconciliation-incident.mjs");
 const plan = read("plan.md");
 const backlog = read("manual-test-backlog.md");
@@ -58,19 +56,14 @@ assert(
 );
 
 [
-  "stage25a:qa",
-  "stage25b:qa",
-  "stage25c:qa",
   "stage25d:qa",
   "stage24c:qa",
   "stage23d:qa",
   "stage22b:qa",
-  "stage21d:qa",
   "stage20d:qa",
-  "stage19i:qa",
-  "stage18x:qa",
-  "stage15y:qa"
+  "stage19i:qa"
 ].forEach((scriptName) => assert(packageJson.scripts?.[scriptName], `package.json must keep ${scriptName}`));
+// Stage 30D retired stage18x:qa and stage15y:qa (see docs/legacy-guard-triage.md).
 
 [
   "BroadLiveAutoCopyLaunchGateState",
@@ -281,9 +274,6 @@ const cohortWorker = sliceBetween(
 ].forEach((needle) => assertIncludes(rules, needle, "Firestore deny-by-default Stage 25/external signal rules"));
 
 [
-  [qa25a, "Stage 25A broad live AutoCopy readiness audit and launch gates QA passed."],
-  [qa25b, "Stage 25B controlled live AutoCopy cohort gate QA passed."],
-  [qa25c, "Stage 25C controlled crypto live AutoCopy cohort rollout QA passed."],
   [qa25d, "Stage 25D live AutoCopy reconciliation, incident, and rollback hardening QA passed."]
 ].forEach(([content, needle]) => assertIncludes(content, needle, "prior Stage 25 QA script"));
 

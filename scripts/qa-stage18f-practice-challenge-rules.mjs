@@ -188,8 +188,8 @@ assertIncludesAll(
   [
     "latestChallengeResult",
     "mapPracticeChallengeResult",
-    "Latest simulated challenge",
-    "performance.practice.latestChallengeResult.status",
+    "latestCompletedSession.data().challengeResult",
+    "record.status === \"passed\" || record.status === \"failed\" || record.status === \"active\" || record.status === \"not_started\"",
     "Practice/backtesting"
   ],
   "Journal Practice/backtesting section surfaces a safe latest challenge summary."

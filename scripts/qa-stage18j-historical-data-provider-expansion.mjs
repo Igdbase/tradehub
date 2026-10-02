@@ -27,6 +27,7 @@ const manualBacklog = read("manual-test-backlog.md");
 const envExample = read(".env.example");
 const practiceTypes = read("src/types/practice.ts");
 const historicalService = read("src/lib/practice/historical-data-service.ts");
+const forexCfdContract = read("src/lib/practice/forex-cfd-history-provider-contract.ts");
 const practiceRepo = read("src/lib/practice/practice-repository.ts");
 const practiceClient = read("src/components/student-app/student-practice-client.tsx");
 const candleRoute = read("src/app/api/student/practice/candles/route.ts");
@@ -82,7 +83,7 @@ assertIncludesAll(
 );
 
 assertIncludesAll(
-  historicalService,
+  `${historicalService}\n${forexCfdContract}`,
   [
     "SUPPORTED_FOREX_CFD_SYMBOLS",
     "\"XAUUSD\"",
@@ -93,17 +94,17 @@ assertIncludesAll(
     "\"USDCAD\"",
     "\"AUDUSD\"",
     "\"NZDUSD\"",
-    "safeProviderSymbol",
+    "safeForexCfdProviderSymbol",
     "providerSymbolMatchesCanonical",
-    "provider.startsWith(canonical)",
+    "provider.startsWith(normalizedAlias)",
     "PRACTICE_FOREX_CFD_PROVIDER_SYMBOL_MAP",
-    "resolveForexCfdProviderSymbol",
+    "resolveForexCfdHistoryProviderSymbol",
     "PRACTICE_FOREX_CFD_HISTORY_PROVIDER",
     "practice_forex_cfd_history_not_configured",
     "tradehub_static_demo",
     "generateTradeHubStaticForexCfdCandles",
     "metaapi_utility",
-    "Student MetaAPI credentials are never used for practice data.",
+    "never student MetaAPI credentials.",
     "practice_forex_cfd_history_provider_invalid"
   ],
   "Historical service supports XAUUSD/major Forex-CFD symbols with safe provider symbol mapping and fail-closed config."
@@ -118,7 +119,7 @@ assertIncludesAll(
     "input.symbol",
     "input.providerSymbol",
     "String(input.timeframeMinutes)",
-    "providerSymbolForCache",
+    "input.providerSymbol ?? \"\",",
     "providerSymbol: cached.providerSymbol ?? providerSymbol",
     "providerSymbol,",
     "supportedForexCfdSymbols: [...SUPPORTED_FOREX_CFD_SYMBOLS]"
@@ -129,7 +130,7 @@ assertIncludesAll(
 assertIncludesAll(
   practiceRepo,
   [
-    "providerSymbol: result.providerSymbol",
+    "symbol: request.symbol,",
     "supportedForexCfdSymbols: historicalDataLimits.supportedForexCfdSymbols",
     "Historical candles are normalized server-side and returned only for the requested bounded range.",
     "Replay candles are sliced server-side through the current reveal index; unrevealed future candles are not returned."
@@ -140,15 +141,14 @@ assertIncludesAll(
 assertIncludesAll(
   practiceClient,
   [
-    "supportedSymbols",
-    "overview?.limits.supportedForexCfdSymbols",
-    "overview?.limits.supportedCryptoSymbols",
-    "Forex-CFD uses platform utility practice data when configured and fails closed safely otherwise.",
-    "Provider symbol",
-    "Fetch candles",
-    "/api/student/practice/candles"
+    "assetCatalogue",
+    "overview?.limits.assetCatalogue",
+    "overview?.limits.supportedTimeframes",
+    "Choose an asset from the verified catalogue.",
+    "Create a simulated session from available historical candles.",
+    "forex_cfd"
   ],
-  "/app/practice guides students through supported symbols and safe provider-symbol previews."
+  "/app/practice guides students through the verified asset catalogue and safe bounded candle sessions."
 );
 
 for (const route of [candleRoute, sessionRoute]) {

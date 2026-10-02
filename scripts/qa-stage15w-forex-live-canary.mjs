@@ -187,7 +187,7 @@ assertIncludesAll(
   routingSource,
   [
     "routePublishedForexSignalForLiveCanaryExecution",
-    "Forex live canary routing only runs for newly published forex signals.",
+    "Forex live canary routing only runs for newly published in-app forex signals.",
     "Tiny live Forex canary routing started",
     "No broker order is placed by publish routing.",
     "forex_live_canary_gate_decisions",
@@ -223,13 +223,13 @@ assertIncludesAll(
 );
 assertBefore(
   workerSource,
-  "const prerequisites = await loadForexLiveCanaryWorkerPrerequisites(workspaceId, intent);",
+  "const prerequisites = await revalidateForexIntentBeforeProvider(workspaceId, intent);",
   "const token = await loadForexMetaApiToken",
   "Live canary worker checks prerequisites before token loading."
 );
 assertBefore(
   workerSource,
-  "const prerequisites = await loadForexLiveCanaryWorkerPrerequisites(workspaceId, intent);",
+  "const prerequisites = await revalidateForexIntentBeforeProvider(workspaceId, intent);",
   "const adapter = getForexLiveCanaryOrderPlacementAdapter(intent.provider);",
   "Live canary worker checks prerequisites before provider adapter selection."
 );
@@ -326,19 +326,13 @@ assertIncludesAll(
   ],
   "Production MetaAPI setup has a separate Super Admin Forex live-canary connection route."
 );
-assertIncludesAll(
-  studentLiveCanaryConnectionRoute,
-  [
-    "forex_live_canary_operator_only",
-    "Normal students use MT4/MT5 broker setup."
-  ],
+assert(
+  studentLiveCanaryConnectionRoute.includes("legacyStudentCopierRouteRetired") &&
+    read("src/lib/student-copier/legacy-copier-routes.ts").includes("Use the current Copier setup page to manage this action."),
   "Normal student production MetaAPI setup route is operator-only and fails closed."
 );
-assertIncludesAll(
-  demoForexConnectionRoute,
-  [
-    "createStudentForexConnection"
-  ],
+assert(
+  demoForexConnectionRoute.includes("legacyStudentCopierRouteRetired"),
   "Existing Forex MetaAPI connection route remains the demo connection route."
 );
 assert(
@@ -436,18 +430,19 @@ assertIncludesAll(
   "Production MetaAPI canary setup is under an operator-only API path."
 );
 assert(
-  studentUi.includes("/api/student/crypto-execution/connections") &&
+  studentUi.includes("/api/student/copier/crypto/connections") &&
     !studentUi.includes("/api/student/forex-execution/live-canary/connections") &&
-    studentUi.includes("Forex AutoCopy broker setup"),
+    studentUi.includes("MT4/MT5 broker setup"),
   "Crypto Binance/Bybit connection form is not reused for production Forex MetaAPI setup and normal students see broker setup instead."
 );
 assertIncludesAll(
   studentUi,
   [
     "!baseEligible ?",
-    "{eligible ? (",
-    "Crypto AutoCopy billing",
-    "Forex AutoCopy broker setup"
+    "copier-crypto-setup-panel",
+    "copier-forex-setup-panel",
+    "One Trade Copier payment unlocks both Crypto Setup and Forex Setup",
+    "Purchase Trade Copier before submitting MT4/MT5 setup"
   ],
   "Crypto AutoCopy paid status does not hide the independent Forex AutoCopy and MetaAPI setup sections."
 );

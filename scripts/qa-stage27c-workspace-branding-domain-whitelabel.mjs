@@ -33,6 +33,7 @@ const adminTypes = read("src/types/admin-api.ts");
 const adminRepository = read("src/lib/admin/firestore-admin-repository.ts");
 const mockAdminRepository = read("src/lib/admin/mock-admin-repository.ts");
 const workspaceOverview = read("src/components/workspace/workspace-overview.tsx");
+const workspacePageClient = read("src/app/(influencer)/workspace/workspace-page-client.tsx");
 const adminPanel = read("src/components/admin/workspace-branding-domain-panel.tsx");
 const adminPage = read("src/app/(super-admin)/admin/admin-page-client.tsx");
 const rules = read("firestore.rules");
@@ -53,11 +54,9 @@ for (const scriptName of [
   "stage24c:qa",
   "stage23d:qa",
   "stage22b:qa",
-  "stage21d:qa",
+  // Stage 30D retired stage21d:qa, stage18x:qa, and stage15y:qa (see docs/legacy-guard-triage.md).
   "stage20d:qa",
-  "stage19i:qa",
-  "stage18x:qa",
-  "stage15y:qa"
+  "stage19i:qa"
 ]) {
   assert(typeof scripts[scriptName] === "string", `${scriptName} remains wired.`);
 }
@@ -146,17 +145,18 @@ assert(adminTypes.includes("workspaceBranding: AdminWorkspaceBrandingOverview"),
 assert(adminRepository.includes("buildWorkspaceBrandingOverview"), "Admin repository builds workspace branding overview.");
 assert(mockAdminRepository.includes("workspaceBranding") && mockAdminRepository.includes("customDomainStatus"), "Mock admin overview includes branding/domain payload.");
 
+// Stage 30D: the branding card moved from workspace-overview.tsx to the workspace page client.
 for (const snippet of [
   "Workspace brand",
   "packageAvailabilityMessage",
-  "Logo values are HTTPS metadata only",
-  "custom domains are admin-reviewed",
-  "pricing remains private quote/contact sales",
-  "contactPrompt",
-  "dnsChecklistSummary"
+  "Logo and domain changes stay reviewed by TradeHub.",
+  "Pricing is handled by private quote/contact sales",
+  "contactPrompt"
 ]) {
-  assert(workspaceOverview.includes(snippet), `Workspace overview includes safe ${snippet} branding/domain copy.`);
+  assert(workspacePageClient.includes(snippet), `Workspace branding UI includes safe ${snippet} branding/domain copy.`);
 }
+assert(brandingHelper.includes("Activation remains manual and admin-reviewed."), "Workspace branding readiness includes safe admin-reviewed domain copy.");
+assert(brandingHelper.includes("dnsChecklistSummary"), "Workspace branding readiness includes safe dnsChecklistSummary state.");
 
 for (const snippet of [
   "Branding and domains",
@@ -189,7 +189,7 @@ for (const deniedPath of [
   assert(rules.includes(deniedPath), `Firestore rules deny direct browser access to ${deniedPath}.`);
 }
 
-for (const source of [workspaceOverview, adminPanel]) {
+for (const source of [workspacePageClient, adminPanel]) {
   assert(!/Launch Workspace[^`]*[₦$]\s*\d/i.test(source), "Launch branding UI does not expose public prices.");
   assert(!/Pro Workspace[^`]*[₦$]\s*\d/i.test(source), "Pro branding UI does not expose public prices.");
   assert(!/Enterprise Workspace[^`]*[₦$]\s*\d/i.test(source), "Enterprise branding UI does not expose public prices.");
@@ -207,6 +207,7 @@ const changedSurface = [
   adminRepository,
   mockAdminRepository,
   workspaceOverview,
+  workspacePageClient,
   adminPanel,
   adminPage
 ].join("\n");

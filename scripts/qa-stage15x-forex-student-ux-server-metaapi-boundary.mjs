@@ -49,8 +49,8 @@ const rules = read("firestore.rules");
 
 const forexSetupBlock = sliceBetween(
   studentUi,
-  "Forex AutoCopy broker setup",
-  "ForexPaperExecutionPreviewCard"
+  "copier-forex-setup-panel",
+  "copier-forex-status-card"
 );
 const studentNormalSurface = sliceBetween(
   studentUi,
@@ -66,16 +66,16 @@ assert(
 assertIncludesAll(
   studentUi,
   [
-    "Forex AutoCopy broker setup",
+    "MT4/MT5 broker setup",
     "Platform",
     "Broker name/server",
     "Broker login/account number",
     "Broker password",
     "This is my personal MT4/MT5 broker account",
-    "Forex AutoCopy is billed separately",
-    "real-money risk",
+    "I understand Trade Copier covers this Forex setup.",
+    "I understand copying trades can lose money",
     "does not custody",
-    "does not need withdrawal access"
+    "need withdrawal access"
   ],
   "Normal student copier renders the MT4/MT5 broker setup product flow."
 );
@@ -92,16 +92,22 @@ assert(
   !forexSetupBlock.includes("cryptoBilling") &&
     !forexSetupBlock.includes("cryptoAutoCopyPaid") &&
     !forexSetupBlock.includes("eligible &&") &&
-    forexSetupBlock.includes("response.forexProvisioning?.billing.entitled"),
-  "Crypto unpaid state does not hide Forex setup; Forex billing alone locks broker setup."
+    forexSetupBlock.includes("hasCopierEntitlement"),
+  "Crypto unpaid state does not hide Forex setup; Copier billing alone locks broker setup."
 );
 assertIncludesAll(
   forexSetupBlock,
   [
-    "disabled={!response.forexProvisioning?.billing.entitled}",
-    "Purchase Forex AutoCopy",
-    "startForexAutoCopyCheckout",
-    "cancelForexAutoCopySubscription"
+    "Purchase Trade Copier before submitting MT4/MT5 setup",
+    "I understand Trade Copier covers this Forex setup."
+  ],
+  "Forex unpaid/cancelled billing blocks broker setup while keeping the setup surface visible."
+);
+assertIncludesAll(
+  studentUi,
+  [
+    "Purchase Trade Copier",
+    "Cancel Trade Copier"
   ],
   "Forex unpaid/cancelled billing blocks broker setup while keeping the setup surface visible."
 );
@@ -136,12 +142,9 @@ assertIncludesAll(
   ],
   "Production MetaAPI canary connection setup is Super Admin/operator-only."
 );
-assertIncludesAll(
-  studentConnectionRoute,
-  [
-    "forex_live_canary_operator_only",
-    "Normal students use MT4/MT5 broker setup."
-  ],
+assert(
+  studentConnectionRoute.includes("legacyStudentCopierRouteRetired") &&
+    read("src/lib/student-copier/legacy-copier-routes.ts").includes("Use the current Copier setup page to manage this action."),
   "Student production MetaAPI canary setup endpoint fails closed."
 );
 assertIncludesAll(

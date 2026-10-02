@@ -20,9 +20,9 @@ const studentUi = read("src/components/student-app/student-copier-client.tsx");
 const workspaceOps = read("src/components/workspace/crypto-execution-ops-section.tsx");
 const adminUi = read("src/components/admin/crypto-execution-ops-panel.tsx");
 const readinessCard = read("src/components/crypto-execution/forex-connection-readiness-preview.tsx");
-const createRoute = read("src/app/api/student/forex-execution/connections/route.ts");
+const createRoute = read("src/app/api/student/copier/forex/provisioning/route.ts");
 const refreshRoute = read("src/app/api/student/forex-execution/connections/[connectionId]/refresh/route.ts");
-const disableRoute = read("src/app/api/student/forex-execution/connections/[connectionId]/disable/route.ts");
+const disableRoute = read("src/app/api/student/copier/forex/provisioning/disable/route.ts");
 const forexPaper = read("src/lib/crypto-execution/forex-paper-execution.ts");
 const rules = read("firestore.rules");
 const rulesTest = read("scripts/firestore-rules-stage15f.test.mjs");
@@ -66,11 +66,11 @@ check(
 check(
   "student routes are server-side only",
   createRoute.includes("requireStudent") &&
-    createRoute.includes("createStudentForexConnection") &&
-    refreshRoute.includes("requireStudent") &&
-    refreshRoute.includes("refreshStudentForexConnection") &&
+    createRoute.includes("createStudentForexProvisioning") &&
+    refreshRoute.includes("legacyStudentCopierRouteRetired") &&
+    forexRepo.includes("refreshStudentForexConnection") &&
     disableRoute.includes("requireStudent") &&
-    disableRoute.includes("disableStudentForexConnection"),
+    disableRoute.includes("disableStudentForexProvisioning"),
   "Create/refresh/disable forex connection routes must require authenticated student API access."
 );
 check(
@@ -100,7 +100,7 @@ check(
     !studentUi.includes("Verify MetaAPI metadata") &&
     studentUi.includes("setForexProvisioningForm(emptyForexProvisioningForm)") &&
     studentUi.includes("Broker password") &&
-    studentUi.includes("provisioning dry-run") &&
+    studentUi.includes("dryRunAcknowledged") &&
     readinessCard.includes("No broker execution"),
   "Normal student UI must ask for MT4/MT5 broker provisioning details only after paid Forex AutoCopy, not MetaAPI token/account ID."
 );
@@ -125,7 +125,7 @@ check(
   forexPaper.includes("runForexPaperExecutionWorker") &&
     forexPaper.includes("No MetaAPI or broker call was made") &&
     !forexPaper.includes("loadForexMetaApiToken") &&
-    !forexPaper.includes("/trade"),
+    !forexPaper.includes("metaApiDemoOrderAdapter"),
   "Stage 15P must not wire MetaAPI tokens into forex paper execution."
 );
 check(

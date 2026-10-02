@@ -43,6 +43,7 @@ const packageJson = JSON.parse(read("package.json"));
 const types = read("src/types/crypto-execution.ts");
 const subscriptionRepo = read("src/lib/crypto-execution/forex-autocopy-subscription-repository.ts");
 const provisioningRepo = read("src/lib/crypto-execution/forex-provisioning-repository.ts");
+const billingGate = read("src/lib/student-copier/student-copier-billing.ts");
 const connectionRepo = read("src/lib/crypto-execution/forex-connection-repository.ts");
 const forexDemo = read("src/lib/crypto-execution/forex-demo-execution.ts");
 const metaApiAdapter = read("src/lib/crypto-execution/forex/metaapi-adapter.ts");
@@ -89,19 +90,27 @@ assertIncludesAll(
 );
 
 assertIncludesAll(
+  billingGate,
+  [
+    "function mapLegacyForexStatus(value: unknown): ForexAutoCopyBillingStatus",
+    "value === \"active_paid\"",
+    "value === \"payment_pending\"",
+    "value === \"payment_failed\"",
+    "value === \"past_due\"",
+    "value === \"cancelled\"",
+    "value === \"expired\"",
+    "active: status === \"active_paid\"",
+    "Purchase Trade Copier before connecting Binance, Bybit, or MT4/MT5 for Copier setup."
+  ],
+  "Forex provisioning billing state unlocks only active_paid and relocks unpaid, failed, cancelled, expired, and past_due statuses."
+);
+
+assertIncludesAll(
   provisioningRepo,
   [
-    "function mapForexBillingState(record: Record<string, unknown> | null): ForexBillingState",
-    "rawStatus === \"active_paid\"",
-    "rawStatus === \"payment_pending\"",
-    "rawStatus === \"payment_failed\"",
-    "rawStatus === \"past_due\"",
-    "rawStatus === \"cancelled\"",
-    "rawStatus === \"expired\"",
-    "entitled: true",
+    "entitled: billing.active",
     "entitled: false",
-    "billing.entitled && status !== \"disabled\" && status !== \"cancelled\"",
-    "Purchase Forex AutoCopy before connecting an MT4/MT5 broker account."
+    "billing.entitled && status !== \"disabled\" && status !== \"cancelled\""
   ],
   "Forex provisioning billing state unlocks only active_paid and relocks unpaid, failed, cancelled, expired, and past_due statuses."
 );
@@ -284,8 +293,8 @@ assertIncludesAll(
 assert(
   provisioningRoute.includes("requireStudent") &&
     provisioningRoute.includes("createStudentForexProvisioning") &&
-    connectionRoute.includes("requireStudent") &&
-    connectionRoute.includes("createStudentForexConnection") &&
+    connectionRoute.includes("legacyStudentCopierRouteRetired") &&
+    connectionRepo.includes("assertForexConnectionCreationAllowed") &&
     demoWorkerRoute.includes("requireSuperAdmin") &&
     demoWorkerRoute.includes("runForexDemoExecutionWorker"),
   "Provisioning, MetaAPI proof, and demo worker mutations go through authenticated server API routes."
@@ -293,10 +302,10 @@ assert(
 
 const normalClientSources = `${studentUi}\n${workspaceUi}`;
 assert(
-    studentUi.includes("Forex AutoCopy broker setup") &&
-    studentUi.includes("Purchase Forex AutoCopy") &&
+    studentUi.includes("MT4/MT5 broker setup") &&
+    studentUi.includes("Purchase Trade Copier") &&
     studentUi.includes("Broker password") &&
-    studentUi.includes("will not place a demo or live broker order in this stage.") &&
+    studentUi.includes("TradeHub does not custody your funds or need withdrawal access") &&
     !normalClientSources.includes("metaApiToken") &&
     !normalClientSources.includes("metaApiAccountId") &&
     !normalClientSources.includes("credentialRefPath") &&

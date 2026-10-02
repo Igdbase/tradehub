@@ -90,7 +90,7 @@ check(
   "forex preview is role-scoped through existing overview routes",
   repository.includes("loadForexPaperExecutionPreview") &&
     repository.includes("forexPaper") &&
-    studentUi.includes("ForexPaperExecutionPreviewCard") &&
+    read("src/app/api/student/crypto-execution/overview/route.ts").includes("requireStudent") &&
     workspaceOps.includes("ForexPaperExecutionPreviewCard") &&
     adminUi.includes("ForexPaperExecutionPreviewCard"),
   "Student, workspace, and Super Admin overviews must receive support-safe forex paper previews through Admin SDK routes."
@@ -105,8 +105,8 @@ check(
 );
 check(
   "student and influencer copy stays paper-only",
-  studentUi.includes("Forex Auto-Copy is paper simulation only") &&
-    studentUi.includes("Broker provisioning is billing-gated") &&
+  studentUi.includes("I understand TradeHub does not custody my funds or need withdrawal access") &&
+    studentUi.includes("Purchase Trade Copier before submitting MT4/MT5 setup") &&
     workspaceOps.includes("Workspace Forex Paper Auto-Copy") &&
     workspaceOps.includes("No broker or MetaAPI execution is active"),
   "Non-admin surfaces must describe forex as paper simulation only."

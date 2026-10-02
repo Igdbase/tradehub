@@ -45,6 +45,19 @@ const practiceModules = [
   ledger,
   journalUi
 ].join("\n");
+// The journal client also hosts the Journal Sync exchange-connection form (students submit their
+// own read-only API key/secret), so the secret-scan below covers the practice order modules only.
+const practiceOrderModulesForSecretScan = [
+  practiceTypes,
+  fillEngine,
+  practiceRepo,
+  replayClient,
+  orderRoute,
+  evaluateRoute,
+  cancelRoute,
+  closeRoute,
+  ledger
+].join("\n");
 
 assert(
   packageJson.scripts?.["stage17c:qa"] === "node scripts/qa-stage17c-practice-order-fill-engine.mjs",
@@ -78,14 +91,14 @@ assertIncludesAll(
     "calculatePracticeRiskSizing",
     "riskAmount = input.startingBalance * input.riskPct / 100",
     "stopDistance = Math.abs(input.entryPrice - input.stopLoss)",
-    "size = riskAmount / stopDistance",
-    "notional = size * input.entryPrice",
+    "size = riskAmount / (stopDistance * instrument.contractMultiplier)",
+    "notional = practiceNotionalForInstrument(instrument, input.entryPrice, alignedSize)",
     "validateDirectionalPracticeLevels",
     "input.stopLoss < input.entryPrice && input.entryPrice < input.takeProfit",
     "input.takeProfit < input.entryPrice && input.entryPrice < input.stopLoss",
     "MAX_PRACTICE_NOTIONAL",
     "MAX_PRACTICE_SIZE",
-    "TODO InstrumentSpec"
+    "getPracticeInstrumentSpec"
   ],
   "Risk sizing helper exists and validates directional SL/TP with bounded finite size/notional."
 );
@@ -202,7 +215,7 @@ assertIncludesAll(
     "mapPracticeBacktestOrderToLedgerEntry",
     "source: \"practice_backtest\"",
     "executionMode: \"practice\"",
-    "safeBrokerOrExchangeLabel: \"Practice backtesting\"",
+    "safeBrokerOrExchangeLabel: `Practice backtesting${practicePlaybookLabel(input.order)}`",
     "maskedConnectionRef: \"practice_simulated\""
   ],
   "Closed practice orders map to support-safe practice_backtest ledger entries."
@@ -211,9 +224,9 @@ assertIncludesAll(
   `${ledger}\n${journalUi}`,
   [
     "Practice/backtesting activity is shown separately from AutoCopy.",
-    "performance.practice.totalLedgerItems",
-    "Practice trades",
-    "Practice P&L"
+    "/api/student/practice/analytics",
+    "Closed trades",
+    "Simulated P&L"
   ],
   "Student journal shows practice/backtesting activity separately from AutoCopy."
 );
@@ -230,12 +243,12 @@ assert(
   "Practice order modules do not import or call AutoCopy/live execution adapters."
 );
 assert(
-  !practiceModules.includes("apiSecret") &&
-    !practiceModules.includes("brokerPassword") &&
-    !practiceModules.includes("metaApiToken") &&
-    !practiceModules.includes("credentialRefPath") &&
-    !practiceModules.includes("rawProviderPayload") &&
-    !practiceModules.includes("raw external account"),
+  !practiceOrderModulesForSecretScan.includes("apiSecret") &&
+    !practiceOrderModulesForSecretScan.includes("brokerPassword") &&
+    !practiceOrderModulesForSecretScan.includes("metaApiToken") &&
+    !practiceOrderModulesForSecretScan.includes("credentialRefPath") &&
+    !practiceOrderModulesForSecretScan.includes("rawProviderPayload") &&
+    !practiceOrderModulesForSecretScan.includes("raw external account"),
   "Practice order modules do not expose secrets, vault refs, raw provider payloads, or account IDs."
 );
 

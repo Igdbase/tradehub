@@ -173,14 +173,38 @@ assertIncludesAll(
   "Terminal, replay, report, and journal surfaces continue using instrument-aware formatting."
 );
 
+// Scoped like the Stage 29D.5 guard: the practice client product surface, and the
+// browser spec, must never expose provider internals, credentials, AutoCopy, or live
+// execution hooks at all.
 assertExcludesAll(
-  `${practiceClient}\n${studentSpec}`,
+  practiceClient,
   [
     "providerSymbol", "accountId", "authToken", "brokerPassword", "metaApiToken",
     "vaultRef", "rawProviderPayload", "executeAutoCopy(", "submitLiveOrder("
   ],
-  "Student catalogue and browser coverage expose no provider internals, credentials, AutoCopy, or live execution hooks."
+  "Student practice client exposes no provider internals, credentials, AutoCopy, or live execution hooks."
 );
+
+assertExcludesAll(
+  studentSpec,
+  [
+    "providerSymbol", "accountId", "authToken", "brokerPassword", "metaApiToken",
+    "rawProviderPayload", "executeAutoCopy(", "submitLiveOrder("
+  ],
+  "Student browser spec exposes no provider internals, credentials, AutoCopy, or live execution hooks."
+);
+
+// The browser spec legitimately contains "vaultRef" only inside its own negated
+// not.toMatch forbidden-text assertions; assert that is still the only shape.
+{
+  const specLines = studentSpec.split("\n");
+  const unsafe = specLines.some((line, index) => {
+    if (!line.includes("vaultRef")) return false;
+    const context = `${specLines.slice(Math.max(0, index - 3), index).join("\n")}\n${line}`;
+    return !/\.not\.to(Match|Contain\w*|Have\w*)\(/.test(context);
+  });
+  assert(!unsafe, "Student browser spec mentions vaultRef only inside its own negated forbidden-text assertions.");
+}
 assertExcludesAll(
   `${contract}\n${adapter}\n${historical}`,
   [

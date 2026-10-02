@@ -131,15 +131,15 @@ assertIncludesAll(
     "Drawdown curve",
     "Daily P&L",
     "Symbol breakdown",
-    "Playbook breakdown",
+    "Strategy breakdown",
     "Best sessions",
     "Worst sessions",
     "Recent completed sessions",
     "Session comparison",
     "compareLeftSessionId",
     "compareRightSessionId",
-    "No closed simulated trades yet",
-    "closed orders only"
+    "No closed trades",
+    "Closed orders only"
   ],
   "/app/practice renders analytics sections, comparison selectors, and empty states."
 );

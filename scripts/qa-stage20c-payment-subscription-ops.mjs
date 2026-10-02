@@ -189,8 +189,8 @@ assertIncludesAll(
     "maskOpsReference",
     "Billing / access",
     "payment refs",
-    "provider payloads",
-    "credentials"
+    "no secrets or payment refs",
+    "account data, or private Copier controls."
   ],
   "Workspace browser surfaces keep payment/provider details masked or omitted."
 );

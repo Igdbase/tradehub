@@ -1258,6 +1258,30 @@ async function testPaystackWebhookProductIsolationAndOrdering() {
     tierId: "demo_core",
     updatedAt: "2026-09-06T00:00:00.000Z"
   }, { merge: true });
+  // Stage 30D: reset this test's own webhook receipts so repeat runs are not short-circuited
+  // by idempotency records left by a previous run (receipt ids are deterministic:
+  // trade_copier_<event>_<data.id> with non-alphanumerics underscored).
+  const receiptIds = [
+    "evt_tc_charge",
+    "evt_tc_renewal",
+    "evt_tc_renewal_missing_period",
+    "evt_tc_invoice_failed",
+    "evt_tc_missing_stored_plan",
+    "evt_tc_renewal_restore",
+    "evt_course_disable",
+    "evt_tc_not_renew",
+    "evt_tc_disable",
+    "evt_tc_stale_invoice",
+    "evt_unknown_product"
+  ].flatMap((eventId) => [
+    `paystack_webhooks/trade_copier_charge_success_${eventId}`,
+    `paystack_webhooks/trade_copier_invoice_payment_failed_${eventId}`,
+    `paystack_webhooks/trade_copier_subscription_disable_${eventId}`,
+    `paystack_webhooks/trade_copier_subscription_not_renew_${eventId}`
+  ]);
+  for (const receiptPath of receiptIds) {
+    await db.doc(receiptPath).delete().catch(() => undefined);
+  }
   const fake = paystackFor({ subscriptionCode: "SUB_webhook_tc", emailToken: "EMAIL_webhook_tc" });
   await billing.createStudentTradeCopierCheckout(actor, {
     paystack: fake.adapter,

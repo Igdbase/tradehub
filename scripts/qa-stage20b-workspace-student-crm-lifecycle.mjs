@@ -138,8 +138,8 @@ assertIncludesAll(
     "Clear follow-up",
     "Operational status",
     "payment refs",
-    "provider payloads",
-    "credentials"
+    "no secrets or payment refs",
+    "account data, or private Copier controls."
   ],
   "Student CRM renders lifecycle filters, safe detail summaries, and support actions."
 );

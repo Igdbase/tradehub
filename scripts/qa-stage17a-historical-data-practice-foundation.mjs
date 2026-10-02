@@ -55,8 +55,8 @@ assertIncludesAll(
     "ETHUSDT",
     "normalizeBinanceKline",
     "metaApiMt5ForexProvider",
-    "metaapi_utility_history_not_configured",
-    "TradeHub will use a platform-owned utility MetaAPI account later, not student credentials."
+    "practice_forex_cfd_history_not_configured",
+    "Forex/CFD historical candles are not configured yet. TradeHub uses platform-owned utility data for practice, never student MetaAPI credentials."
   ],
   "MarketDataProvider interface, Binance public adapter, candle normalization, and MetaAPI fail-closed placeholder exist."
 );
@@ -152,14 +152,14 @@ assertIncludesAll(
   `${studentUi}\n${shell}\n${page}`,
   [
     "active=\"practice\"",
-    "Backtesting foundation",
+    "backtesting data foundation",
     "Playbooks",
-    "New practice session",
-    "Fetch candles",
+    "Create or start a practice session",
+    "Reveal candles",
     "Create session",
-    "overview page does not render chart replay",
-    "not AutoCopy and not real trading",
-    "/api/student/practice/candles",
+    "without chart replay or live execution",
+    "separate from AutoCopy and live execution",
+    "/api/student/practice/sessions",
     "/app/practice"
   ],
   "Student UI separates Backtesting/Practice from AutoCopy and provides non-chart foundation controls."

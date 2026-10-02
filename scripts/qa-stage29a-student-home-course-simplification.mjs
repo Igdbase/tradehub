@@ -76,12 +76,12 @@ assert(
   "package.json exposes npm run stage29a:qa."
 );
 
+// Stage 30D retired stage15y:qa (see docs/legacy-guard-triage.md).
 [
   "stage28f:qa",
   "stage28e:qa",
   "stage19i:qa",
-  "stage23d:qa",
-  "stage15y:qa"
+  "stage23d:qa"
 ].forEach((scriptName) => {
   assert(Boolean(packageJson.scripts[scriptName]), `${scriptName} remains wired for Stage 29A verification.`);
 });
@@ -249,6 +249,8 @@ assertIncludesAll(
   "manual-test-backlog.md records Stage 29A manual QA without claiming owner browser testing is complete."
 );
 
+// Scoped like the Stage 29D.5 guard: the student product surfaces (home + Course
+// components) must never contain forbidden providers/markers at all.
 [
   "sendEmail",
   "sendSms",
@@ -268,9 +270,60 @@ assertIncludesAll(
   "webhookSecret"
 ].forEach((forbidden) => {
   assertNotIncludes(
-    `${studentHome}\n${courseStudentCopySource}\n${studentSpec}`,
+    `${studentHome}\n${courseStudentCopySource}`,
     forbidden,
-    `Stage 29A student/course simplification does not add forbidden behavior/secret marker ${forbidden}.`
+    `Stage 29A student/course product surfaces do not add forbidden behavior/secret marker ${forbidden}.`
+  );
+});
+
+// The student browser spec legitimately contains provider names/secret markers inside
+// its own safety assertions (negated not.toMatch/not.toContainText forbidden-text
+// checks, forbidden-terms constants, and visible product copy matchers). Every spec
+// occurrence must sit on such a safe line so the spec still cannot gain real provider
+// calls, credentials, or live execution.
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function specMarkerOccurrencesAreSafe(marker) {
+  const lines = studentSpec.split("\n");
+  const markerPattern = new RegExp(escapeRegExp(marker));
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!markerPattern.test(lines[index])) continue;
+    const line = lines[index];
+    const context = `${lines.slice(Math.max(0, index - 3), index).join("\n")}\n${line}`;
+    const negatedContext =
+      /\.not\.to(Match|Contain\w*|Have\w*)\(/.test(context) || /forbidden\w*(Terms|CopyPatterns|TextPatterns|patterns)/.test(context);
+    const uiCopyMatcher =
+      /(toContainText|getBy(Label|Role|TestId|Text)|openStudentPage|test\(|expect\(|route\.fetch\()/.test(line);
+    if (!negatedContext && !uiCopyMatcher) {
+      return false;
+    }
+  }
+  return true;
+}
+
+[
+  "sendEmail",
+  "sendSms",
+  "sendWhatsApp",
+  "createLiveOrder",
+  "placeOrder",
+  "MetaAPI",
+  "Binance",
+  "Bybit",
+  "Paystack",
+  "Solana",
+  "Telegram",
+  "providerPayload",
+  "vaultRef",
+  "apiKey",
+  "brokerPassword",
+  "webhookSecret"
+].forEach((forbidden) => {
+  assert(
+    specMarkerOccurrencesAreSafe(forbidden),
+    `Stage 29A student browser spec mentions ${forbidden} only inside its own safety assertions.`
   );
 });
 

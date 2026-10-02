@@ -92,20 +92,19 @@ assertIncludesAll(
   practiceClient,
   [
     "Recommended practice flow",
-    "Create a playbook",
     "Create or start a practice session",
     "Open terminal",
     "Reveal candles",
     "Place a simulated order",
     "Finish session",
     "Review report/journal",
-    "No playbooks yet",
+    "No Strategies yet",
     "No sessions yet",
     "No assignments yet",
     "No analytics yet",
     "No imported/exported data yet",
     "No simulated practice orders yet. Open a terminal session",
-    "Practice is separate from AutoCopy and never places a broker or exchange order"
+    "Simulated order snapshots stay separate from AutoCopy and live execution."
   ],
   "/app/practice has first-run flow copy and clear empty states."
 );
@@ -128,8 +127,10 @@ assertIncludesAll(
     "never place a broker or exchange order",
     "Indicators use revealed candles only.",
     "Only events available in the revealed session window appear here.",
-    "Drawings and notes are text-only learning tools",
-    "Closed orders are read-only outcomes."
+    "Choose a drawing tool, then draw on the chart.",
+    "Completed sessions keep chart objects view-only.",
+    "Safe text-only replay marker",
+    "Read-only outcome ·"
   ],
   "Practice terminal copy clearly explains simulated, revealed-candle-only, and learning-tool boundaries."
 );
@@ -138,7 +139,7 @@ assertIncludesAll(
   replayClient,
   [
     "Review the same practice-only session outside the terminal.",
-    "No playbook activity yet.",
+    "No Strategy activity yet.",
     "No annotations were saved for this completed review.",
     "No closed trades yet. The session is complete, but review stats stay at zero",
     "Reflection stays in the practice journal summary and is separate from AutoCopy."
@@ -151,7 +152,7 @@ assertIncludesAll(
   [
     "Use the browser print dialog to save a PDF; TradeHub does not generate or store report files.",
     "No closed trades yet.",
-    "No playbook activity yet.",
+    "No Strategy activity yet.",
     "No reflection has been saved yet.",
     "No instructor feedback has been submitted yet.",
     "No main lesson has been marked yet."
@@ -162,11 +163,11 @@ assertIncludesAll(
 assertIncludesAll(
   journalClient,
   [
-    "If AutoCopy has no activity yet, this section stays at zero and remains separate from practice.",
-    "Practice/backtesting performance will appear here.",
-    "It updates after simulated orders are closed.",
-    "No playbook activity yet.",
-    "No practice ledger entries yet."
+    "No confirmed trades to show",
+    "Complete simulated trades to build a backtesting equity curve.",
+    "No completed sessions match this filter.",
+    "No strategy results yet.",
+    "Practice sessions and older personal journal records are kept separate from this view."
   ],
   "Journal copy clarifies no AutoCopy activity and no practice activity empty states."
 );
@@ -175,7 +176,7 @@ assertIncludesAll(
   workspaceInsights,
   [
     "Aggregate simulated-practice activity only.",
-    "without seeing private journal entries, raw trade history, hidden candles, or execution internals",
+    "without seeing private student journals, raw trade",
     "No student practice data matches these filters yet.",
     "Recent rows use masked student and session references only."
   ],

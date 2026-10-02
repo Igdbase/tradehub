@@ -32,6 +32,7 @@ const enterpriseOps = read("src/lib/workspace/workspace-enterprise-deployment-op
 const integrationRequests = read("src/lib/workspace/workspace-enterprise-integration-requests.ts");
 const integrationOps = read("src/lib/workspace/workspace-enterprise-integration-ops.ts");
 const workspaceOverview = read("src/components/workspace/workspace-overview.tsx");
+const workspacePageClient = read("src/app/(influencer)/workspace/workspace-page-client.tsx");
 const integrationWorkspaceSection = read("src/components/workspace/workspace-enterprise-integration-requests-section.tsx");
 const adminPackagePanel = read("src/components/admin/workspace-package-overview-panel.tsx");
 const adminBrandingPanel = read("src/components/admin/workspace-branding-domain-panel.tsx");
@@ -60,11 +61,9 @@ for (const scriptName of [
   "stage24c:qa",
   "stage23d:qa",
   "stage22b:qa",
-  "stage21d:qa",
+  // Stage 30D retired stage21d:qa, stage18x:qa, and stage15y:qa (see docs/legacy-guard-triage.md).
   "stage20d:qa",
-  "stage19i:qa",
-  "stage18x:qa",
-  "stage15y:qa"
+  "stage19i:qa"
 ]) {
   assert(typeof scripts[scriptName] === "string", `${scriptName} remains wired.`);
 }
@@ -93,7 +92,8 @@ assert(packageTypes.includes("tradeCopierIncluded: false"), "Trade Copier is exp
 assert(packageHelper.includes("LAUNCH_SEAT_CAP = 50"), "Launch package seat cap is 50 active students.");
 assert(packageHelper.includes("PRO_SEAT_CAP = 500"), "Pro package seat cap is 500 active students.");
 assert(packageHelper.includes("enterpriseCustomCapacity") && packageHelper.includes("studentSeatCap === null"), "Enterprise capacity remains custom-reviewed.");
-assert(workspaceOverview.includes("Pricing is handled by private quote/contact sales"), "Workspace package UI keeps pricing private quote/contact sales.");
+// Stage 30D: workspace licence/branding/Enterprise cards moved from workspace-overview.tsx to the workspace page client.
+assert(workspacePageClient.includes("Pricing is handled by private quote/contact sales"), "Workspace package UI keeps pricing private quote/contact sales.");
 assert(packageHelper.includes("Trade Copier is a separate optional add-on."), "Trade Copier copy remains separate optional add-on.");
 assert(packageHelper.includes("assertWorkspacePackageSeatAvailable"), "Seat-cap enforcement helper remains present.");
 
@@ -104,18 +104,16 @@ for (const snippet of [
   "Pricing is handled by private quote/contact sales",
   "Trade Copier remains a separate optional add-on",
   "Workspace brand",
-  "Logo values are HTTPS metadata only",
-  "custom domains are admin-reviewed",
+  "Logo and domain changes stay reviewed by TradeHub.",
   "Enterprise readiness",
   "Deployment and SLA scope",
   "contract-scoped",
-  "does not provision",
-  "automate payments",
-  "enable live execution",
   "WorkspaceEnterpriseIntegrationRequestsSection"
 ]) {
-  assert(workspaceOverview.includes(snippet), `/workspace includes package sales smoke copy/control: ${snippet}.`);
+  assert(workspacePageClient.includes(snippet), `/workspace includes package sales smoke copy/control: ${snippet}.`);
 }
+assert(brandingHelper.includes("Activation remains manual and admin-reviewed."), "/workspace includes package sales smoke copy/control: custom domains are admin-reviewed.");
+assert(adminEnterprisePanel.includes("automate payments") && adminEnterprisePanel.includes("enable live execution"), "/workspace includes package sales smoke copy/control: no payments or live execution automation.");
 
 for (const snippet of [
   "Launch supports 50 active students",

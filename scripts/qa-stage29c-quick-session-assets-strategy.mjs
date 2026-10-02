@@ -323,7 +323,7 @@ assertIncludesAll(
     'provider = "binance"',
     'symbol = "BTCUSDT"',
     'rangeStart = "2026-07-01T00:00:00.000Z"',
-    'rangeEnd = "2026-07-02T00:00:00.000Z"',
+    "const rangeEnd = new Date(startMs + boundedCandleCount * timeframeMinutes * 60_000).toISOString();",
     "Demo Breakout Strategy"
   ],
   "Demo seed provides deterministic normalized candles for browser session creation without a live history dependency."
@@ -343,13 +343,43 @@ assertIncludesAll(
   "Docs record the Stage 29C handoff, deferred owner QA, and stop before later Practice stages."
 );
 
+// Scoped like the Stage 29D.5 guard: the practice client product surface, and the
+// browser spec, must never contain live execution, AutoCopy, deferred session modes,
+// scraping, or secret-bearing needles at all.
 assertExcludesAll(
-  `${practiceClient}\n${studentSpec}`,
+  practiceClient,
   [
     "submitLiveOrder(", "createLiveOrder(", "executeAutoCopy(", "propFirmSession", "advancedSession",
     "telegram", "scrape", "rawProviderPayload", "vaultRef", "brokerPassword", "metaApiToken"
   ],
-  "Stage 29C client and browser work adds no live execution, AutoCopy, deferred session modes, scraping, or secret exposure."
+  "Stage 29C practice client adds no live execution, AutoCopy, deferred session modes, scraping, or secret exposure."
 );
+
+assertExcludesAll(
+  studentSpec,
+  [
+    "submitLiveOrder(", "createLiveOrder(", "executeAutoCopy(", "propFirmSession", "advancedSession",
+    "scrape", "rawProviderPayload", "brokerPassword", "metaApiToken"
+  ],
+  "Stage 29C browser spec contains no live execution, AutoCopy, deferred session modes, scraping, or secret-bearing needles."
+);
+
+// The browser spec legitimately contains "telegram" and "vaultRef" only inside its own
+// negated not.toMatch forbidden-text assertions; assert that is still the only shape.
+const stage29cSpecSafeNeedleShapes = [
+  { needle: "telegram", pattern: /\.not\.to(Match|Contain\w*|Have\w*)\(/ },
+  { needle: "vaultRef", pattern: /\.not\.to(Match|Contain\w*|Have\w*)\(/ }
+];
+{
+  const specLines = studentSpec.split("\n");
+  stage29cSpecSafeNeedleShapes.forEach(({ needle, pattern }) => {
+    const unsafe = specLines.some((line, index) => {
+      if (!line.includes(needle)) return false;
+      const context = `${specLines.slice(Math.max(0, index - 3), index).join("\n")}\n${line}`;
+      return !pattern.test(context);
+    });
+    assert(!unsafe, `Stage 29C browser spec mentions ${needle} only inside its own negated forbidden-text assertions.`);
+  });
+}
 
 console.log("Stage 29C quick session, verified assets, and Strategy simplification QA passed.");

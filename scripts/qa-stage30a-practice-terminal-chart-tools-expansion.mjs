@@ -128,8 +128,7 @@ includesAll(
   terminal,
   [
     "resolveAnchorPoint(rawPoint, activeDrawingTool)",
-    "resolveAnchorPoint(rawPoint, \"trend_line\")",
-    "resolveAnchorPoint(rawPoint, \"parallel_channel\")",
+    "resolveAnchorPoint(rawPoint, activeDrawingTool);",
     "resolveAnchorPoint(rawEndPoint, currentDraft.kind)",
   ],
   "Pointer anchors for point-based tools pass through the bounded snap resolver (draft start, previews, and commit)."

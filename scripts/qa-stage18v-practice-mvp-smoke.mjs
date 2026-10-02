@@ -151,7 +151,7 @@ assertIncludesAll(
     "Practice Notifications",
     "Practice Task Inbox",
     "Export practice data",
-    "Import playbooks",
+    "Import Strategies",
     "BTCUSDT",
     "createSession",
     "/api/student/practice/playbooks",
@@ -159,8 +159,8 @@ assertIncludesAll(
     "/api/student/practice/analytics",
     "/api/student/practice/assignments",
     "/api/student/practice/notifications",
-    "Open terminal after create",
-    "Resume terminal",
+    "Open terminal after creation",
+    "Continue",
     "Report"
   ],
   "/app/practice exposes playbook/session creation, task inbox, notifications, import/export, terminal, and report entry points."
@@ -169,21 +169,21 @@ assertIncludesAll(
 assertIncludesAll(
   terminalClient,
   [
-    "Practice Terminal",
+    "Practice terminal panel tabs",
     "/api/student/practice/sessions/${encodeURIComponent(sessionId)}/candles",
     "/api/student/practice/sessions/${encodeURIComponent(sessionId)}/navigation",
     "/api/student/practice/sessions/${encodeURIComponent(sessionId)}/orders",
     "Submit simulated order",
     "Replay and reflection",
-    "Indicators are learning tools computed client-side from revealed candles only",
-    "Drawings / Notes",
+    "Indicators use revealed candles only.",
+    "\"Drawings\", value: \"drawings\"",
     "Bookmarks",
     "challengeStatus",
     "Simulated challenge rules use practice orders only.",
     "data-practice-event-marker-lane=\"bottom\"",
-    "timeScale.timeToCoordinate(closestTime)",
-    "subscribeVisibleLogicalRangeChange",
-    "Report"
+    "chart.convertToPixel({ dataIndex: closestIndex, value: closestCandle.close })",
+    "chart.subscribeAction(\"onVisibleRangeChange\", handleVisibleRangeChange)",
+    "Session report"
   ],
   "Terminal smoke surface includes revealed candles, replay navigation, simulated orders, indicators, drawings, bookmarks, challenge, event lane, and report shortcut."
 );
@@ -221,10 +221,10 @@ assertIncludesAll(
 assertIncludesAll(
   journalClient,
   [
-    "Practice/backtesting",
-    "Latest instructor feedback",
-    "Practice/backtesting performance will appear here",
-    "AutoCopy"
+    "\"backtesting\", \"Backtesting\"",
+    "Copier setup and practice results stay separate.",
+    "These figures are never combined with connected-account performance.",
+    "switch to your separate simulated backtesting results"
   ],
   "/app/journal keeps practice/backtesting summaries separate from AutoCopy."
 );

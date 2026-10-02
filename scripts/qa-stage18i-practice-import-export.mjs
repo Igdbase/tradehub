@@ -147,14 +147,14 @@ assertIncludesAll(
   practiceClient,
   [
     "Export practice data",
-    "Import playbooks",
+    "Import Strategies",
     "practiceExportOptions",
     "/api/student/practice/export",
     "/api/student/practice/import/playbooks",
     "new Blob([fileBody], { type: response.mimeType })",
     "link.download = response.filename",
     "readPlaybookImportFile",
-    "Import playbooks"
+    "Import Strategy CSV only. TradeHub creates new Strategies for your account and never imports orders."
   ],
   "/app/practice exposes safe export and playbook import entry points."
 );

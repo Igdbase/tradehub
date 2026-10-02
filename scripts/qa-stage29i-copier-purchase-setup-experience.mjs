@@ -817,9 +817,12 @@ includesAll(
     "closed",
     "frozen",
     "Stage 29J",
-    "implemented/source-QA ready for adviser review"
+    // Stage 29J is no longer awaiting adviser review: it (and Stage 29I) are now
+    // owner-accepted, closed, and frozen (Stage 29I on 6 September 2026, Stage 29J
+    // after local owner testing on 7 September 2026) per plan.md.
+    "owner-accepted, closed, and frozen after successful local owner testing on 7 September 2026"
   ],
-  "Authoritative docs record Stage 29G external acceptance deferral, Stage 29H deferral, Stage 29I handoff, and Stage 29J source-QA-ready status."
+  "Authoritative docs record Stage 29G external acceptance deferral, Stage 29H deferral, the Stage 29I owner-acceptance closure handoff, and Stage 29J owner-accepted/closed/frozen status."
 );
 
 includesAll(

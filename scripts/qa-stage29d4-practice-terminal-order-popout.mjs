@@ -38,10 +38,12 @@ includesAll(terminal, [
   'data-practice-terminal-order-popout="chart-overlay"',
   'role={mobilePanelTab === "order" ? "dialog" : undefined}',
   'aria-label="Place simulated order"',
-  "lg:fixed lg:left-[5.25rem] lg:top-[5.25rem]",
-  "lg:w-[min(48rem,calc(100vw-29rem))]",
-  "lg:border-[#1b5c84]",
-  "lg:shadow-[0_0_0_2px_rgba(29,92,132,0.55),0_24px_70px_rgba(0,0,0,0.68)]",
+  // Popout breakpoints moved from lg: to xl: and the overlay width now reserves
+  // 27rem (was 29rem); needles reflect the current chart-overlay styling.
+  "xl:fixed xl:left-[5.25rem] xl:top-[5.25rem]",
+  "xl:w-[min(48rem,calc(100vw-27rem))]",
+  "xl:border-[#1b5c84]",
+  "xl:shadow-[0_0_0_2px_rgba(29,92,132,0.55),0_24px_70px_rgba(0,0,0,0.68)]",
   "Place Order",
   "Preset",
   "Close order ticket",
@@ -55,7 +57,7 @@ includesAll(terminal, [
   "Submit simulated order",
   "Reveal one candle before submitting simulated orders",
   "mobileTicketVisibility()",
-  "lg:hidden"
+  "xl:hidden"
 ], "Order popout keeps simulated-only copy, revealed-candle guard, mobile fallback, and no hidden order execution path.");
 
 includesAll(terminal, [

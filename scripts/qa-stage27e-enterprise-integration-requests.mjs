@@ -54,11 +54,9 @@ for (const scriptName of [
   "stage24c:qa",
   "stage23d:qa",
   "stage22b:qa",
-  "stage21d:qa",
+  // Stage 30D retired stage21d:qa, stage18x:qa, and stage15y:qa (see docs/legacy-guard-triage.md).
   "stage20d:qa",
-  "stage19i:qa",
-  "stage18x:qa",
-  "stage15y:qa"
+  "stage19i:qa"
 ]) {
   assert(typeof scripts[scriptName] === "string", `${scriptName} remains wired.`);
 }
@@ -176,18 +174,14 @@ for (const snippet of [
   "Contact TradeHub",
   "/api/workspace/enterprise-integration-requests",
   "Submit integration request",
-  "Do not include credentials",
-  "API keys",
-  "tokens",
-  "webhook secrets",
-  "broker passwords",
-  "vault refs",
-  "provider payloads"
+  "Do not include passwords, private links, payment references, or account details.",
+  "Leave out passwords, private links, and account details."
 ]) {
   assert(workspaceSection.includes(snippet), `Workspace integration section includes safe ${snippet} copy/control.`);
 }
 
-assert(workspaceOverview.includes("WorkspaceEnterpriseIntegrationRequestsSection"), "Workspace overview renders Enterprise integration request section.");
+// Stage 30D: the Enterprise integrations view moved from workspace-overview.tsx to the workspace page client.
+assert(read("src/app/(influencer)/workspace/workspace-page-client.tsx").includes("WorkspaceEnterpriseIntegrationRequestsSection"), "Workspace Enterprise view renders Enterprise integration request section.");
 
 for (const snippet of [
   "Enterprise integration queue",

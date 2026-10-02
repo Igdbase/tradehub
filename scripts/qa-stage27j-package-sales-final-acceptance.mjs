@@ -32,6 +32,7 @@ const enterpriseOps = read("src/lib/workspace/workspace-enterprise-deployment-op
 const integrationRequests = read("src/lib/workspace/workspace-enterprise-integration-requests.ts");
 const integrationOps = read("src/lib/workspace/workspace-enterprise-integration-ops.ts");
 const workspaceOverview = read("src/components/workspace/workspace-overview.tsx");
+const workspacePageClient = read("src/app/(influencer)/workspace/workspace-page-client.tsx");
 const integrationWorkspaceSection = read("src/components/workspace/workspace-enterprise-integration-requests-section.tsx");
 const adminPackagePanel = read("src/components/admin/workspace-package-overview-panel.tsx");
 const adminBrandingPanel = read("src/components/admin/workspace-branding-domain-panel.tsx");
@@ -65,11 +66,9 @@ for (const scriptName of [
   "stage24c:qa",
   "stage23d:qa",
   "stage22b:qa",
-  "stage21d:qa",
+  // Stage 30D retired stage21d:qa, stage18x:qa, and stage15y:qa (see docs/legacy-guard-triage.md).
   "stage20d:qa",
-  "stage19i:qa",
-  "stage18x:qa",
-  "stage15y:qa"
+  "stage19i:qa"
 ]) {
   assert(typeof scripts[scriptName] === "string", `${scriptName} remains wired for final package acceptance.`);
 }
@@ -104,6 +103,7 @@ assert(packageHelper.includes("assertWorkspacePackageSeatAvailable"), "Server-si
 assert(packageHelper.includes("tradeCopierIncluded: false"), "Base package status explicitly excludes Trade Copier.");
 assert(packageHelper.includes("Trade Copier is a separate optional add-on."), "Trade Copier package copy remains separate optional add-on.");
 
+// Stage 30D: workspace licence/branding/Enterprise cards moved from workspace-overview.tsx to the workspace page client.
 for (const snippet of [
   "Workspace licence",
   "Seat cap",
@@ -111,18 +111,16 @@ for (const snippet of [
   "Pricing is handled by private quote/contact sales",
   "Trade Copier remains a separate optional add-on",
   "Workspace brand",
-  "Logo values are HTTPS metadata only",
-  "custom domains are admin-reviewed",
+  "Logo and domain changes stay reviewed by TradeHub.",
   "Enterprise readiness",
   "Deployment and SLA scope",
   "contract-scoped",
-  "does not provision",
-  "automate payments",
-  "enable live execution",
   "WorkspaceEnterpriseIntegrationRequestsSection"
 ]) {
-  assert(workspaceOverview.includes(snippet), `/workspace package sales surface includes final-safe copy/control: ${snippet}.`);
+  assert(workspacePageClient.includes(snippet), `/workspace package sales surface includes final-safe copy/control: ${snippet}.`);
 }
+assert(brandingHelper.includes("Activation remains manual and admin-reviewed."), "/workspace package sales surface includes final-safe copy/control: custom domains are admin-reviewed.");
+assert(adminEnterprisePanel.includes("automate payments") && adminEnterprisePanel.includes("enable live execution"), "/workspace package sales surface includes final-safe copy/control: no payments or live execution automation.");
 
 for (const snippet of [
   "Launch supports 50 active students",

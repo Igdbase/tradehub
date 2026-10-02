@@ -151,7 +151,7 @@ assertIncludesAll(
     "practiceNotionalForInstrument",
     "practicePipDistance",
     "instrumentSpec.contractMultiplier",
-    "Practice estimates use TradeHub instrument specs and may differ by broker.",
+    "Practice estimates may differ by venue.",
     "quantityLabel",
     "stopDistanceInPips"
   ],
@@ -185,14 +185,14 @@ assertIncludesAll(
 );
 
 assertIncludesAll(
-  journalClient,
+  `${journalClient}\n${ledger}`,
   [
-    "formatPracticeQuantity",
+    "practiceInstrument",
     "getPracticeInstrumentSpec",
     "Practice backtesting",
-    "Volume"
+    "volume"
   ],
-  "Journal practice summaries can format volume with safe instrument specs while staying separate from AutoCopy."
+  "Journal practice summaries carry volume with safe instrument specs while staying separate from AutoCopy."
 );
 
 assertIncludesAll(

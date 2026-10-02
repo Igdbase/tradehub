@@ -69,11 +69,8 @@ assert(packageJson.scripts.build !== packageJson.scripts["browser:qa:workspace-a
   "stage24c:qa",
   "stage23d:qa",
   "stage22b:qa",
-  "stage21d:qa",
   "stage20d:qa",
-  "stage19i:qa",
-  "stage18x:qa",
-  "stage15y:qa"
+  "stage19i:qa"
 ].forEach((scriptName) => {
   assert(Boolean(packageJson.scripts[scriptName]), `${scriptName} remains wired`);
 });
@@ -107,7 +104,7 @@ assert(packageJson.scripts.build !== packageJson.scripts["browser:qa:workspace-a
   "Branding and domains",
   "Enterprise deployment and SLA",
   "Enterprise integration queue",
-  "External reminders contract",
+  "Telegram source setup",
   "External signal ingestion",
   "Broad live AutoCopy readiness"
 ].forEach((needle) => {
@@ -117,10 +114,10 @@ assert(packageJson.scripts.build !== packageJson.scripts["browser:qa:workspace-a
 [
   "private quote",
   "Trade Copier remains a separate optional add-on",
-  "safe operational summaries only",
+  "student support summaries only",
   "Aggregate simulated-practice activity only",
   "Not a TradeHub signal",
-  "No adapter, provider call, credential collection, or automation",
+  "External preview only",
   "does not upload logos, change DNS, provision SSL, or call hosting providers",
   "External sending remains disabled",
   "does not enable broad live order execution",
@@ -184,6 +181,8 @@ assertIncludes(plan, "TH-2026-08-24-STAGE28D-WORKSPACE-ADMIN-BROWSER-E2E-HANDOFF
 assertIncludes(promptSummary, "Stage 28D - Workspace And Super Admin End-to-End Browser QA", "prompt summary documents Stage 28D");
 assertIncludes(promptSummary, "TH-2026-08-24-STAGE28D-WORKSPACE-ADMIN-BROWSER-E2E-HANDOFF", "prompt summary has Stage 28D handoff");
 
+// Scoped like the Stage 29D.5 guard: helpers and Playwright config must never
+// reference forbidden providers/markers at all.
 [
   "MetaAPI",
   "Binance",
@@ -200,7 +199,62 @@ assertIncludes(promptSummary, "TH-2026-08-24-STAGE28D-WORKSPACE-ADMIN-BROWSER-E2
   "placeOrder",
   "fetch("
 ].forEach((forbidden) => {
-  assertNotIncludes(`${workspaceAdminSpec}\n${authHelper}\n${config}`, forbidden, `workspace/admin browser QA source does not call/expose ${forbidden}`);
+  assertNotIncludes(`${authHelper}\n${config}`, forbidden, `workspace/admin browser QA helper/config does not call/expose ${forbidden}`);
+});
+
+// The workspace/admin spec legitimately drives visible product surfaces that mention
+// these providers (Payment rails copy, Telegram source setup forms), so every spec
+// occurrence must sit on a UI-matcher/interaction or negated-assertion line, and the
+// spec must never target real provider API hosts.
+[
+  "api.telegram.org",
+  "api.paystack.co",
+  "api.binance.com",
+  "api.bybit.com",
+  "metaapi.cloud",
+  "hooks.paystack"
+].forEach((host) => {
+  assertNotIncludes(workspaceAdminSpec, host, `workspace/admin spec never targets provider host ${host}`);
+});
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function specMarkerOccurrencesAreSafe(marker) {
+  const lines = workspaceAdminSpec.split("\n");
+  const markerPattern = new RegExp(escapeRegExp(marker));
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!markerPattern.test(lines[index])) continue;
+    const line = lines[index];
+    const context = `${lines.slice(Math.max(0, index - 3), index).join("\n")}\n${line}`;
+    const negatedContext = /\.not\.to(Match|Contain\w*|Have\w*)\(/.test(context);
+    const uiMatcherLine =
+      /(toContainText|getBy(Label|Role|TestId|Text)|assertOpsPageSafe|openOpsPage|test\(|expect\(|route\.fetch\()/.test(line);
+    if (!negatedContext && !uiMatcherLine) {
+      return false;
+    }
+  }
+  return true;
+}
+
+[
+  "MetaAPI",
+  "Binance",
+  "Bybit",
+  "Paystack",
+  "Solana",
+  "Telegram",
+  "Twilio",
+  "Resend",
+  "sendEmail",
+  "sendSms",
+  "sendWhatsApp",
+  "createLiveOrder",
+  "placeOrder",
+  "fetch("
+].forEach((forbidden) => {
+  assert(specMarkerOccurrencesAreSafe(forbidden), `workspace/admin spec mentions ${forbidden} only on visible product-surface/assertion lines`);
 });
 
 if (process.exitCode) {

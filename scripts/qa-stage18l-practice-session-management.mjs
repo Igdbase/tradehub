@@ -159,7 +159,7 @@ assertIncludesAll(
     "Start",
     "Equity",
     "Realized",
-    "Playbook:",
+    "Strategy:",
     "Challenge",
     "Updated"
   ],

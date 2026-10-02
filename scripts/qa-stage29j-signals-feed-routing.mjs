@@ -549,8 +549,10 @@ includesAll(
     "stale workers cannot clear another worker's lease or regress projected state",
     "without a second provider request or duplicate ledger row",
     "actor/signal workspace mismatches",
-    "Stage 29K Telegram Signal Ingestion And Controlled Bridge is implemented/source-QA ready",
-    "Stage 29L remains unstarted",
+    // Stage 29K and 29L are no longer pending/next-up: both are owner-accepted,
+    // closed, and frozen per plan.md (local owner testing on 8 September 2026).
+    "Stage 29K is owner-accepted, closed, and frozen",
+    "Stage 29L is owner-accepted, closed, and frozen",
     "External provider acceptance remains deferred"
   ],
   "Stage 29J implementation, boundaries, evidence, and next-stage status are recorded in authoritative docs."

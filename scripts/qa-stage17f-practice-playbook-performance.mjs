@@ -40,6 +40,16 @@ const practiceModules = [
   journalLedger,
   journalUi
 ].join("\n");
+// The journal client also hosts the Journal Sync exchange-connection form (students submit their
+// own read-only API key/secret), so the secret-scan below covers the practice modules only.
+const practiceModulesForSecretScan = [
+  practiceTypes,
+  analytics,
+  practiceRepo,
+  overviewClient,
+  replayClient,
+  journalLedger
+].join("\n");
 
 assert(
   packageJson.scripts?.["stage17f:qa"] === "node scripts/qa-stage17f-practice-playbook-performance.mjs",
@@ -105,7 +115,7 @@ assertIncludesAll(
     "practice_playbook_archived",
     "practice_playbook_market_mismatch",
     "playbookId: playbook.playbookId",
-    "playbookName: playbook.name",
+    "playbookName: playbook?.name,",
     "checklistNotes",
     "computePracticePlaybookPerformance",
     "selectBestWorstPracticePlaybooks",
@@ -124,12 +134,12 @@ assertIncludesAll(
     "invalidationRules",
     "riskNotes",
     "updatePlaybook",
-    "Best playbook",
-    "Worst playbook",
+    "Best Strategy",
+    "Worst Strategy",
     "playbookFilter",
     "filteredSessions",
     "filteredOrders",
-    "No playbook has closed simulated trades yet."
+    "No winner yet"
   ],
   "Practice overview supports create/edit playbooks, best/worst summaries, and playbook filters."
 );
@@ -139,16 +149,16 @@ assertIncludesAll(
   [
     "playbookId",
     "checklistNotes",
-    "Select a playbook",
+    "Strategy (optional)",
     "activePlaybooks",
     "orderPlaybookFilter",
     "filteredOrders",
-    "Playbook performance",
-    "No playbook has closed trades in this replay yet.",
-    "disabled={!lastCandle || !orderForm.playbookId || isSaving || isSessionLocked}",
+    "Strategy performance",
+    "No Strategy activity yet.",
+    "disabled={!lastCandle || isSaving || isSessionLocked}",
     "Checklist notes:"
   ],
-  "Replay order UX requires playbook selection, stores checklist notes, filters orders, and shows playbook performance."
+  "Replay order UX supports Strategy selection, stores checklist notes, filters orders, and shows Strategy performance."
 );
 
 assertIncludesAll(
@@ -157,8 +167,8 @@ assertIncludesAll(
     "practicePlaybookLabel",
     "Practice backtesting partial close",
     "playbookLabels",
-    "Playbooks:",
-    "No practice playbook has closed ledger activity yet.",
+    "Strategies",
+    "No strategy results yet.",
     "practice_backtest"
   ],
   "Journal shows compact practice/playbook summary separate from AutoCopy."
@@ -190,13 +200,13 @@ assert(
 );
 
 assert(
-  !practiceModules.includes("apiSecret") &&
-    !practiceModules.includes("brokerPassword") &&
-    !practiceModules.includes("metaApiToken") &&
-    !practiceModules.includes("credentialRefPath") &&
-    !practiceModules.includes("rawProviderPayload") &&
-    !practiceModules.includes("vaultRef") &&
-    !practiceModules.includes("accountId"),
+  !practiceModulesForSecretScan.includes("apiSecret") &&
+    !practiceModulesForSecretScan.includes("brokerPassword") &&
+    !practiceModulesForSecretScan.includes("metaApiToken") &&
+    !practiceModulesForSecretScan.includes("credentialRefPath") &&
+    !practiceModulesForSecretScan.includes("rawProviderPayload") &&
+    !practiceModulesForSecretScan.includes("vaultRef") &&
+    !practiceModulesForSecretScan.includes("accountId"),
   "Stage 17F practice playbook modules do not expose secrets, account IDs, vault refs, or raw provider payloads."
 );
 

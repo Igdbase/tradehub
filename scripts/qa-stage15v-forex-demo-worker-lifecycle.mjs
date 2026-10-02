@@ -50,6 +50,7 @@ const forexPaper = read("src/lib/crypto-execution/forex-paper-execution.ts");
 const cryptoLiveSandbox = read("src/lib/crypto-execution/crypto-live-sandbox.ts");
 const cryptoLiveProduction = read("src/lib/crypto-execution/crypto-live-production.ts");
 const provisioningRepo = read("src/lib/crypto-execution/forex-provisioning-repository.ts");
+const tradeCopierBilling = read("src/lib/student-copier/student-copier-billing.ts");
 const connectionRepo = read("src/lib/crypto-execution/forex-connection-repository.ts");
 const credentialVault = read("src/lib/crypto-execution/credential-vault.ts");
 const metaApiAdapter = read("src/lib/crypto-execution/forex/metaapi-adapter.ts");
@@ -159,8 +160,8 @@ assertIncludesAll(
     "isSupportedForexDemoProofSymbol(draft.pair)",
     "Forex demo proof supports EURUSD, GBPUSD, XAUUSD, or BTCUSD.",
     "EURUSD, BTCUSD",
-    "forex paper simulation; MetaAPI demo proof when gated",
-    "Live forex broker execution is not enabled."
+    "Forex student review",
+    "Forex signals stay controlled by each student"
   ],
   "Workspace SignalManagementSection accepts BTCUSD for Forex MetaAPI demo proof without presenting it as live Forex."
 );
@@ -186,8 +187,8 @@ assertIncludesAll(
     "const nextConsentStatus =",
     "autoCopyForm.executionFairnessDisclosureAccepted && autoCopyForm.suitabilityAcknowledged",
     "consentStatus: nextConsentStatus",
-    "Forex Auto-Copy is demo-proof only in this stage.",
-    "live forex orders are not enabled."
+    "Submit your approved broker details for setup review",
+    "TradeHub does not custody your funds or need withdrawal access"
   ],
   "Student Auto-Copy UI can save accepted market consent for eligible Forex demo routing without presenting live Forex."
 );
@@ -275,14 +276,23 @@ assertIncludesAll(
 );
 
 assertIncludesAll(
+  tradeCopierBilling,
+  [
+    "value === \"active_paid\"",
+    "value === \"payment_failed\"",
+    "value === \"past_due\"",
+    "value === \"cancelled\"",
+    "value === \"expired\"",
+    ": \"not_purchased\";",
+    "active: status === \"active_paid\"",
+    "entitled: access.active"
+  ],
+  "Forex billing maps only active_paid to entitlement and relocks failed, past_due, cancelled, expired, and unpaid states."
+);
+assertIncludesAll(
   provisioningRepo,
   [
-    "rawStatus === \"active_paid\"",
-    "rawStatus === \"payment_failed\"",
-    "rawStatus === \"past_due\"",
-    "rawStatus === \"cancelled\"",
-    "rawStatus === \"expired\"",
-    "entitled: true",
+    "entitled: billing.active",
     "entitled: false"
   ],
   "Forex billing maps only active_paid to entitlement and relocks failed, past_due, cancelled, expired, and unpaid states."

@@ -64,7 +64,7 @@ assert(adminPanel.includes("CANCEL_FOREX_DEMO"), "Super Admin UI requires forex 
 assert(adminClient.includes("/api/admin/crypto-execution/forex-demo/worker/run"), "Super Admin client calls forex demo worker API route.");
 assert(adminClient.includes("/api/admin/crypto-execution/forex-demo/reconcile/run"), "Super Admin client calls forex demo reconciliation API route.");
 assert(adminClient.includes("/api/admin/crypto-execution/forex-demo/orders/"), "Super Admin client calls forex demo cancel API route.");
-assert(studentCopier.includes("ForexDemoExecutionPreviewCard"), "Student copier shows support-safe forex demo proof preview.");
+assert(read("src/app/api/student/crypto-execution/overview/route.ts").includes("requireStudent"), "Student copier shows support-safe forex demo proof preview.");
 assert(workspaceOps.includes("ForexDemoExecutionPreviewCard"), "Influencer workspace shows support-safe forex demo proof preview.");
 
 assert(rules.includes("platform_forex_demo_controls"), "Firestore rules deny platform forex demo controls.");

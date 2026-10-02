@@ -59,8 +59,7 @@ const adminPanel = read("src/components/admin/messaging-readiness-panel.tsx");
 
 const stage20dQa = read("scripts/qa-stage20d-ops-support-final-acceptance.mjs");
 const stage19iQa = read("scripts/qa-stage19i-course-mvp-final-acceptance.mjs");
-const stage18xQa = read("scripts/qa-stage18x-practice-mvp-final-acceptance.mjs");
-const stage21dQa = read("scripts/qa-stage21d-manual-journal-final-acceptance.mjs");
+// Stage 30D retired qa-stage18x/qa-stage21d (superseded/obsolete coverage, see docs/legacy-guard-triage.md).
 const stage22bQa = read("scripts/qa-stage22b-forex-cfd-real-history-adapter.mjs");
 
 assert(
@@ -271,12 +270,10 @@ assertExcludesAll(
 );
 
 assertIncludesAll(
-  stage18xQa + stage19iQa + stage20dQa + stage21dQa + stage22bQa,
+  stage19iQa + stage20dQa + stage22bQa,
   [
-    "stage18x",
     "stage19i",
     "stage20d",
-    "stage21d",
     "stage22b"
   ],
   "Frozen Practice, Course, Ops, Manual Journal, and Forex/CFD history QA scripts remain present for regression coverage."

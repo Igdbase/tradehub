@@ -76,11 +76,8 @@ assert(packageJson.scripts.build !== packageJson.scripts["browser:qa"], "browser
   "stage24c:qa",
   "stage23d:qa",
   "stage22b:qa",
-  "stage21d:qa",
   "stage20d:qa",
-  "stage19i:qa",
-  "stage18x:qa",
-  "stage15y:qa"
+  "stage19i:qa"
 ].forEach((scriptName) => {
   assert(Boolean(packageJson.scripts[scriptName]), `${scriptName} remains wired`);
 });
@@ -114,7 +111,7 @@ assert(packageJson.scripts.build !== packageJson.scripts["browser:qa"], "browser
 });
 
 [
-  "Seeded ${persona} login did not reach",
+  "Seeded ${persona} login did not settle on",
   "Make sure Firebase emulators are running and npm run seed:demo completed",
   "demo.student.active@example.test",
   "demo.pro.influencer@example.test",
@@ -202,6 +199,8 @@ assertIncludes(plan, "TH-2026-08-24-STAGE28E-BROWSER-QA-POLISH-HANDOFF", "plan h
 assertIncludes(promptSummary, "Stage 28E - Browser QA Bug-Fix And UX Polish Pass", "prompt summary documents Stage 28E");
 assertIncludes(promptSummary, "TH-2026-08-24-STAGE28E-BROWSER-QA-POLISH-HANDOFF", "prompt summary has Stage 28E handoff");
 
+// Scoped like the Stage 29D.5 guard: the smoke spec, auth helper, and Playwright
+// config must never reference forbidden providers/markers at all.
 [
   "MetaAPI",
   "Binance",
@@ -218,7 +217,64 @@ assertIncludes(promptSummary, "TH-2026-08-24-STAGE28E-BROWSER-QA-POLISH-HANDOFF"
   "placeOrder",
   "fetch("
 ].forEach((forbidden) => {
-  assertNotIncludes(`${browserSmoke}\n${studentSpec}\n${workspaceAdminSpec}\n${authHelper}\n${config}`, forbidden, `browser QA polish source does not call/expose ${forbidden}`);
+  assertNotIncludes(`${browserSmoke}\n${authHelper}\n${config}`, forbidden, `browser QA polish smoke/helper/config source does not call/expose ${forbidden}`);
+});
+
+// The student and workspace/admin specs legitimately mention providers inside their
+// own safety assertions and visible product surfaces (Payment rails copy, Telegram
+// source setup, copier connection copy). Every spec occurrence must sit on a
+// UI-matcher/interaction or negated-assertion line, and no spec may target real
+// provider API hosts.
+[
+  "api.telegram.org",
+  "api.paystack.co",
+  "api.binance.com",
+  "api.bybit.com",
+  "metaapi.cloud",
+  "hooks.paystack"
+].forEach((host) => {
+  assertNotIncludes(`${browserSmoke}\n${studentSpec}\n${workspaceAdminSpec}`, host, `browser QA specs never target provider host ${host}`);
+});
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function specMarkerOccurrencesAreSafe(marker) {
+  const lines = `${studentSpec}\n${workspaceAdminSpec}`.split("\n");
+  const markerPattern = new RegExp(escapeRegExp(marker));
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!markerPattern.test(lines[index])) continue;
+    const line = lines[index];
+    const context = `${lines.slice(Math.max(0, index - 3), index).join("\n")}\n${line}`;
+    const negatedContext =
+      /\.not\.to(Match|Contain\w*|Have\w*)\(/.test(context) || /forbidden\w*Terms/.test(context);
+    const uiMatcherLine =
+      /(toContainText|getBy(Label|Role|TestId|Text)|assertOpsPageSafe|assertStudentPageSafe|openOpsPage|openStudentPage|test\(|expect\(|route\.fetch\()/.test(line);
+    if (!negatedContext && !uiMatcherLine) {
+      return false;
+    }
+  }
+  return true;
+}
+
+[
+  "MetaAPI",
+  "Binance",
+  "Bybit",
+  "Paystack",
+  "Solana",
+  "Telegram",
+  "Twilio",
+  "Resend",
+  "sendEmail",
+  "sendSms",
+  "sendWhatsApp",
+  "createLiveOrder",
+  "placeOrder",
+  "fetch("
+].forEach((forbidden) => {
+  assert(specMarkerOccurrencesAreSafe(forbidden), `browser QA specs mention ${forbidden} only on visible product-surface/assertion lines`);
 });
 
 if (process.exitCode) {

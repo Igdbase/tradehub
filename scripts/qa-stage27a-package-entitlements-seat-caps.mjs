@@ -39,6 +39,7 @@ const workspaceMapper = read("src/lib/workspace/dashboard-mappers.ts");
 const workspaceRepository = read("src/lib/workspace/dashboard-repository.ts");
 const billingRepository = read("src/lib/billing/billing-repository.ts");
 const workspaceOverview = read("src/components/workspace/workspace-overview.tsx");
+const workspacePageClient = read("src/app/(influencer)/workspace/workspace-page-client.tsx");
 const adminTypes = read("src/types/admin-api.ts");
 const adminRepo = read("src/lib/admin/firestore-admin-repository.ts");
 const adminRoute = read("src/app/api/admin/overview/route.ts");
@@ -68,11 +69,9 @@ for (const scriptName of [
   "stage24c:qa",
   "stage23d:qa",
   "stage22b:qa",
-  "stage21d:qa",
+  // Stage 30D retired stage21d:qa, stage18x:qa, and stage15y:qa (see docs/legacy-guard-triage.md).
   "stage20d:qa",
-  "stage19i:qa",
-  "stage18x:qa",
-  "stage15y:qa"
+  "stage19i:qa"
 ]) {
   assert(typeof scripts[scriptName] === "string", `${scriptName} remains wired.`);
 }
@@ -99,9 +98,10 @@ assert(workspaceMapper.includes("deriveWorkspacePackageStatus"), "Workspace mapp
 assert(workspaceRepository.includes("deriveWorkspacePackageStatus") && workspaceRepository.includes("activeStudentCount"), "Workspace repository derives package status from workspace/student records.");
 assert(workspaceRepository.includes("over the current package seat cap"), "Workspace repository warns when active students exceed package cap.");
 
-assert(workspaceOverview.includes("Workspace licence") && workspaceOverview.includes("Seat cap") && workspaceOverview.includes("Seats left"), "Workspace UI shows package name, seat cap, and remaining seats.");
-assert(workspaceOverview.includes("Pricing is handled by private quote/contact sales"), "Workspace UI avoids public prices and directs pricing to private quote/contact sales.");
-assert(workspaceOverview.includes("Trade Copier remains a separate optional add-on"), "Workspace UI keeps Trade Copier separate and optional.");
+assert(workspaceOverview.includes("Package") && workspaceOverview.includes("Seat cap") && workspaceOverview.includes("Seats left"), "Workspace overview shows package name, seat cap, and remaining seats.");
+assert(workspacePageClient.includes("Workspace licence") && workspacePageClient.includes("Seat cap") && workspacePageClient.includes("Seats left"), "Workspace licence card shows package name, seat cap, and remaining seats.");
+assert(workspacePageClient.includes("Pricing is handled by private quote/contact sales"), "Workspace UI avoids public prices and directs pricing to private quote/contact sales.");
+assert(workspacePageClient.includes("Trade Copier remains a separate optional add-on"), "Workspace UI keeps Trade Copier separate and optional.");
 assert(!/Launch Workspace[^`]*[₦$]\s*\d/i.test(workspaceOverview), "Workspace package UI does not show public Launch price.");
 assert(!/Pro Workspace[^`]*[₦$]\s*\d/i.test(workspaceOverview), "Workspace package UI does not show public Pro price.");
 assert(!/Enterprise Workspace[^`]*[₦$]\s*\d/i.test(workspaceOverview), "Workspace package UI does not show public Enterprise price.");

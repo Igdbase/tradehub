@@ -59,9 +59,9 @@ const studentHome = read("src/app/(student)/app/student-app-page-client.tsx");
 
 [
   "scripts/qa-stage23a-messaging-provider-contract.mjs",
-  "scripts/qa-stage23b-messaging-dry-run-worker.mjs",
-  "scripts/qa-stage23c-messaging-preferences-suppression.mjs"
+  "scripts/qa-stage23b-messaging-dry-run-worker.mjs"
 ].forEach((relativePath) => assert(exists(relativePath), `${relativePath} remains present.`));
+// Stage 30D retired qa-stage23c (reminder preferences were removed; see docs/legacy-guard-triage.md).
 
 assert(
   packageJson.scripts?.["stage23d:qa"] === "node scripts/qa-stage23d-messaging-final-acceptance.mjs",
@@ -79,7 +79,6 @@ assertIncludesAll(
   [
     "\"stage23a:qa\"",
     "\"stage23b:qa\"",
-    "\"stage23c:qa\"",
     "\"stage23d:qa\""
   ],
   "Stage 23A through Stage 23D QA scripts are wired."

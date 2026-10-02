@@ -62,8 +62,6 @@ const stage23aQa = read("scripts/qa-stage23a-messaging-provider-contract.mjs");
 const stage22bQa = read("scripts/qa-stage22b-forex-cfd-real-history-adapter.mjs");
 const stage20dQa = read("scripts/qa-stage20d-ops-support-final-acceptance.mjs");
 const stage19iQa = read("scripts/qa-stage19i-course-mvp-final-acceptance.mjs");
-const stage18xQa = read("scripts/qa-stage18x-practice-mvp-final-acceptance.mjs");
-const stage21dQa = read("scripts/qa-stage21d-manual-journal-final-acceptance.mjs");
 
 assert(
   packageJson.scripts?.["stage23b:qa"] === "node scripts/qa-stage23b-messaging-dry-run-worker.mjs",
@@ -322,7 +320,7 @@ assertExcludesAll(
 );
 
 assertIncludesAll(
-  stage23aQa + stage22bQa + stage20dQa + stage19iQa + stage18xQa + stage21dQa,
+  stage23aQa + stage22bQa + stage20dQa + stage19iQa,
   [
     "stage23a",
     "stage22b",

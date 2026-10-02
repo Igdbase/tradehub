@@ -166,22 +166,26 @@ includesAll(terminal, [
 ], "Every completed or cancelled production tool returns to Select and clears its capture state.");
 
 const pointerDown = sectionBetween(chart, "function handleDrawingCapturePointerDown", "function handleDrawingCapturePointerMove");
-assert(pointerDown.indexOf('if (activeDrawingTool === "trend_line")') < pointerDown.indexOf("setPointerCapture(event.pointerId)"), "Trend exits before pointer capture.");
+assert(
+  pointerDown.indexOf("terminalTwoClickToolKinds.has(activeDrawingTool)") >= 0 &&
+    pointerDown.indexOf("terminalTwoClickToolKinds.has(activeDrawingTool)") < pointerDown.indexOf("setPointerCapture(event.pointerId)"),
+  "The two-click direction tools (trend, ray, extended) exit before pointer capture."
+);
 const pointerMove = sectionBetween(chart, "function handleDrawingCapturePointerMove", "function handleDrawingCapturePointerUp");
-includesAll(pointerMove, ["currentTrendLineDraft", "trendLineDraftRef.current = nextDraft", 'renderKLineDraft("trend_line", nextDraft.start, point)'], "Trend preview is a native KLine overlay that follows pointer movement without a held button.");
+includesAll(pointerMove, ["currentTrendLineDraft", "trendLineDraftRef.current = nextDraft", "renderKLineDraft(currentTrendLineDraft.kind, nextDraft.start, point)"], "The two-click direction previews are native KLine overlays that follow pointer movement without a held button.");
 excludesAll(pointerMove, ["event.buttons", "pixelDistance"], "Trend preview has no held-button or distance threshold.");
 const pointerUp = sectionBetween(chart, "function handleDrawingCapturePointerUp", "function handleDrawingCapturePointerCancel");
 const firstAnchor = sectionBetween(pointerUp, "if (!currentTrendLineDraft)", "trendLineDraftRef.current = null;");
-includesAll(firstAnchor, ["trendLineDraftRef.current = { start: point, current: point };", 'renderKLineDraft("trend_line", point, point);', "return;"], "First Trend click stores only a local anchor and native preview.");
+includesAll(firstAnchor, ["trendLineDraftRef.current = { kind: activeDrawingTool as \"trend_line\" | \"ray\" | \"extended_line\", start: point, current: point };", "renderKLineDraft(activeDrawingTool, point, point);", "return;"], "The first click of a two-click direction tool stores only a local anchor and native preview.");
 excludesAll(firstAnchor, ["onPlaceDrawing", "POST", "fetch("], "First Trend click cannot persist an incomplete line.");
 includesAll(pointerUp, [
-  'kind: "trend_line"',
+  "kind: currentTrendLineDraft.kind",
   'coordinateVersion: "klinecharts_v2"',
   "currentTrendLineDraft.start.dataIndex",
   "point.dataIndex",
   "terminalToolRequiresDrag(currentDraft.kind)",
   "pixelDistance < 10"
-], "Second Trend click and drag tools persist versioned visual coordinates.");
+], "The second click of a two-click direction tool and drag tools persist versioned visual coordinates.");
 const pointerCancel = sectionBetween(chart, "function handleDrawingCapturePointerCancel", "async function commitTextDraft");
 includesAll(pointerCancel, [
   "event?.preventDefault();",

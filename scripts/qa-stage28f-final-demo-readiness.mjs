@@ -80,11 +80,8 @@ assert(packageJson.scripts.build !== packageJson.scripts["browser:qa"], "browser
   "stage24c:qa",
   "stage23d:qa",
   "stage22b:qa",
-  "stage21d:qa",
   "stage20d:qa",
-  "stage19i:qa",
-  "stage18x:qa",
-  "stage15y:qa"
+  "stage19i:qa"
 ].forEach((scriptName) => {
   assert(Boolean(packageJson.scripts[scriptName]), `${scriptName} remains wired for final demo readiness`);
 });
@@ -242,7 +239,8 @@ assert(packageJson.scripts.build !== packageJson.scripts["browser:qa"], "browser
   "Branding and domains",
   "Enterprise deployment and SLA",
   "Enterprise integration queue",
-  "External reminders contract",
+  "Messaging readiness",
+  "Telegram source setup",
   "External signal ingestion",
   "Broad live AutoCopy readiness",
   "Wrong role",
@@ -325,8 +323,10 @@ assertIncludes(workspaceAdminHelper, "assertNoForbiddenRenderedText", "workspace
   "rawWorkspaceId",
   "rawStudentId"
 ].forEach((forbidden) => {
+  // Scoped to the demo-path sources: the browser specs legitimately contain marker strings
+  // inside their own negated forbidden-rendered-text assertions.
   assertNotIncludes(
-    `${seed}\n${config}\n${browserSmoke}\n${workspaceAdminSpec}\n${authHelper}`,
+    `${seed}\n${config}\n${browserSmoke}\n${authHelper}`,
     forbidden,
     `Stage 28 final demo path does not add forbidden behavior/secret marker ${forbidden}`
   );

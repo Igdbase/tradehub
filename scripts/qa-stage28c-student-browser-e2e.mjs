@@ -63,11 +63,8 @@ assert(packageJson.scripts.build !== packageJson.scripts["browser:qa:student"], 
   "stage24c:qa",
   "stage23d:qa",
   "stage22b:qa",
-  "stage21d:qa",
   "stage20d:qa",
-  "stage19i:qa",
-  "stage18x:qa",
-  "stage15y:qa"
+  "stage19i:qa"
 ].forEach((scriptName) => {
   assert(Boolean(packageJson.scripts[scriptName]), `${scriptName} remains wired`);
 });
@@ -96,6 +93,8 @@ assert(packageJson.scripts.build !== packageJson.scripts["browser:qa:student"], 
   assertIncludes(`${studentSpec}\n${studentHelper}`, needle, `student browser E2E uses ${needle}`);
 });
 
+// Stage 29A made the journal read-only provider history (no manual CRUD), so the
+// spec deliberately no longer visits /app/journal/trades/<manualTradeId>.
 [
   "/app",
   "/app/practice",
@@ -105,7 +104,6 @@ assert(packageJson.scripts.build !== packageJson.scripts["browser:qa:student"], 
   "/app/courses/${demoStudentIds.courseId}",
   "/app/courses/${demoStudentIds.courseId}/proof",
   "/app/journal",
-  "/app/journal/trades/${demoStudentIds.manualTradeId}",
   "/workspace",
   "/admin"
 ].forEach((routeNeedle) => {
@@ -119,9 +117,9 @@ assert(packageJson.scripts.build !== packageJson.scripts["browser:qa:student"], 
   "Demo Trading Foundations",
   "Notes and bookmarks",
   "Knowledge check",
-  "Private manual trade journal",
-  "Manual analytics",
-  "Trade review chart",
+  "Read-only crypto history",
+  "Copier setup and practice results stay separate",
+  "journal-crypto-sync-panel",
   "student app home loads without reminder preferences",
   "Wrong role"
 ].forEach((copyNeedle) => {
@@ -189,6 +187,8 @@ assertIncludes(plan, "TH-2026-08-24-STAGE28C-STUDENT-BROWSER-E2E-HANDOFF", "plan
 assertIncludes(promptSummary, "Stage 28C - Student End-to-End Browser QA", "prompt summary documents Stage 28C");
 assertIncludes(promptSummary, "TH-2026-08-24-STAGE28C-STUDENT-BROWSER-E2E-HANDOFF", "prompt summary has Stage 28C handoff");
 
+// Scoped like the Stage 29D.5 guard: helpers and Playwright config must never
+// reference forbidden providers/markers at all.
 [
   "MetaAPI",
   "Binance",
@@ -207,7 +207,58 @@ assertIncludes(promptSummary, "TH-2026-08-24-STAGE28C-STUDENT-BROWSER-E2E-HANDOF
   "vaultRef",
   "fetch("
 ].forEach((forbidden) => {
-  assertNotIncludes(`${studentSpec}\n${authHelper}\n${config}`, forbidden, `student browser QA source does not call/expose ${forbidden}`);
+  assertNotIncludes(`${authHelper}\n${config}`, forbidden, `student browser QA helper/config does not call/expose ${forbidden}`);
+});
+
+// The browser spec legitimately contains these strings inside its own safety
+// assertions: negated not.toMatch/not.toContainText forbidden-text checks (including
+// multiline regex arguments and forbidden-terms constants), visible UI-copy matchers
+// for provider branding, and Playwright's route.fetch interception API. Assert every
+// spec occurrence sits on such a safe line so the spec still cannot gain real
+// provider calls, credentials, or page-level fetches.
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function specMarkerOccurrencesAreSafe(marker) {
+  const lines = studentSpec.split("\n");
+  const markerPattern = new RegExp(escapeRegExp(marker));
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!markerPattern.test(lines[index])) continue;
+    const context = `${lines.slice(Math.max(0, index - 3), index).join("\n")}\n${lines[index]}`;
+    const negatedContext =
+      /\.not\.to(Match|Contain\w*|Have\w*)\(/.test(context) || /forbidden\w*Terms/.test(context);
+    const routeApi = /route\.fetch\(/.test(lines[index]);
+    const uiCopyMatcher =
+      ["Binance", "Bybit"].includes(marker) &&
+      /(toContainText|openStudentPage)\(/.test(lines[index]) &&
+      new RegExp(`/[^/\\n]*${escapeRegExp(marker)}[^/\\n]*/`).test(lines[index]);
+    if (!negatedContext && !routeApi && !uiCopyMatcher) {
+      return false;
+    }
+  }
+  return true;
+}
+
+[
+  "MetaAPI",
+  "Binance",
+  "Bybit",
+  "Paystack",
+  "Solana",
+  "Telegram",
+  "Twilio",
+  "Resend",
+  "sendEmail",
+  "sendSms",
+  "sendWhatsApp",
+  "createLiveOrder",
+  "placeOrder",
+  "providerPayload",
+  "vaultRef",
+  "fetch("
+].forEach((forbidden) => {
+  assert(specMarkerOccurrencesAreSafe(forbidden), `student browser spec mentions ${forbidden} only inside its own safety assertions`);
 });
 
 if (process.exitCode) {

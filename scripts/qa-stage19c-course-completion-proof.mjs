@@ -217,7 +217,7 @@ assertIncludesAll(
     "Course progress",
     "Overall course progress",
     "Open completion proof",
-    "server-owned progress",
+    "requestCourseHubApi<LessonProgressResponse>",
     "progressSummary.status === \"completed\""
   ],
   "Student reader shows course progress, completion state, and proof entry point."
@@ -229,7 +229,7 @@ assertIncludesAll(
     "Print / Save proof",
     "window.print()",
     "@media print",
-    "TradeHub does not generate or store PDF files",
+    "Use your browser's print option to save a copy.",
     "course-proof-no-print",
     "proof.completed",
     "Completion confirmed",

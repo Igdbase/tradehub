@@ -1833,8 +1833,24 @@ async function runFeedExecutionCoverage() {
   assert(JSON.stringify(response) === JSON.stringify(reloadedResponse), "Executable Stage 29J QA proves mapped executions survive reload/readback.");
 }
 
+// Stage 30D: this suite rewrites the shared platform/workspace live-execution control
+// fixtures via seedCryptoReady; snapshot and restore them so other emulator-backed
+// guards (e.g. stage15i:qa) are not poisoned by leftover state after this run.
+let platformControlFixtureBackup = null;
+
+async function backupLiveControlFixtures() {
+  const platform = await db.doc("platform_live_execution_controls/current").get();
+  platformControlFixtureBackup = platform.exists ? platform.data() : null;
+}
+
+async function restoreLiveControlFixtures() {
+  if (!platformControlFixtureBackup) return;
+  await db.doc("platform_live_execution_controls/current").set(platformControlFixtureBackup);
+}
+
 async function main() {
   await assertEmulatorReachable();
+  await backupLiveControlFixtures();
   await runCryptoRoutingCoverage();
   await runCryptoFinalBoundaryRaceCoverage();
   await runCryptoLedgerProjectionFailureCoverage();
@@ -1863,7 +1879,12 @@ async function main() {
   await runForexLedgerProjectionClaimFinalFailedCoverage();
   await runFeedPaginationCoverage();
   await runFeedExecutionCoverage();
+  await restoreLiveControlFixtures();
   console.log("Stage 29J executable production routing/feed emulator QA passed.");
 }
 
-await main();
+try {
+  await main();
+} finally {
+  await restoreLiveControlFixtures();
+}

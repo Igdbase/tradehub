@@ -78,11 +78,11 @@ assertIncludesAll(
   terminalClient,
   [
     "terminalTimeframeOptions",
-    "{ label: \"M15\", value: 15 }",
-    "{ label: \"H1\", value: 60 }",
-    "{ label: \"H4\", value: 240 }",
-    "{ label: \"D1\", value: 1440 }",
-    "aria-label=\"Terminal timeframe\"",
+    "{ label: \"15m\", value: 15, supported: true }",
+    "{ label: \"1h\", value: 60, supported: true }",
+    "{ label: \"4h\", value: 240, supported: true }",
+    "{ label: \"D\", value: 1440, supported: true }",
+    "aria-label={`${option.label} timeframe${option.supported ? \"\" : \" unavailable\"}`}",
     "/timeframe",
     "changeTerminalTimeframe"
   ],
@@ -112,7 +112,7 @@ assertIncludesAll(
 assertIncludesAll(
   terminalClient,
   [
-    "isGoToPanelOpen",
+    "practice-terminal-go-to-panel",
     "Candle index",
     "Date / time",
     "navigateTerminalReplay",
@@ -143,7 +143,7 @@ assertIncludesAll(
   [
     "randomStartEnabled",
     "Random start",
-    "Random window chosen server-side"
+    "Choose another random start"
   ],
   "Practice session creation exposes a real random-start option and displays the selected server window."
 );
@@ -207,7 +207,7 @@ assertIncludesAll(
   [
     "Bookmarks",
     "Bookmark current candle",
-    "Prev bookmark",
+    "Previous bookmark",
     "Next bookmark",
     "PracticeBookmarkMutationResponse",
     "PracticeBookmarkDeleteResponse",
@@ -222,7 +222,7 @@ assertIncludesAll(
   [
     "const revealedCandlesOnly = useMemo(() => revealed?.candles ?? [], [revealed?.candles])",
     "computePracticeTerminalIndicators(revealedCandlesOnly, indicatorSettings)",
-    "Indicators are computed client-side from revealed candles only. Hidden future candles are never used."
+    "Indicators use revealed candles only."
   ],
   "Stage 18E preserves revealed-candle-only indicator calculations."
 );
@@ -268,7 +268,7 @@ assert(
 );
 
 assert(
-  terminalClient.includes("Practice Terminal") &&
+  terminalPage.includes("Practice Terminal") &&
     practiceRepo.includes("separate from AutoCopy"),
   "Practice terminal remains separated from AutoCopy in safe product copy and source metadata."
 );

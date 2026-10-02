@@ -145,7 +145,10 @@ assertIncludesAll(
   `${accountLinkedLedger}\n${journalClient}`,
   [
     "practiceInstrument?: PracticeInstrumentSpecSummary", "practiceInstrument: instrument",
-    "mapLedgerPracticeInstrument", "record.quantityStep", "entry.practiceInstrument ?? getPracticeInstrumentSpec"
+    "mapLedgerPracticeInstrument", "record.quantityStep",
+    // Current sanitized-instrument fallback chain in the practice ledger mappers:
+    // order.instrument ?? session.instrument ?? getPracticeInstrumentSpec(assetClass, symbol).
+    "?? getPracticeInstrumentSpec(input.session.assetClass, input.session.symbol)"
   ],
   "Private practice journal ledger entries preserve sanitized dynamic instrument metadata including quantityStep."
 );

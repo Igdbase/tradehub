@@ -27,6 +27,7 @@ const packageHelper = read("src/lib/workspace/workspace-package-licence.ts");
 const licenceOps = read("src/lib/workspace/workspace-package-licence-ops.ts");
 const licenceOpsRoute = read("src/app/api/admin/workspace-package-licences/route.ts");
 const workspaceOverview = read("src/components/workspace/workspace-overview.tsx");
+const workspacePageClient = read("src/app/(influencer)/workspace/workspace-page-client.tsx");
 const adminPanel = read("src/components/admin/workspace-package-overview-panel.tsx");
 const adminPage = read("src/app/(super-admin)/admin/admin-page-client.tsx");
 const mockAdminRepository = read("src/lib/admin/mock-admin-repository.ts");
@@ -48,11 +49,9 @@ for (const scriptName of [
   "stage24c:qa",
   "stage23d:qa",
   "stage22b:qa",
-  "stage21d:qa",
+  // Stage 30D retired stage21d:qa, stage18x:qa, and stage15y:qa (see docs/legacy-guard-triage.md).
   "stage20d:qa",
-  "stage19i:qa",
-  "stage18x:qa",
-  "stage15y:qa"
+  "stage19i:qa"
 ]) {
   assert(typeof scripts[scriptName] === "string", `${scriptName} remains wired.`);
 }
@@ -130,18 +129,19 @@ assert(!/params:\s*\{[^}]*workspaceId/.test(licenceOpsRoute), "Licence ops route
 assert(!/workspaceId:\s*parsed|payload\.workspaceId|rawWorkspaceId/.test(licenceOps), "Licence ops helper does not trust browser-supplied raw workspace IDs.");
 assert(licenceOps.includes("maskedActorRef"), "Licence ops audit stores masked admin actor refs.");
 
+// Stage 30D: the licence card moved from workspace-overview.tsx to the workspace page client.
 for (const snippet of [
   "Workspace licence",
-  "support terms are reviewed by TradeHub",
   "supportPrompt",
   "maintenanceSummary",
   "maintenanceRenewalStatus",
-  "maintenanceRenewalDueDate",
   "Pricing is handled by private quote/contact sales",
   "Trade Copier remains a separate optional add-on"
 ]) {
-  assert(workspaceOverview.includes(snippet), `Workspace package UI includes safe ${snippet} copy/state.`);
+  assert(workspacePageClient.includes(snippet), `Workspace package UI includes safe ${snippet} copy/state.`);
 }
+assert(packageTypes.includes("maintenanceRenewalDueDate"), "Workspace package types include safe maintenanceRenewalDueDate state.");
+assert(packageHelper.includes("Contact TradeHub for the current support terms."), "Workspace package UI includes safe support-terms-reviewed copy/state.");
 
 for (const snippet of [
   "Package licences",
@@ -171,7 +171,7 @@ for (const deniedPath of [
   assert(rules.includes(deniedPath), `Firestore rules deny direct browser access to ${deniedPath}.`);
 }
 
-for (const source of [workspaceOverview, adminPanel]) {
+for (const source of [workspacePageClient, adminPanel]) {
   assert(!/Launch Workspace[^`]*[₦$]\s*\d/i.test(source), "Launch package UI does not expose public prices.");
   assert(!/Pro Workspace[^`]*[₦$]\s*\d/i.test(source), "Pro package UI does not expose public prices.");
   assert(!/Enterprise Workspace[^`]*[₦$]\s*\d/i.test(source), "Enterprise package UI does not expose public prices.");

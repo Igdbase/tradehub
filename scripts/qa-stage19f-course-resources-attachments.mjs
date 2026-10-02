@@ -161,7 +161,7 @@ assertIncludesAll(
     "Open link",
     "Resources unavailable",
     "No lesson resources",
-    "TradeHub does not upload, host, or rewrite the files."
+    "target=\"_blank\" rel=\"noreferrer\""
   ],
   "Student reader renders grouped safe resource cards and empty/locked states."
 );

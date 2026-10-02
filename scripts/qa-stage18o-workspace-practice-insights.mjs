@@ -221,7 +221,7 @@ assertIncludesAll(
     "Practice Insights",
     "Student backtesting progress",
     "Aggregate simulated-practice activity only",
-    "Private journal entries, raw trade history, hidden candles, and execution internals are not shown.",
+    "without seeing private student journals, raw trade",
     "Status",
     "Symbol",
     "Timeframe",

@@ -164,18 +164,14 @@ assertIncludesAll(
 assertIncludesAll(
   workspaceOverview,
   [
-    "Stage 20A ops audit",
-    "Workspace readiness summary",
+    "Workspace snapshot",
     "Profile",
-    "Payment/access",
+    "Students",
+    "Payments",
     "Courses",
     "Signals",
-    "AutoCopy",
-    "Practice/course MVP",
-    "Private practice trades",
-    "course notes",
-    "payment payloads",
-    "credential records"
+    "Practice",
+    "Aggregate learning and practice activity"
   ],
   "Workspace overview exposes a safe readiness summary without private internals."
 );
@@ -190,12 +186,10 @@ assertIncludesAll(
     "Unpaid / expired",
     "Support ref",
     "practiceStudentRef",
-    "private course notes",
-    "practice trades",
-    "journal entries",
-    "payment payloads",
-    "provider payloads",
-    "credentials"
+    "Private notes, trades, journal entries,",
+    "payment details, and account data stay out of this view.",
+    "It does not include private notes,",
+    "journal entries, trades, payment details, account data, or private Copier controls."
   ],
   "Workspace student CRM supports safe search/filter/counts and masked support refs."
 );
@@ -255,13 +249,13 @@ assertIncludesAll(
 assertIncludesAll(
   adminSupportOverview,
   [
-    "Stage 20A support audit",
+    "Support audit",
     "Safe operator issue summary",
     "Pending apps",
     "Payment issues",
     "Workspace readiness",
     "AutoCopy blocks",
-    "MVP browser QA",
+    "not measured on this view",
     "aggregate-only",
     "does not show raw payment payloads"
   ],
@@ -272,7 +266,7 @@ assertIncludesAll(
   adminPage,
   [
     "RoleGate allowedRole=\"super_admin\"",
-    "Stage 20A ops audit",
+    "Control room overview",
     "AdminSupportOverview",
     "/api/admin/payments/overview",
     "/api/admin/audit-log?limit=25"

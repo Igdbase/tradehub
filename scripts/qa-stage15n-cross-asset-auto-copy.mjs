@@ -88,19 +88,19 @@ check(
 );
 check(
   "student UI is a cross-asset control center",
-  studentUi.includes("Auto-Copy control center") &&
-    studentUi.includes("Forex Auto-Copy is paper simulation only") &&
-    studentUi.includes("Confirm-before-execute") &&
-    studentUi.includes("Stale signal policy"),
+  studentUi.includes("{marketLabel} Copier controls") &&
+    studentUi.includes("TradeHub does not custody your funds or need withdrawal access") &&
+    studentUi.includes("Ask before copying") &&
+    studentUi.includes("Late signal handling"),
   "Student copier must expose shared execution mode, risk sizing, stale policy, and no-live forex copy."
 );
 check(
   "influencer publish review shows routing posture",
-  signalUi.includes("Full auto") &&
+  signalUi.includes("Auto copy") &&
   signalUi.includes("Needs confirm") &&
   signalUi.includes("Alerts only") &&
-  signalUi.includes("Blocked prefs") &&
-    signalUi.includes("forex paper simulation"),
+  signalUi.includes("Blocked") &&
+    signalUi.includes("Forex student review"),
   "Influencer publish review must show safe full-auto/confirmation/alerts/blocked posture."
 );
 check(

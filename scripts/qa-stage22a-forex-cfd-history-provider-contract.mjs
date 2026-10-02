@@ -90,7 +90,7 @@ assertIncludesAll(
     "FOREX_CFD_HISTORY_SUPPORTED_TIMEFRAMES",
     "safeForexCfdProviderSymbol",
     "forexCfdProviderSymbolMatchesCanonical",
-    "provider.startsWith(canonical)",
+    "provider.startsWith(normalizedAlias)",
     "PRACTICE_FOREX_CFD_PROVIDER_SYMBOL_MAP",
     "resolveForexCfdHistoryProviderSymbol"
   ],
@@ -130,7 +130,8 @@ assertIncludesAll(
     "readiness.provider === \"metaapi_utility\"",
     "practice_forex_cfd_history_not_configured",
     "practice_forex_cfd_history_provider_invalid",
-    "providerSymbolForCache",
+    "buildHistoricalCandleCacheKey",
+    "input.providerSymbol ?? \"\"",
     "providerSymbol: cached.providerSymbol ?? providerSymbol",
     "MAX_CANDLES_PER_REQUEST",
     "MAX_RANGE_MS",

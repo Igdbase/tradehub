@@ -123,7 +123,7 @@ assertIncludesAll(
     "Search courses",
     "Course filters",
     "No courses match",
-    "Opening a course still uses the signed-in student API and existing access checks."
+    "requestCourseHubApi<StudentCourseListResponse>(\"/api/student/courses?limit=25\")"
   ],
   "Student course list adds navigation filters without bypassing server access."
 );

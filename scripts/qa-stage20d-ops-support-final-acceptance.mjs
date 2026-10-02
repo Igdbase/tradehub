@@ -73,7 +73,7 @@ const billingValidation = read("src/lib/billing/billing-validation.ts");
 const paymentTypes = read("src/types/payments.ts");
 const workspaceTypes = read("src/types/workspace-dashboard.ts");
 
-const stage18xQa = read("scripts/qa-stage18x-practice-mvp-final-acceptance.mjs");
+// Stage 30D retired qa-stage18x (see docs/legacy-guard-triage.md).
 const stage19iQa = read("scripts/qa-stage19i-course-mvp-final-acceptance.mjs");
 
 const opsBrowserSurface = [
@@ -113,7 +113,6 @@ assertExistsAll(
     "scripts/qa-stage20a-ops-crm-payments-support-foundation.mjs",
     "scripts/qa-stage20b-workspace-student-crm-lifecycle.mjs",
     "scripts/qa-stage20c-payment-subscription-ops.mjs",
-    "scripts/qa-stage18x-practice-mvp-final-acceptance.mjs",
     "scripts/qa-stage19i-course-mvp-final-acceptance.mjs",
     "src/components/admin/payment-support-queue.tsx",
     "src/app/api/workspace/students/[studentId]/support/route.ts"
@@ -124,17 +123,14 @@ assertExistsAll(
 assertIncludesAll(
   workspaceOverview,
   [
-    "Stage 20A ops audit",
-    "Workspace readiness summary",
+    "Workspace snapshot",
     "Profile",
-    "Payment/access",
+    "Students",
+    "Payments",
     "Courses",
     "Signals",
-    "AutoCopy",
-    "Practice/course MVP",
-    "Private practice trades",
-    "payment payloads",
-    "credential records"
+    "Practice",
+    "Aggregate learning and practice activity"
   ],
   "Workspace readiness summary remains safe and complete."
 );
@@ -274,17 +270,7 @@ assertIncludesAll(
   "Firestore rules retain deny-by-default coverage for protected ops, payment, support, course, and practice records."
 );
 
-assertIncludesAll(
-  stage18xQa,
-  [
-    "Stage 18X practice MVP final acceptance",
-    "Practice server/types layer does not couple to live execution",
-    "Workspace recent completion type excludes raw sessionId/studentId",
-    "FireStore rules retain deny-by-default coverage for protected practice paths".replace("FireStore", "Firestore")
-  ],
-  "Frozen Stage 18X practice acceptance guard remains intact."
-);
-
+// Stage 30D retired qa-stage18x (see docs/legacy-guard-triage.md).
 assertIncludesAll(
   stage19iQa,
   [

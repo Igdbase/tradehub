@@ -41,6 +41,17 @@ const practiceModules = [
   levelsRoute,
   partialRoute
 ].join("\n");
+// The journal client also hosts the Journal Sync exchange-connection form (students submit their
+// own read-only API key/secret), so the secret-scan below covers the practice modules only.
+const practiceModulesForSecretScan = [
+  practiceTypes,
+  fillEngine,
+  practiceRepo,
+  replayClient,
+  ledger,
+  levelsRoute,
+  partialRoute
+].join("\n");
 
 assert(
   packageJson.scripts?.["stage17d:qa"] === "node scripts/qa-stage17d-practice-replay-order-ux.mjs",
@@ -82,8 +93,8 @@ assertIncludesAll(
     "partiallyCloseStudentPracticeOrder",
     "validateDirectionalPracticeLevels",
     "order.status !== \"open\" && order.status !== \"pending\"",
-    "closeSize <= 0 || closeSize >= remainingSize",
-    "Partial close quantity must be greater than zero and less than the remaining quantity.",
+    "closeSize < minimumCloseSize || closeSize >= remainingSize",
+    "Partial close quantity must meet this instrument's minimum and quantity step, and remain below the open quantity.",
     "candlesResult.candles.slice(0, session.currentCandleIndex + 1)",
     "writePracticeCloseEventLedger",
     "mapPracticeBacktestCloseEventToLedgerEntry"
@@ -108,7 +119,7 @@ assertIncludesAll(
   replayClient,
   [
     "orders.slice(0, 5).map",
-    "Entry {order.filledPrice ?? order.requestedPrice}",
+    "Entry {formatReplayPrice(order.filledPrice ?? order.requestedPrice, order.instrument)}",
     "Save SL/TP",
     "Close partial",
     "Close %",
@@ -137,10 +148,10 @@ assertIncludesAll(
 assertIncludesAll(
   journalUi,
   [
-    "Partial close",
-    "Full close",
-    "performance.practice.recentItems",
-    "Practice/backtesting"
+    "value=\"partial\">Partial",
+    "value=\"closed\">Closed",
+    "/api/student/practice/analytics",
+    "\"backtesting\", \"Backtesting\""
   ],
   "Journal shows practice/backtesting entries with partial/full close labels."
 );
@@ -157,12 +168,12 @@ assert(
   "Stage 17D practice modules do not import or call AutoCopy/live execution adapters."
 );
 assert(
-  !practiceModules.includes("apiSecret") &&
-    !practiceModules.includes("brokerPassword") &&
-    !practiceModules.includes("metaApiToken") &&
-    !practiceModules.includes("credentialRefPath") &&
-    !practiceModules.includes("rawProviderPayload") &&
-    !practiceModules.includes("accountId"),
+  !practiceModulesForSecretScan.includes("apiSecret") &&
+    !practiceModulesForSecretScan.includes("brokerPassword") &&
+    !practiceModulesForSecretScan.includes("metaApiToken") &&
+    !practiceModulesForSecretScan.includes("credentialRefPath") &&
+    !practiceModulesForSecretScan.includes("rawProviderPayload") &&
+    !practiceModulesForSecretScan.includes("accountId"),
   "Stage 17D practice modules do not expose secrets, vault refs, raw provider payloads, or account IDs."
 );
 
