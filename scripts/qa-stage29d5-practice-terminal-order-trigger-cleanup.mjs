@@ -101,11 +101,10 @@ includesAll(terminal, [
 ], "Detailed Order popout still supports order type, SL/TP, strategy/checklist/notes, and simulated-only copy.");
 
 includesAll(terminal, [
-  'available: false',
   "disabled={isDisabled}",
-  'label: "Ray (coming soon)", kind: undefined, available: false',
-  'label: "Cross line (coming soon)", kind: undefined, available: false'
-], "Remaining nonfunctional terminal tools stay visibly disabled instead of pretending to work (Stage 30A activated Brush and Magnet snap).");
+  'label: "Ray", kind: "ray", available: true',
+  'label: "Cross line", kind: "cross_line", available: true'
+], "Stage 30C line tools are active rather than pretending-disabled placeholders (no coming-soon placeholders remain in the rail).");
 
 includesAll(browser, [
   "practice-terminal-quick-buy",

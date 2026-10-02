@@ -65,6 +65,8 @@ import type {
   PracticeAnnotationKind,
   PracticeAnnotationMutationResponse,
   PracticeAnnotationRecord,
+  PracticeDrawingArrowEnds,
+  PracticeDrawingLineStyle,
   PracticeAnnotationSummary,
   PracticeAssignmentRecord,
   PracticeAssignmentReviewQueueFilter,
@@ -636,7 +638,11 @@ function normalizeAnnotationKind(value: unknown): PracticeAnnotationKind {
     value === "fibonacci_retracement" ||
     value === "measurement_placeholder" ||
     value === "freehand_brush" ||
-    value === "parallel_channel"
+    value === "parallel_channel" ||
+    value === "ray" ||
+    value === "extended_line" ||
+    value === "horizontal_ray" ||
+    value === "cross_line"
   ) {
     return value;
   }
@@ -653,7 +659,11 @@ function isTerminalDrawingAnnotationKind(kind: PracticeAnnotationKind) {
     kind === "fibonacci_retracement" ||
     kind === "measurement_placeholder" ||
     kind === "freehand_brush" ||
-    kind === "parallel_channel";
+    kind === "parallel_channel" ||
+    kind === "ray" ||
+    kind === "extended_line" ||
+    kind === "horizontal_ray" ||
+    kind === "cross_line";
 }
 
 function practiceDrawingPointLimitForKind(kind: PracticeAnnotationKind) {
@@ -692,6 +702,14 @@ function defaultTextForAnnotationKind(kind: PracticeAnnotationKind) {
       return "Freehand brush";
     case "parallel_channel":
       return "Parallel channel";
+    case "ray":
+      return "Ray";
+    case "extended_line":
+      return "Extended line";
+    case "horizontal_ray":
+      return "Horizontal ray";
+    case "cross_line":
+      return "Cross line";
     default:
       return "Practice annotation";
   }
@@ -749,6 +767,29 @@ function normalizeDrawingColorToken(value: unknown): PracticeDrawingColorToken {
 
 function normalizeDrawingAppearanceVersion(value: unknown): PracticeDrawingAppearanceVersion | undefined {
   return value === "trend_blue_v1" || value === "user_selected_v1" ? value : undefined;
+}
+
+// Stage 30C: bounded appearance enums. Provided-but-invalid values reject with the existing
+// 400 pattern; absent fields fall through to the stored value (or none) so every pre-30C
+// drawing keeps reading as solid/none.
+function normalizeDrawingLineStyle(value: unknown): PracticeDrawingLineStyle | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === "solid" || value === "dashed" || value === "dotted") {
+    return value;
+  }
+  throw new AdminApiError(400, "practice_drawing_line_style_invalid", "Use a supported practice drawing line style.");
+}
+
+function normalizeDrawingArrowEnds(value: unknown): PracticeDrawingArrowEnds | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === "none" || value === "start" || value === "end" || value === "both") {
+    return value;
+  }
+  throw new AdminApiError(400, "practice_drawing_arrow_ends_invalid", "Use a supported practice drawing arrow ends value.");
 }
 
 function normalizeReflectionText(value: unknown) {
@@ -1311,11 +1352,14 @@ function mapPracticeDrawingChartPoints(value: unknown, pointLimit = PRACTICE_DRA
   return points.length ? points : undefined;
 }
 
+// Stage 30C: two-point direction line tools include ray and extended line.
 function requiresTwoPracticeDrawingPoints(kind: PracticeAnnotationKind) {
   return kind === "trend_line" ||
     kind === "zone" ||
     kind === "fibonacci_retracement" ||
-    kind === "measurement_placeholder";
+    kind === "measurement_placeholder" ||
+    kind === "ray" ||
+    kind === "extended_line";
 }
 
 function mapAnnotation(record: Record<string, unknown>, ids: {
@@ -1346,6 +1390,8 @@ function mapAnnotation(record: Record<string, unknown>, ids: {
     text: normalizeStoredAnnotationText(record.text, defaultTextForAnnotationKind(kind), kind),
     colorToken: normalizeDrawingColorToken(record.colorToken),
     appearanceVersion: normalizeDrawingAppearanceVersion(record.appearanceVersion),
+    lineStyle: normalizeDrawingLineStyle(record.lineStyle),
+    arrowEnds: normalizeDrawingArrowEnds(record.arrowEnds),
     isMainLesson: record.isMainLesson === true,
     createdAt: record.createdAt ? new Date(String(record.createdAt)).toISOString() : new Date().toISOString(),
     updatedAt: record.updatedAt ? new Date(String(record.updatedAt)).toISOString() : new Date().toISOString()
@@ -6345,6 +6391,25 @@ async function normalizeAnnotationForSession(input: {
   const appearanceVersion = record.appearanceVersion === undefined
     ? input.existing?.appearanceVersion
     : normalizeDrawingAppearanceVersion(record.appearanceVersion);
+  const lineStyle = record.lineStyle === undefined
+    ? input.existing?.lineStyle
+    : normalizeDrawingLineStyle(record.lineStyle);
+  const arrowEnds = record.arrowEnds === undefined
+    ? input.existing?.arrowEnds
+    : normalizeDrawingArrowEnds(record.arrowEnds);
+
+  if (record.lineStyle !== undefined && !lineStyle) {
+    throw new AdminApiError(400, "practice_drawing_line_style_invalid", "Use a supported practice drawing line style.");
+  }
+
+  if (record.arrowEnds !== undefined && !arrowEnds) {
+    throw new AdminApiError(400, "practice_drawing_arrow_ends_invalid", "Use a supported practice drawing arrow ends value.");
+  }
+
+  // Stage 30C: arrows render only on the two-point direction line tools.
+  if (arrowEnds !== undefined && arrowEnds !== "none" && kind !== "trend_line" && kind !== "ray" && kind !== "extended_line") {
+    throw new AdminApiError(400, "practice_drawing_arrow_ends_not_supported", "Arrow ends are only available on direction line tools.");
+  }
 
   if (record.coordinateVersion !== undefined && coordinateVersion !== "klinecharts_v1" && coordinateVersion !== "klinecharts_v2") {
     throw new AdminApiError(400, "practice_drawing_coordinate_version_invalid", "Use a supported practice drawing coordinate format.");
@@ -6422,6 +6487,8 @@ async function normalizeAnnotationForSession(input: {
     text: record.text === undefined && input.existing ? input.existing.text : normalizeAnnotationText(record.text, label || defaultTextForAnnotationKind(kind), kind),
     colorToken: record.colorToken === undefined && input.existing ? input.existing.colorToken : normalizeDrawingColorToken(record.colorToken),
     appearanceVersion,
+    lineStyle,
+    arrowEnds,
     isMainLesson: record.isMainLesson === undefined ? input.existing?.isMainLesson === true : record.isMainLesson === true
   };
 }
@@ -6455,6 +6522,8 @@ export async function createStudentPracticeAnnotation(
     text: normalized.text,
     colorToken: normalized.colorToken,
     appearanceVersion: normalized.appearanceVersion,
+    lineStyle: normalized.lineStyle,
+    arrowEnds: normalized.arrowEnds,
     isMainLesson: normalized.isMainLesson,
     createdAt: now,
     updatedAt: now
@@ -6511,6 +6580,8 @@ export async function updateStudentPracticeAnnotation(
     text: normalized.text,
     colorToken: normalized.colorToken,
     appearanceVersion: normalized.appearanceVersion,
+    lineStyle: normalized.lineStyle,
+    arrowEnds: normalized.arrowEnds,
     isMainLesson: normalized.isMainLesson,
     updatedAt: now
   };

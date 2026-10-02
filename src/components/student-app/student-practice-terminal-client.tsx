@@ -58,13 +58,17 @@ import {
   PRACTICE_KLINE_ATR_INDICATOR,
   PRACTICE_KLINE_ATR_PANE,
   PRACTICE_KLINE_BRUSH_OVERLAY,
+  PRACTICE_KLINE_CROSS_LINE_OVERLAY,
   PRACTICE_KLINE_DRAFT_GROUP,
   PRACTICE_KLINE_DRAWING_GROUP,
+  PRACTICE_KLINE_EXTENDED_LINE_OVERLAY,
+  PRACTICE_KLINE_HORIZONTAL_RAY_OVERLAY,
   PRACTICE_KLINE_FIBONACCI_OVERLAY,
   PRACTICE_KLINE_HORIZONTAL_OVERLAY,
   PRACTICE_KLINE_MEASURE_OVERLAY,
   PRACTICE_KLINE_PARALLEL_CHANNEL_OVERLAY,
   PRACTICE_KLINE_PRICE_GROUP,
+  PRACTICE_KLINE_RAY_OVERLAY,
   PRACTICE_KLINE_RSI_PANE,
   PRACTICE_KLINE_TEXT_OVERLAY,
   PRACTICE_KLINE_TREND_OVERLAY,
@@ -73,6 +77,7 @@ import {
   PRACTICE_KLINE_ZONE_OVERLAY,
   PRACTICE_LINE_DEFAULT_COLOR,
   PRACTICE_MAGNET_SNAP_RADIUS_PX,
+  practiceOverlayLineFigureStyles,
   registerPracticeKLineChartOverlays
 } from "@/lib/practice/practice-klinechart-overlays";
 import type {
@@ -205,6 +210,7 @@ type TerminalChartDragDraft = {
 };
 
 type TerminalTrendLineDraft = {
+  kind: "trend_line" | "ray" | "extended_line";
   start: TerminalChartPoint;
   current: TerminalChartPoint;
 };
@@ -303,7 +309,11 @@ const drawingKindOptions: Array<{ label: string; value: PracticeAnnotationKind }
   { label: "Fib retracement", value: "fibonacci_retracement" },
   { label: "Measure", value: "measurement_placeholder" },
   { label: "Brush", value: "freehand_brush" },
-  { label: "Parallel channel", value: "parallel_channel" }
+  { label: "Parallel channel", value: "parallel_channel" },
+  { label: "Ray", value: "ray" },
+  { label: "Extended line", value: "extended_line" },
+  { label: "Horizontal ray", value: "horizontal_ray" },
+  { label: "Cross line", value: "cross_line" }
 ];
 
 const drawingColorOptions: Array<{ label: string; value: PracticeDrawingColorToken }> = [
@@ -366,12 +376,12 @@ const compactInputClass =
 const terminalLineTools = [
   { id: "trend", label: "Trend line", kind: "trend_line", available: true },
   { id: "parallel-channel", label: "Parallel channel", kind: "parallel_channel", available: true },
-  { id: "ray", label: "Ray (coming soon)", kind: undefined, available: false },
-  { id: "extended-line", label: "Extended line (coming soon)", kind: undefined, available: false },
+  { id: "ray", label: "Ray", kind: "ray", available: true },
+  { id: "extended-line", label: "Extended line", kind: "extended_line", available: true },
   { id: "horizontal", label: "Horizontal price line", kind: "horizontal_line", available: true },
-  { id: "horizontal-ray", label: "Horizontal ray (coming soon)", kind: undefined, available: false },
+  { id: "horizontal-ray", label: "Horizontal ray", kind: "horizontal_ray", available: true },
   { id: "vertical", label: "Vertical line", kind: "vertical_marker", available: true },
-  { id: "cross-line", label: "Cross line (coming soon)", kind: undefined, available: false }
+  { id: "cross-line", label: "Cross line", kind: "cross_line", available: true }
 ] as const;
 
 const terminalObjectFilters: Array<{ label: string; value: TerminalObjectFilter }> = [
@@ -465,6 +475,10 @@ function practiceKLineOverlayName(kind: PracticeAnnotationKind) {
   if (kind === "measurement_placeholder") return PRACTICE_KLINE_MEASURE_OVERLAY;
   if (kind === "freehand_brush") return PRACTICE_KLINE_BRUSH_OVERLAY;
   if (kind === "parallel_channel") return PRACTICE_KLINE_PARALLEL_CHANNEL_OVERLAY;
+  if (kind === "ray") return PRACTICE_KLINE_RAY_OVERLAY;
+  if (kind === "extended_line") return PRACTICE_KLINE_EXTENDED_LINE_OVERLAY;
+  if (kind === "horizontal_ray") return PRACTICE_KLINE_HORIZONTAL_RAY_OVERLAY;
+  if (kind === "cross_line") return PRACTICE_KLINE_CROSS_LINE_OVERLAY;
   return PRACTICE_KLINE_TEXT_OVERLAY;
 }
 
@@ -661,7 +675,11 @@ function isTerminalDrawingKind(kind: TerminalActiveTool): kind is PracticeAnnota
     kind === "fibonacci_retracement" ||
     kind === "measurement_placeholder" ||
     kind === "freehand_brush" ||
-    kind === "parallel_channel";
+    kind === "parallel_channel" ||
+    kind === "ray" ||
+    kind === "extended_line" ||
+    kind === "horizontal_ray" ||
+    kind === "cross_line";
 }
 
 const terminalMagnetSnapToolKinds: ReadonlySet<PracticeAnnotationKind> = new Set([
@@ -670,7 +688,37 @@ const terminalMagnetSnapToolKinds: ReadonlySet<PracticeAnnotationKind> = new Set
   "vertical_marker",
   "zone",
   "fibonacci_retracement",
+  "parallel_channel",
+  "ray",
+  "extended_line",
+  "horizontal_ray",
+  "cross_line"
+]);
+
+// Stage 30C: line-family tools that expose the line-style editor control.
+const terminalLineStyleEditableKinds: ReadonlySet<PracticeAnnotationKind> = new Set([
+  "trend_line",
+  "horizontal_line",
+  "vertical_marker",
+  "cross_line",
+  "ray",
+  "extended_line",
+  "horizontal_ray",
   "parallel_channel"
+]);
+
+// Stage 30C: arrow ends apply only to the two-point direction line tools.
+const terminalArrowEditableKinds: ReadonlySet<PracticeAnnotationKind> = new Set([
+  "trend_line",
+  "ray",
+  "extended_line"
+]);
+
+// Stage 30C: the two-click direction tools that share the trend line click-move-click flow.
+const terminalTwoClickToolKinds: ReadonlySet<TerminalActiveTool> = new Set([
+  "trend_line",
+  "ray",
+  "extended_line"
 ]);
 
 // Stage 30A: distance-based brush simplification. Keeps points at least epsilon px apart,
@@ -704,7 +752,9 @@ function requiresTwoChartPoints(kind: PracticeAnnotationKind) {
   return kind === "trend_line" ||
     kind === "zone" ||
     kind === "fibonacci_retracement" ||
-    kind === "measurement_placeholder";
+    kind === "measurement_placeholder" ||
+    kind === "ray" ||
+    kind === "extended_line";
 }
 
 function terminalToolRequiresDrag(kind: PracticeAnnotationKind) {
@@ -969,7 +1019,11 @@ const terminalLineFamilyKinds: ReadonlySet<PracticeAnnotationKind> = new Set([
   "horizontal_line",
   "vertical_marker",
   "freehand_brush",
-  "parallel_channel"
+  "parallel_channel",
+  "ray",
+  "extended_line",
+  "horizontal_ray",
+  "cross_line"
 ]);
 
 function drawingColorHex(
@@ -1522,7 +1576,11 @@ function TerminalChart({
       return;
     }
 
-    if (activeDrawingTool === "text_note" || activeDrawingTool === "trend_line" || activeDrawingTool === "parallel_channel") {
+    if (
+      activeDrawingTool === "text_note" ||
+      activeDrawingTool === "parallel_channel" ||
+      terminalTwoClickToolKinds.has(activeDrawingTool)
+    ) {
       return;
     }
 
@@ -1566,7 +1624,7 @@ function TerminalChart({
   function handleDrawingCapturePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     const currentTrendLineDraft = trendLineDraftRef.current;
 
-    if (activeDrawingTool === "trend_line" && currentTrendLineDraft) {
+    if (terminalTwoClickToolKinds.has(activeDrawingTool) && currentTrendLineDraft) {
       const rect = event.currentTarget.getBoundingClientRect();
       const rawPoint = chartPointFromCoordinates(event.clientX - rect.left, event.clientY - rect.top);
 
@@ -1574,10 +1632,10 @@ function TerminalChart({
       event.stopPropagation();
 
       if (rawPoint) {
-        const point = resolveAnchorPoint(rawPoint, "trend_line");
+        const point = resolveAnchorPoint(rawPoint, activeDrawingTool);
         const nextDraft = { ...currentTrendLineDraft, current: point };
         trendLineDraftRef.current = nextDraft;
-        renderKLineDraft("trend_line", nextDraft.start, point);
+        renderKLineDraft(currentTrendLineDraft.kind, nextDraft.start, point);
       }
 
       return;
@@ -1651,7 +1709,7 @@ function TerminalChart({
       return;
     }
 
-    if (activeDrawingTool === "trend_line") {
+    if (terminalTwoClickToolKinds.has(activeDrawingTool)) {
       if (event.button !== 0 || !event.isPrimary) {
         return;
       }
@@ -1666,20 +1724,20 @@ function TerminalChart({
         return;
       }
 
-      const point = resolveAnchorPoint(rawPoint, "trend_line");
+      const point = resolveAnchorPoint(rawPoint, activeDrawingTool);
       const currentTrendLineDraft = trendLineDraftRef.current;
 
       if (!currentTrendLineDraft) {
-        trendLineDraftRef.current = { start: point, current: point };
-        renderKLineDraft("trend_line", point, point);
+        trendLineDraftRef.current = { kind: activeDrawingTool as "trend_line" | "ray" | "extended_line", start: point, current: point };
+        renderKLineDraft(activeDrawingTool, point, point);
         return;
       }
 
       trendLineDraftRef.current = null;
       clearKLineDraft();
-      onCancelTool("Trend line completed. Select restored.");
+      onCancelTool(`${drawingKindLabel(currentTrendLineDraft.kind)} completed. Select restored.`);
       void onPlaceDrawing({
-        kind: "trend_line",
+        kind: currentTrendLineDraft.kind,
         candleIndex: currentTrendLineDraft.start.candleIndex,
         priceLevel: currentTrendLineDraft.start.priceLevel,
         secondCandleIndex: point.candleIndex,
@@ -2340,9 +2398,15 @@ function TerminalChart({
         lock: !canEditDrawings,
         // Stage 30A: brush strokes suppress control dots; every other drawing keeps them.
         ...(drawing.kind === "freehand_brush" ? { needDefaultPointFigure: false } : { needDefaultPointFigure: true }),
-        extendData: { text: drawing.kind === "text_note" ? drawing.text : undefined, color: overlayColor },
+        // Stage 30C: per-drawing line style and arrow ends (arrows render only on direction tools).
+        extendData: {
+          text: drawing.kind === "text_note" ? drawing.text : undefined,
+          color: overlayColor,
+          style: drawing.lineStyle,
+          arrows: drawing.arrowEnds
+        },
         styles: {
-          line: { color: overlayColor, size: 2, style: "solid" },
+          line: practiceOverlayLineFigureStyles(drawing.lineStyle, { color: overlayColor }),
           polygon: { color: `${overlayColor}22`, borderColor: overlayColor, borderSize: 1 },
           point: {
             color: "#050506",
@@ -3265,8 +3329,8 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
     }));
     setDockMessage({
       tone: "success",
-      text: kind === "trend_line"
-        ? "Trend line selected. Click the start, move the pointer, then click the endpoint."
+      text: terminalTwoClickToolKinds.has(kind)
+        ? `${drawingKindLabel(kind)} selected. Click the start, move the pointer, then click the endpoint.`
         : kind === "parallel_channel"
           ? "Parallel channel selected. Click two base points, then click a third point to set the offset."
           : kind === "freehand_brush"
@@ -3461,6 +3525,8 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
             text: String(form.get("text") ?? ""),
             colorToken: String(form.get("colorToken") ?? "accent"),
             appearanceVersion: "user_selected_v1",
+            ...(form.get("lineStyle") ? { lineStyle: String(form.get("lineStyle")) } : {}),
+            ...(form.get("arrowEnds") ? { arrowEnds: String(form.get("arrowEnds")) } : {}),
             isMainLesson: form.get("isMainLesson") === "on",
             candleIndex: form.get("candleIndex") ? Number(form.get("candleIndex")) : selectedDrawing.candleIndex,
             secondCandleIndex: form.get("secondCandleIndex") ? Number(form.get("secondCandleIndex")) : selectedDrawing.secondCandleIndex,
@@ -3967,7 +4033,7 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
                   : tool.Icon;
               const isSelected = tool.kind === selectedToolKind ||
                 (tool.id === "cursor" && selectedToolKind === "select") ||
-                (tool.id === "lines" && (selectedToolKind === "trend_line" || selectedToolKind === "horizontal_line" || selectedToolKind === "vertical_marker" || selectedToolKind === "parallel_channel")) ||
+                (tool.id === "lines" && (selectedToolKind === "trend_line" || selectedToolKind === "horizontal_line" || selectedToolKind === "vertical_marker" || selectedToolKind === "parallel_channel" || selectedToolKind === "ray" || selectedToolKind === "extended_line" || selectedToolKind === "horizontal_ray" || selectedToolKind === "cross_line")) ||
                 (tool.id === "zoom" && selectedToolKind === "zoom") ||
                 (tool.id === "lock" && areDrawingsLocked) ||
                 (tool.id === "visibility" && !isDrawingLayerVisible) ||
@@ -4013,7 +4079,7 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
                       setIsLinesMenuOpen(nextOpen);
                       setIsDeleteMenuOpen(false);
                       if (nextOpen) {
-                        setLinesMenuPosition(terminalToolPopoverPosition(event.currentTarget.getBoundingClientRect(), 224, 320));
+                        setLinesMenuPosition(terminalToolPopoverPosition(event.currentTarget.getBoundingClientRect(), 224, 356));
                       }
                       setSelectedToolKind("select");
                       setSelectedDrawingId("");
@@ -4911,6 +4977,27 @@ function TerminalBody({ sessionId }: StudentPracticeTerminalClientProps) {
                       <p className="truncate rounded-[8px] border border-[color:var(--line)] px-2 py-1.5 text-xs text-[color:var(--label2)]">
                         {buildMeasurementSummary(selectedDrawing)}
                       </p>
+                    ) : null}
+                    {terminalLineStyleEditableKinds.has(selectedDrawing.kind) ? (
+                      <label className="grid gap-1.5 text-xs font-semibold">
+                        Line style
+                        <select className={compactInputClass} name="lineStyle" disabled={!canMutateDrawings} defaultValue={selectedDrawing.lineStyle ?? "solid"} aria-label="Drawing line style">
+                          <option value="solid">Solid</option>
+                          <option value="dashed">Dashed</option>
+                          <option value="dotted">Dotted</option>
+                        </select>
+                      </label>
+                    ) : null}
+                    {terminalArrowEditableKinds.has(selectedDrawing.kind) ? (
+                      <label className="grid gap-1.5 text-xs font-semibold">
+                        Arrow ends
+                        <select className={compactInputClass} name="arrowEnds" disabled={!canMutateDrawings} defaultValue={selectedDrawing.arrowEnds ?? "none"} aria-label="Drawing arrow ends">
+                          <option value="none">None</option>
+                          <option value="start">Start</option>
+                          <option value="end">End</option>
+                          <option value="both">Both</option>
+                        </select>
+                      </label>
                     ) : null}
                     <div className="grid grid-cols-2 gap-2">
                       <select className={compactInputClass} name="colorToken" disabled={!canMutateDrawings} defaultValue={selectedDrawing.colorToken ?? "accent"} aria-label="Drawing color">

@@ -151,8 +151,11 @@ includesAll(lineTools, [
   'label: "Parallel channel", kind: "parallel_channel"',
   'label: "Horizontal price line", kind: "horizontal_line"',
   'label: "Vertical line", kind: "vertical_marker"',
-  "coming soon"
-], "Line tools are grouped under the Lines menu with disabled future variants.");
+  'label: "Ray", kind: "ray"',
+  'label: "Extended line", kind: "extended_line"',
+  'label: "Horizontal ray", kind: "horizontal_ray"',
+  'label: "Cross line", kind: "cross_line"'
+], "Line tools are grouped under the Lines menu with every Stage 30C variant active.");
 
 // --- Placement flow: clamped to revealed candles, one- and two-click objects.
 const createFromChart = sectionBetween(

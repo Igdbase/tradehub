@@ -2372,6 +2372,324 @@ test.describe("TradeHub seeded student browser E2E", () => {
       }
     }
   });
+
+  test(`Practice Stage 30C line tool completion: ray, extended, horizontal ray, cross line, styles, and arrows at ${drawingViewport.label}`, async ({ page }) => {
+    test.setTimeout(240_000);
+    await page.setViewportSize({ width: drawingViewport.width, height: drawingViewport.height });
+    const sessionName = `Stage 30C Line Tools ${drawingViewport.label}`;
+    let createdSessionId = "";
+    let drawingPostCount = 0;
+    const countDrawingPosts = (request) => {
+      if (request.method() === "POST" && /\/api\/student\/practice\/sessions\/[^/]+\/drawings$/.test(new URL(request.url()).pathname)) {
+        drawingPostCount += 1;
+      }
+    };
+
+    try {
+      const modal = await openQuickPracticeSession(page);
+      await modal.getByTestId("practice-asset-toggle").click();
+      await modal.getByRole("button", { name: "Crypto" }).click();
+      await modal.getByTestId("practice-asset-search").fill("BTCUSDT");
+      await modal.getByRole("option", { name: /BTCUSDT, Bitcoin \/ Tether, available/i }).click();
+      await fillQuickPracticeSession(page, {
+        name: sessionName,
+        dateEnd: "2026-07-04",
+        openTerminal: true
+      });
+
+      const createObserver = await observeNextPracticeSessionCreation(page);
+      const terminalNavigationPromise = page.waitForURL(/\/app\/practice\/[^/]+\/terminal$/);
+      await modal.getByTestId("practice-create-session").click();
+      createdSessionId = (await createObserver.payloadPromise).session.sessionId;
+      await terminalNavigationPromise;
+      await createObserver.stop();
+      await expect(page.getByTestId("practice-terminal-chart-first-shell")).toBeVisible();
+      await expect.poll(async () => Number(
+        await page.getByTestId("practice-terminal-chart-surface").getAttribute("data-revealed-candle-count")
+      )).toBeGreaterThanOrEqual(24);
+
+      const drawingResponse = (method, suffix = /\/drawings$/) => page.waitForResponse((response) =>
+        response.request().method() === method && suffix.test(new URL(response.url()).pathname)
+      );
+      const drawingOverlay = (overlayName) => page.evaluate((name) => {
+        const chart = window.__TRADEHUB_PRACTICE_KLINECHART__;
+        const overlay = chart?.getOverlays({ groupId: "tradehub_practice_drawings_v1" }).find((candidate) => candidate.name === name);
+        if (!chart || !overlay) return null;
+        const plot = chart.getDom("candle_pane", "main");
+        const plotRect = plot?.getBoundingClientRect();
+        const size = chart.getSize("candle_pane", "main");
+        const coordinates = overlay.points.map((point) => chart.convertToPixel(point, { paneId: "candle_pane" }));
+        const created = overlay.createPointFigures?.({
+          chart,
+          overlay,
+          coordinates,
+          bounding: { width: size?.width ?? plotRect?.width ?? 0, height: size?.height ?? plotRect?.height ?? 0, left: 0, top: 0 },
+          xAxis: null,
+          yAxis: null
+        });
+        return {
+          id: overlay.id,
+          color: overlay.extendData?.color,
+          style: overlay.extendData?.style ?? null,
+          arrows: overlay.extendData?.arrows ?? null,
+          pointCount: overlay.points.length,
+          lineStyle: overlay.styles?.line?.style,
+          figureKeys: (Array.isArray(created) ? created : [created].filter(Boolean)).map((figure) => figure?.key),
+          lineFigures: (Array.isArray(created) ? created : [created].filter(Boolean))
+            .filter((figure) => figure?.type === "line")
+            .map((figure) => figure.attrs.coordinates)
+        };
+      }, overlayName);
+      const captureRatiosForClientPoint = async (clientPoint) => {
+        const capture = page.getByTestId("practice-terminal-drawing-capture-layer");
+        const box = await capture.boundingBox();
+        expect(box).not.toBeNull();
+        return { x: (clientPoint.x - box.x) / box.width, y: (clientPoint.y - box.y) / box.height };
+      };
+      const openLinesMenuOption = async (optionName) => {
+        const toolKind = { "Ray": "ray", "Extended line": "extended_line", "Horizontal ray": "horizontal_ray", "Cross line": "cross_line" }[optionName];
+        await page.getByRole("button", { name: "Lines and trend tools" }).click();
+        await page.getByTestId("practice-terminal-lines-menu").getByRole("menuitem", { name: optionName, exact: true }).click();
+        await expect(page.getByTestId("practice-terminal-chart-click-layer")).toHaveAttribute("data-active-drawing-tool", toolKind);
+      };
+      page.on("request", countDrawingPosts);
+
+      // Magnet on: ray anchors snap to revealed candle OHLC and persist snapped.
+      const magnetButton = page.getByRole("button", { name: "Magnet snap", exact: true });
+      await magnetButton.click();
+      await expect(magnetButton).toHaveAttribute("aria-pressed", "true");
+
+      const rayStart = await page.evaluate(() => {
+        const chart = window.__TRADEHUB_PRACTICE_KLINECHART__;
+        const plot = chart?.getDom("candle_pane", "main");
+        if (!chart || !plot) return null;
+        const plotRect = plot.getBoundingClientRect();
+        const candle = chart.getDataList()[8];
+        const pixel = chart.convertToPixel({ dataIndex: 8, value: candle.high });
+        return { x: plotRect.left + pixel.x, y: plotRect.top + pixel.y, dataIndex: 8, value: candle.high };
+      });
+      expect(rayStart).not.toBeNull();
+      const rayEnd = await page.evaluate(() => {
+        const chart = window.__TRADEHUB_PRACTICE_KLINECHART__;
+        const plot = chart?.getDom("candle_pane", "main");
+        if (!chart || !plot) return null;
+        const plotRect = plot.getBoundingClientRect();
+        const candle = chart.getDataList()[14];
+        const pixel = chart.convertToPixel({ dataIndex: 14, value: candle.low });
+        return { x: plotRect.left + pixel.x, y: plotRect.top + pixel.y, dataIndex: 14, value: candle.low };
+      });
+      expect(rayEnd).not.toBeNull();
+
+      await openLinesMenuOption("Ray");
+      await clickPracticeChartCapture(page, await captureRatiosForClientPoint(rayStart));
+      await movePracticeChartPointer(page, await captureRatiosForClientPoint(rayEnd));
+      const rayResponsePromise = drawingResponse("POST");
+      await clickPracticeChartCapture(page, await captureRatiosForClientPoint(rayEnd));
+      const rayResponse = await rayResponsePromise;
+      expect(rayResponse.ok()).toBeTruthy();
+      const ray = (await rayResponse.json()).annotation;
+      expect(ray.kind).toBe("ray");
+      expect(ray.chartPoints).toHaveLength(2);
+      expect(ray.chartPoints[0].dataIndex).toBe(8);
+      expect(Math.abs(ray.chartPoints[0].value - rayStart.value)).toBeLessThan(0.000001);
+      expect(ray.chartPoints[1].dataIndex).toBe(14);
+      await expect.poll(async () => (await drawingOverlay("tradehubRay"))?.id).toBe(ray.annotationId);
+
+      // Ray direction truthfulness: the rendered line starts exactly at the first anchor and
+      // exits the plot past the second anchor — extension forward only, never backward.
+      const rayFigure = await drawingOverlay("tradehubRay");
+      expect(rayFigure.lineFigures).toHaveLength(1);
+      const rayLine = rayFigure.lineFigures[0];
+      const rayAnchorPixels = await page.evaluate(({ dataIndexA, dataIndexB, valueA, valueB }) => {
+        const chart = window.__TRADEHUB_PRACTICE_KLINECHART__;
+        const a = chart?.convertToPixel({ dataIndex: dataIndexA, value: valueA });
+        const b = chart?.convertToPixel({ dataIndex: dataIndexB, value: valueB });
+        if (!chart || Array.isArray(a) || Array.isArray(b)) return null;
+        return { ax: a.x, ay: a.y, bx: b.x, by: b.y };
+      }, { dataIndexA: 8, dataIndexB: 14, valueA: rayStart.value, valueB: rayEnd.value });
+      expect(rayAnchorPixels).not.toBeNull();
+      expect(Math.abs(rayLine[0].x - rayAnchorPixels.ax)).toBeLessThanOrEqual(0.6);
+      expect(Math.abs(rayLine[0].y - rayAnchorPixels.ay)).toBeLessThanOrEqual(0.6);
+      const rayDirected = (rayLine[1].x - rayLine[0].x) * (rayAnchorPixels.bx - rayAnchorPixels.ax) + (rayLine[1].y - rayLine[0].y) * (rayAnchorPixels.by - rayAnchorPixels.ay);
+      expect(rayDirected).toBeGreaterThan(0);
+      const rayOvershoot = Math.hypot(rayLine[1].x - rayAnchorPixels.bx, rayLine[1].y - rayAnchorPixels.by);
+      expect(rayOvershoot).toBeGreaterThan(4);
+      // Style + arrow editing on the selected ray (the drawer auto-closes below xl, so
+      // open it and select the Object tree tab exactly like the frozen 29D.16 flow).
+      const utilityToggle = page.getByRole("button", { name: /Open utility panel/i });
+      if (await utilityToggle.isVisible().catch(() => false)) {
+        await utilityToggle.click();
+      }
+      await page.getByTestId("practice-terminal-right-panel-tabs").getByRole("button", { name: "Object tree" }).click();
+      const selectedEditor = page.getByTestId("practice-terminal-selected-object-editor");
+      await expect(selectedEditor).toBeVisible();
+      await selectedEditor.getByLabel("Drawing line style").selectOption("dashed");
+      await selectedEditor.getByLabel("Drawing arrow ends").selectOption("both");
+      const rayEditResponsePromise = drawingResponse("PATCH", /\/drawings\/[^/]+$/);
+      await selectedEditor.getByRole("button", { name: "Save drawing" }).click();
+      const rayEditResponse = await rayEditResponsePromise;
+      expect(rayEditResponse.ok()).toBeTruthy();
+      expect((await rayEditResponse.json()).annotation.lineStyle).toBe("dashed");
+      expect((await rayEditResponse.json()).annotation.arrowEnds).toBe("both");
+      await expect.poll(async () => (await drawingOverlay("tradehubRay"))?.style).toBe("dashed");
+      await expect.poll(async () => (await drawingOverlay("tradehubRay"))?.arrows).toBe("both");
+      await expect.poll(async () => (await drawingOverlay("tradehubRay"))?.lineStyle).toBe("dashed");
+      await expect.poll(async () => (await drawingOverlay("tradehubRay"))?.figureKeys).toContain("ray-arrow-start");
+      await expect.poll(async () => (await drawingOverlay("tradehubRay"))?.figureKeys).toContain("ray-arrow-end");
+
+      // Escape mid-placement commits nothing and restores Select.
+      await openLinesMenuOption("Extended line");
+      await clickPracticeChartCapture(page, { x: 0.22, y: 0.64 });
+      await movePracticeChartPointer(page, { x: 0.5, y: 0.36 });
+      const postsBeforeEscape = drawingPostCount;
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(200);
+      expect(drawingPostCount).toBe(postsBeforeEscape);
+      await expect(page.getByTestId("practice-terminal-chart-click-layer")).toHaveAttribute("data-active-drawing-tool", "select");
+
+      // Extended line extends in BOTH directions.
+      await openLinesMenuOption("Extended line");
+      const extendedStartRatio = { x: 0.3, y: 0.62 };
+      const extendedEndRatio = { x: 0.62, y: 0.34 };
+      const extendedResponsePromise = drawingResponse("POST");
+      await clickPracticeChartCapture(page, extendedStartRatio);
+      await movePracticeChartPointer(page, extendedEndRatio);
+      await clickPracticeChartCapture(page, extendedEndRatio);
+      const extendedResponse = await extendedResponsePromise;
+      expect(extendedResponse.ok()).toBeTruthy();
+      const extended = (await extendedResponse.json()).annotation;
+      expect(extended.kind).toBe("extended_line");
+      await expect.poll(async () => (await drawingOverlay("tradehubExtendedLine"))?.id).toBe(extended.annotationId);
+      const extendedFigure = await drawingOverlay("tradehubExtendedLine");
+      expect(extendedFigure.lineFigures).toHaveLength(1);
+      const extendedLine = extendedFigure.lineFigures[0];
+      const extendedAnchors = await page.evaluate(() => {
+        const chart = window.__TRADEHUB_PRACTICE_KLINECHART__;
+        const plot = chart?.getDom("candle_pane", "main");
+        if (!chart || !plot) return null;
+        const rect = plot.getBoundingClientRect();
+        return { width: rect.width, height: rect.height };
+      });
+      const beyondStart = Math.hypot(extendedLine[0].x - 0, extendedLine[0].y - 0) >= 0;
+      expect(beyondStart).toBe(true);
+      expect(extendedLine[0].x).toBeLessThanOrEqual(2);
+      expect(extendedLine[1].x).toBeGreaterThanOrEqual(extendedAnchors.width - 2);
+
+      // Horizontal ray extends to the right edge only, from the clicked price.
+      await openLinesMenuOption("Horizontal ray");
+      const horizontalRayResponsePromise = drawingResponse("POST");
+      await clickPracticeChartCapture(page, { x: 0.34, y: 0.55 });
+      const horizontalRayResponse = await horizontalRayResponsePromise;
+      expect(horizontalRayResponse.ok()).toBeTruthy();
+      const horizontalRay = (await horizontalRayResponse.json()).annotation;
+      expect(horizontalRay.kind).toBe("horizontal_ray");
+      expect(horizontalRay.chartPoints).toHaveLength(1);
+      await expect.poll(async () => (await drawingOverlay("tradehubHorizontalRay"))?.id).toBe(horizontalRay.annotationId);
+      const horizontalRayFigure = await drawingOverlay("tradehubHorizontalRay");
+      expect(horizontalRayFigure.lineFigures).toHaveLength(1);
+      expect(horizontalRayFigure.lineFigures[0][1].x).toBeGreaterThanOrEqual(horizontalRayFigure.lineFigures[0][0].x);
+      expect(horizontalRayFigure.lineFigures[0][0].y).toBeCloseTo(horizontalRayFigure.lineFigures[0][1].y, 5);
+
+      // Cross line: one click, one record, both strokes.
+      await openLinesMenuOption("Cross line");
+      const crossLineResponsePromise = drawingResponse("POST");
+      await clickPracticeChartCapture(page, { x: 0.5, y: 0.45 });
+      const crossLineResponse = await crossLineResponsePromise;
+      expect(crossLineResponse.ok()).toBeTruthy();
+      const crossLine = (await crossLineResponse.json()).annotation;
+      expect(crossLine.kind).toBe("cross_line");
+      expect(crossLine.chartPoints).toHaveLength(1);
+      await expect.poll(async () => (await drawingOverlay("tradehubCrossLine"))?.id).toBe(crossLine.annotationId);
+      const crossLineFigure = await drawingOverlay("tradehubCrossLine");
+      expect(crossLineFigure.pointCount).toBe(1);
+      expect(crossLineFigure.figureKeys).toContain("cross-line-horizontal");
+      expect(crossLineFigure.figureKeys).toContain("cross-line-vertical");
+      expect(crossLineFigure.lineFigures).toHaveLength(2);
+
+
+      // Legacy API drawing without style fields renders solid/none unchanged.
+      const authResponse = await page.request.post(
+        "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=stage15f-local",
+        { data: { email: demoUsers.student.email, password: demoUsers.student.password, returnSecureToken: true } }
+      );
+      expect(authResponse.ok()).toBeTruthy();
+      const studentToken = (await authResponse.json()).idToken;
+      const legacyResponse = await page.request.post(
+        new URL(`/api/student/practice/sessions/${createdSessionId}/drawings`, page.url()).toString(),
+        {
+          headers: { Authorization: `Bearer ${studentToken}` },
+          data: {
+            kind: "trend_line",
+            label: "Legacy plain trend",
+            text: "Legacy plain trend",
+            candleIndex: 5,
+            secondCandleIndex: 10,
+            priceLevel: 67500,
+            secondPriceLevel: 66500,
+            coordinateVersion: "klinecharts_v2",
+            chartPoints: [
+              { dataIndex: 5, value: 67500 },
+              { dataIndex: 10, value: 66500 }
+            ],
+            colorToken: "accent",
+            isMainLesson: false
+          }
+        }
+      );
+      expect(legacyResponse.ok()).toBeTruthy();
+      const legacyTrend = (await legacyResponse.json()).annotation;
+      await page.reload();
+      await expect(page.getByTestId("practice-terminal-klinechart")).toBeVisible();
+      await expect.poll(async () => (await drawingOverlay("tradehubRay"))?.id).toBe(ray.annotationId);
+      const reloadedRay = await drawingOverlay("tradehubRay");
+      expect(reloadedRay.style).toBe("dashed");
+      expect(reloadedRay.arrows).toBe("both");
+      expect(reloadedRay.lineStyle).toBe("dashed");
+      expect(reloadedRay.pointCount).toBe(2);
+      await expect.poll(async () => (await drawingOverlay("tradehubExtendedLine"))?.id).toBe(extended.annotationId);
+      await expect.poll(async () => (await drawingOverlay("tradehubHorizontalRay"))?.id).toBe(horizontalRay.annotationId);
+      await expect.poll(async () => (await drawingOverlay("tradehubCrossLine"))?.id).toBe(crossLine.annotationId);
+      const reloadedLegacy = await page.evaluate((overlayId) => {
+        const overlay = window.__TRADEHUB_PRACTICE_KLINECHART__?.getOverlays({ groupId: "tradehub_practice_drawings_v1" }).find((candidate) => candidate.id === overlayId);
+        if (!overlay) return null;
+        return { style: overlay.extendData?.style ?? null, arrows: overlay.extendData?.arrows ?? null, lineStyle: overlay.styles?.line?.style ?? null };
+      }, legacyTrend.annotationId);
+      expect(reloadedLegacy).toMatchObject({ style: null, arrows: null, lineStyle: "solid" });
+
+      // Delete selected removes the focused drawing. Selection is client state, so re-select
+      // the cross line through the object tree after the reload (same pattern as 29D.16).
+      const utilityToggleAfterReload = page.getByRole("button", { name: /Open utility panel/i });
+      if (await utilityToggleAfterReload.isVisible().catch(() => false)) {
+        await utilityToggleAfterReload.click();
+      }
+      await page.getByTestId("practice-terminal-right-panel-tabs").getByRole("button", { name: "Object tree" }).click();
+      const crossRow = page.getByTestId("practice-terminal-object-tree-row").filter({ hasText: /Cross line/i }).first();
+      await expect(crossRow).toBeVisible();
+      await crossRow.click();
+      await expect(page.getByTestId("practice-terminal-selected-object-editor")).toContainText(/Cross line/i);
+
+      await page.getByRole("button", { name: "Clear chart drawings" }).click();
+      const deleteResponsePromise = drawingResponse("DELETE", /\/drawings\/[^/]+$/);
+      await page.getByTestId("practice-terminal-delete-menu").getByRole("menuitem", { name: "Delete selected drawing" }).click();
+      const deleteResponse = await deleteResponsePromise;
+      expect(deleteResponse.ok()).toBeTruthy();
+      expect((await deleteResponse.json()).deletedAnnotationId).toBe(crossLine.annotationId);
+      await expect.poll(async () => (await drawingOverlay("tradehubCrossLine"))).toBeNull();
+
+      await page.getByRole("button", { name: "Clear chart drawings" }).click();
+      const clearResponsePromise = drawingResponse("DELETE");
+      await page.getByTestId("practice-terminal-delete-menu").getByRole("menuitem", { name: "Clear chart drawings" }).click();
+      const clearResponse = await clearResponsePromise;
+      expect(clearResponse.ok()).toBeTruthy();
+      expect((await clearResponse.json()).deletedDrawingCount).toBe(4);
+      await expect.poll(async () => page.evaluate(() => window.__TRADEHUB_PRACTICE_KLINECHART__?.getOverlays({ groupId: "tradehub_practice_drawings_v1" }).length)).toBe(0);
+    } finally {
+      page.off("request", countDrawingPosts);
+      if (createdSessionId) {
+        await deleteStandalonePracticeSessionByApi(page, createdSessionId, sessionName);
+      }
+    }
+  });
   }
 
   test("courses, lesson reader, notes, bookmarks, and proof route load safely", async ({ page }) => {

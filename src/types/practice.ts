@@ -77,10 +77,18 @@ export type PracticeAnnotationKind =
   | "fibonacci_retracement"
   | "measurement_placeholder"
   | "freehand_brush"
-  | "parallel_channel";
+  | "parallel_channel"
+  | "ray"
+  | "extended_line"
+  | "horizontal_ray"
+  | "cross_line";
 export type PracticeDrawingColorToken = "accent" | "green" | "amber" | "red" | "blue" | "neutral";
 export type PracticeDrawingCoordinateVersion = "klinecharts_v1" | "klinecharts_v2";
 export type PracticeDrawingAppearanceVersion = "trend_blue_v1" | "user_selected_v1";
+// Stage 30C: bounded appearance enums for line-family tools. Absent fields read as
+// solid/none so every pre-30C drawing keeps rendering exactly as before.
+export type PracticeDrawingLineStyle = "solid" | "dashed" | "dotted";
+export type PracticeDrawingArrowEnds = "none" | "start" | "end" | "both";
 
 export interface PracticeDrawingChartPoint {
   dataIndex: number;
@@ -702,6 +710,8 @@ export interface PracticeAnnotationRecord {
   text: string;
   colorToken?: PracticeDrawingColorToken;
   appearanceVersion?: PracticeDrawingAppearanceVersion;
+  lineStyle?: PracticeDrawingLineStyle;
+  arrowEnds?: PracticeDrawingArrowEnds;
   isMainLesson: boolean;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;

@@ -12,6 +12,10 @@ export const PRACTICE_KLINE_MEASURE_OVERLAY = "tradehubDirectionalMeasure";
 export const PRACTICE_KLINE_TEXT_OVERLAY = "tradehubTextNote";
 export const PRACTICE_KLINE_BRUSH_OVERLAY = "tradehubFreehandBrush";
 export const PRACTICE_KLINE_PARALLEL_CHANNEL_OVERLAY = "tradehubParallelChannel";
+export const PRACTICE_KLINE_RAY_OVERLAY = "tradehubRay";
+export const PRACTICE_KLINE_EXTENDED_LINE_OVERLAY = "tradehubExtendedLine";
+export const PRACTICE_KLINE_HORIZONTAL_RAY_OVERLAY = "tradehubHorizontalRay";
+export const PRACTICE_KLINE_CROSS_LINE_OVERLAY = "tradehubCrossLine";
 export const PRACTICE_KLINE_ATR_INDICATOR = "TRADEHUB_ATR";
 export const PRACTICE_KLINE_RSI_PANE = "practice-rsi-pane";
 export const PRACTICE_KLINE_ATR_PANE = "practice-atr-pane";
@@ -28,9 +32,86 @@ export const PRACTICE_MAGNET_SNAP_RADIUS_PX = 12;
 // levels, Measure direction colors, and text notes keep their deliberate owner-accepted looks.
 export const PRACTICE_LINE_DEFAULT_COLOR = "#2962ff";
 
+// Stage 30C: klinecharts' line renderer supports "dashed"|"solid" plus a dash pattern, so
+// dotted renders truthfully as a fine dash pattern rather than being downgraded to dashed.
+export type PracticeOverlayLineStyle = "solid" | "dashed" | "dotted";
+export type PracticeOverlayArrowEnds = "none" | "start" | "end" | "both";
+
+export function practiceOverlayLineFigureStyles(
+  lineStyle: PracticeOverlayLineStyle | undefined,
+  base: { color: string; size?: number }
+) {
+  if (lineStyle === "dotted") {
+    return { color: base.color, size: base.size ?? 2, style: "dashed" as const, dashedValue: [2, 4] };
+  }
+  if (lineStyle === "dashed") {
+    return { color: base.color, size: base.size ?? 2, style: "dashed" as const, dashedValue: [8, 5] };
+  }
+  return { color: base.color, size: base.size ?? 2, style: "solid" as const };
+}
+
+// Arrow head triangle at a line endpoint, pointing outward along the line direction.
+export function practiceOverlayArrowFigure(
+  key: string,
+  tip: { x: number; y: number },
+  direction: { x: number; y: number },
+  color: string
+): OverlayFigure | null {
+  const length = Math.hypot(direction.x, direction.y);
+  if (!Number.isFinite(length) || length < 0.0001) return null;
+  const unit = { x: direction.x / length, y: direction.y / length };
+  const back = { x: tip.x - unit.x * 11, y: tip.y - unit.y * 11 };
+  const perp = { x: -unit.y * 4.5, y: unit.x * 4.5 };
+  return {
+    key,
+    type: "polygon",
+    attrs: {
+      coordinates: [
+        { x: tip.x, y: tip.y },
+        { x: back.x + perp.x, y: back.y + perp.y },
+        { x: back.x - perp.x, y: back.y - perp.y }
+      ]
+    },
+    styles: { style: "fill", color }
+  };
+}
+
+// Extend a two-point line to the plot bounding box. `forward` extends beyond the end point,
+// `backward` extends before the start point; extension is pixel-space along the two-point
+// line and never reads or requests candles outside the visible chart.
+export function practiceOverlayExtendedLineCoordinates(
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  bounding: { width: number; height: number },
+  forward: boolean,
+  backward: boolean
+) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  if (dx === 0 && dy === 0) return [start, end];
+  let minT = backward ? -Number.MAX_VALUE : 0;
+  let maxT = forward ? Number.MAX_VALUE : 1;
+  const clampAxis = (d: number, s: number, size: number) => {
+    if (d === 0) return;
+    const tLow = (0 - s) / d;
+    const tHigh = (size - s) / d;
+    minT = Math.max(minT, Math.min(tLow, tHigh));
+    maxT = Math.min(maxT, Math.max(tLow, tHigh));
+  };
+  clampAxis(dx, start.x, bounding.width);
+  clampAxis(dy, start.y, bounding.height);
+  if (maxT < minT) return [start, end];
+  return [
+    { x: start.x + dx * minT, y: start.y + dy * minT },
+    { x: start.x + dx * maxT, y: start.y + dy * maxT }
+  ];
+}
+
 export type PracticeKLineOverlayData = {
   text?: string;
   color?: string;
+  style?: PracticeOverlayLineStyle;
+  arrows?: PracticeOverlayArrowEnds;
 };
 
 let productionOverlaysRegistered = false;
@@ -331,6 +412,177 @@ const textNoteOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
   }
 };
 
+// Stage 30C: TradeHub-owned replacement for the built-in segment template, registered under
+// the same "segment" name (user registration overwrites the built-in). Adds per-drawing line
+// style and arrow ends for the trend tool while preserving the plain two-point rendering.
+const tradehubSegmentOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
+  name: PRACTICE_KLINE_TREND_OVERLAY,
+  totalStep: 3,
+  needDefaultPointFigure: true,
+  needDefaultXAxisFigure: true,
+  needDefaultYAxisFigure: true,
+  createPointFigures: ({ coordinates, overlay }) => {
+    if (coordinates.length < 2 || overlay.points.length < 2) return [];
+    const color = overlay.extendData?.color ?? PRACTICE_LINE_DEFAULT_COLOR;
+    const lineStyle = overlay.extendData?.style;
+    const arrowEnds = overlay.extendData?.arrows ?? "none";
+    const figures: OverlayFigure[] = [{
+      key: "segment-line",
+      type: "line",
+      attrs: { coordinates: [coordinates[0], coordinates[1]] },
+      styles: practiceOverlayLineFigureStyles(lineStyle, { color })
+    }];
+    const start = coordinates[0];
+    const end = coordinates[1];
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    if ((arrowEnds === "end" || arrowEnds === "both") && (dx !== 0 || dy !== 0)) {
+      const arrow = practiceOverlayArrowFigure("segment-arrow-end", end, { x: dx, y: dy }, color);
+      if (arrow) figures.push(arrow);
+    }
+    if ((arrowEnds === "start" || arrowEnds === "both") && (dx !== 0 || dy !== 0)) {
+      const arrow = practiceOverlayArrowFigure("segment-arrow-start", start, { x: -dx, y: -dy }, color);
+      if (arrow) figures.push(arrow);
+    }
+    return figures;
+  }
+};
+
+// Stage 30C: ray — renders through the second point and extends infinitely beyond it in that
+// direction only, pixel-space within the visible bounding box (no future-data requests).
+const rayOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
+  name: PRACTICE_KLINE_RAY_OVERLAY,
+  ...twoPointTemplate,
+  createPointFigures: ({ coordinates, overlay, bounding }) => {
+    if (coordinates.length < 2 || overlay.points.length < 2) return [];
+    const color = overlay.extendData?.color ?? PRACTICE_LINE_DEFAULT_COLOR;
+    const lineStyle = overlay.extendData?.style;
+    const arrowEnds = overlay.extendData?.arrows ?? "none";
+    const figures: OverlayFigure[] = [];
+    const lineCoordinates = practiceOverlayExtendedLineCoordinates(
+      coordinates[0], coordinates[1], bounding, true, false
+    );
+    figures.push({
+      key: "ray-line",
+      type: "line",
+      attrs: { coordinates: lineCoordinates },
+      styles: practiceOverlayLineFigureStyles(lineStyle, { color })
+    });
+    const dx = coordinates[1].x - coordinates[0].x;
+    const dy = coordinates[1].y - coordinates[0].y;
+    if ((arrowEnds === "end" || arrowEnds === "both") && (dx !== 0 || dy !== 0)) {
+      const arrow = practiceOverlayArrowFigure("ray-arrow-end", coordinates[1], { x: dx, y: dy }, color);
+      if (arrow) figures.push(arrow);
+    }
+    if ((arrowEnds === "start" || arrowEnds === "both") && (dx !== 0 || dy !== 0)) {
+      const arrow = practiceOverlayArrowFigure("ray-arrow-start", coordinates[0], { x: -dx, y: -dy }, color);
+      if (arrow) figures.push(arrow);
+    }
+    return figures;
+  }
+};
+
+// Stage 30C: extended line — the same two-point line extended infinitely in BOTH directions.
+const extendedLineOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
+  name: PRACTICE_KLINE_EXTENDED_LINE_OVERLAY,
+  ...twoPointTemplate,
+  createPointFigures: ({ coordinates, overlay, bounding }) => {
+    if (coordinates.length < 2 || overlay.points.length < 2) return [];
+    const color = overlay.extendData?.color ?? PRACTICE_LINE_DEFAULT_COLOR;
+    const lineStyle = overlay.extendData?.style;
+    const arrowEnds = overlay.extendData?.arrows ?? "none";
+    const figures: OverlayFigure[] = [];
+    const lineCoordinates = practiceOverlayExtendedLineCoordinates(
+      coordinates[0], coordinates[1], bounding, true, true
+    );
+    figures.push({
+      key: "extended-line",
+      type: "line",
+      attrs: { coordinates: lineCoordinates },
+      styles: practiceOverlayLineFigureStyles(lineStyle, { color })
+    });
+    const dx = coordinates[1].x - coordinates[0].x;
+    const dy = coordinates[1].y - coordinates[0].y;
+    if ((arrowEnds === "end" || arrowEnds === "both") && (dx !== 0 || dy !== 0)) {
+      const arrow = practiceOverlayArrowFigure("extended-arrow-end", coordinates[1], { x: dx, y: dy }, color);
+      if (arrow) figures.push(arrow);
+    }
+    if ((arrowEnds === "start" || arrowEnds === "both") && (dx !== 0 || dy !== 0)) {
+      const arrow = practiceOverlayArrowFigure("extended-arrow-start", coordinates[0], { x: -dx, y: -dy }, color);
+      if (arrow) figures.push(arrow);
+    }
+    return figures;
+  }
+};
+
+// Stage 30C: horizontal ray — from the anchor's price extending to the right edge only.
+const horizontalRayOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
+  name: PRACTICE_KLINE_HORIZONTAL_RAY_OVERLAY,
+  totalStep: 2,
+  drawingMode: "step",
+  needDefaultPointFigure: true,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
+  createPointFigures: ({ coordinates, overlay, bounding }) => {
+    const anchor = coordinates[0];
+    if (!anchor) return [];
+    const color = overlay.extendData?.color ?? PRACTICE_LINE_DEFAULT_COLOR;
+    const lineStyle = overlay.extendData?.style;
+    return [{
+      key: "horizontal-ray-line",
+      type: "line",
+      attrs: {
+        coordinates: [
+          { x: anchor.x, y: anchor.y },
+          { x: bounding.width, y: anchor.y }
+        ]
+      },
+      styles: practiceOverlayLineFigureStyles(lineStyle, { color })
+    }];
+  }
+};
+
+// Stage 30C: cross line — full-pane horizontal + vertical pair through the clicked point,
+// rendered and persisted as one overlay record.
+const crossLineOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
+  name: PRACTICE_KLINE_CROSS_LINE_OVERLAY,
+  totalStep: 2,
+  drawingMode: "step",
+  needDefaultPointFigure: true,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
+  createPointFigures: ({ coordinates, overlay, bounding }) => {
+    const anchor = coordinates[0];
+    if (!anchor) return [];
+    const color = overlay.extendData?.color ?? PRACTICE_LINE_DEFAULT_COLOR;
+    const lineStyle = overlay.extendData?.style;
+    return [
+      {
+        key: "cross-line-horizontal",
+        type: "line",
+        attrs: {
+          coordinates: [
+            { x: 0, y: anchor.y },
+            { x: bounding.width, y: anchor.y }
+          ]
+        },
+        styles: practiceOverlayLineFigureStyles(lineStyle, { color })
+      },
+      {
+        key: "cross-line-vertical",
+        type: "line",
+        attrs: {
+          coordinates: [
+            { x: anchor.x, y: 0 },
+            { x: anchor.x, y: bounding.height }
+          ]
+        },
+        styles: practiceOverlayLineFigureStyles(lineStyle, { color })
+      }
+    ];
+  }
+};
+
 const freehandBrushOverlay: OverlayTemplate<PracticeKLineOverlayData> = {
   name: PRACTICE_KLINE_BRUSH_OVERLAY,
   totalStep: 2,
@@ -447,6 +699,11 @@ export async function registerPracticeKLineChartOverlays() {
     klinecharts.registerOverlay(zoneOverlay);
     klinecharts.registerOverlay(directionalMeasureOverlay);
     klinecharts.registerOverlay(textNoteOverlay);
+    klinecharts.registerOverlay(tradehubSegmentOverlay);
+    klinecharts.registerOverlay(rayOverlay);
+    klinecharts.registerOverlay(extendedLineOverlay);
+    klinecharts.registerOverlay(horizontalRayOverlay);
+    klinecharts.registerOverlay(crossLineOverlay);
     klinecharts.registerOverlay(freehandBrushOverlay);
     klinecharts.registerOverlay(parallelChannelOverlay);
     klinecharts.registerIndicator(practiceAtrIndicator);
