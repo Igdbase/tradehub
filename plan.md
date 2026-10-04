@@ -5089,7 +5089,7 @@ Freeze rules (in force as of the scoped freeze):
 
 ### Stage 30C: Practice Terminal Line Tool Completion (Ray, Extended Line, Horizontal Ray, Cross Line, Styles, Arrows)
 
-Status: implemented/source-QA ready. Owner acceptance is not claimed.
+Status: owner-accepted, closed, and frozen on 4 October 2026. Evidence: the owner signed in and confirmed the four line tools, the line styles, and the arrow ends in a real browser. With 30C accepted, the roadmap returns to the scoped freeze pending the owner's next agreed stage.
 
 - Executes the owner-approved Stage 30C unfreeze: the four former "coming soon" Lines-menu placeholders are now real drawing tools, following the established unsaved draft -> preview -> commit -> Select pattern, the shared cancellation path, and versioned klinecharts persistence.
 - Ray: two clicks (anchor, then direction point); renders through the second point and extends infinitely beyond it in that direction only. Extension is pixel-space along the two-point line within the visible bounding box (clamped parametric intersection), so it never requests or reads future data.

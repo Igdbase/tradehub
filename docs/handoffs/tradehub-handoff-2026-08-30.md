@@ -1154,7 +1154,7 @@ Status: closed as a scoped freeze on 1 October 2026. The gate battery below was 
 
 ## Stage 30C Practice Terminal Line Tool Completion
 
-Status: implemented/source-QA ready. Owner acceptance is not claimed.
+Status: owner-accepted, closed, and frozen on 4 October 2026. Evidence: the owner signed in and confirmed the four line tools, the line styles, and the arrow ends in a real browser. With 30C accepted, the roadmap returns to the scoped freeze pending the owner's next agreed stage.
 
 - Owner-approved unfreeze for this stage only: the four former "coming soon" line tools are now real. Ray (two clicks, extends beyond the direction point only), extended line (two clicks, extends both ways), horizontal ray (one click, right edge only), and cross line (one click, full-pane cross persisted as one record) all follow the draft -> preview -> commit -> Select pattern with the shared cancellation path and versioned klinecharts persistence; extension math is pixel-space within the visible bounding box with no future-data reads.
 - Line styles (solid/dashed/dotted) and arrow ends (none/start/end/both) are new optional bounded-enum appearance fields on the drawing record; coordinate versions are untouched, absent fields read solid/none, arrows render only on trend/ray/extended, the editor exposes both controls for line-family tools, and the server rejects out-of-enum values and arrows on ineligible kinds with the existing 400 pattern. Dotted renders via a fine dash pattern (klinecharts exposes `dashedValue`); the trend tool renders through a TradeHub-owned `segment` template replacement carrying trend arrows.

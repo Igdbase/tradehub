@@ -196,13 +196,14 @@ includesAll(
   "Browser coverage proves creation, direction truthfulness, single-record cross line, style/arrow editing, legacy rendering, delete/clear, magnet, and Escape at laptop and tablet."
 );
 
-// --- Docs: unfreeze note, 30C section, no external claims, prior states preserved.
+// --- Docs: unfreeze note, 30C owner acceptance, no external claims, prior states preserved.
 includesAll(
   docs,
   [
     "Stage 30C",
     "Practice Terminal Line Tool Completion",
-    "implemented/source-QA ready. Owner acceptance is not claimed.",
+    "owner-accepted, closed, and frozen on 4 October 2026",
+    "the roadmap returns to the scoped freeze pending the owner's next agreed stage",
     "On the owner's instruction, the roadmap was unfrozen for Stage 30C (line tool completion) only; the freeze remains in force for all other work pending the next agreed stage.",
     "Stage 29N Final Freeze",
     "Stage 30B",
@@ -210,18 +211,17 @@ includesAll(
     "paused Stage 29H",
     "Stage 29G external Binance/Bybit acceptance remains deferred",
   ],
-  "Docs record Stage 30C, the scoped unfreeze, and the preserved 29N freeze and legacy-debt state."
+  "Docs record Stage 30C owner acceptance, the scoped unfreeze, and the preserved 29N freeze and legacy-debt state."
 );
 excludesAll(
   docs,
   [
-    "Stage 30C is owner-accepted",
-    "Stage 30C is closed and frozen",
+    "Stage 30C is implemented/source-QA ready",
     "Real Telegram/provider acceptance is complete",
     "Stage 29G external Binance/Bybit acceptance is complete",
     "Real Paystack sandbox/production acceptance is complete",
   ],
-  "No doc claims Stage 30C owner acceptance or deferred external acceptance."
+  "No doc claims Stage 30C is unaccepted or that deferred external acceptance happened."
 );
 
 console.log("Stage 30C Practice terminal line tool completion QA passed.");
